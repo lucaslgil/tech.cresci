@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Criar Usuário de Teste - Supabase</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #4f46e5; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #3730a3; }
+        .result { margin-top: 20px; padding: 15px; border-radius: 4px; }
+        .success { background: #d1fae5; color: #047857; border: 1px solid #10b981; }
+        .error { background: #fee2e2; color: #dc2626; border: 1px solid #ef4444; }
+        .warning { background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Criar Usuário de Teste</h1>
+    
+    <div class="warning">
+        <strong>⚠️ IMPORTANTE:</strong> Use este arquivo apenas para criar o usuário de teste inicial. 
+        Delete este arquivo após o uso por questões de segurança.
+    </div>
+
+    <form id="createUserForm">
+        <div class="form-group">
+            <label>Email:</label>
+            <input type="email" id="email" value="admin@teste.com" required>
+        </div>
+        
+        <div class="form-group">
+            <label>Senha:</label>
+            <input type="password" id="password" value="123456" required>
+        </div>
+        
+        <button type="submit">Criar Usuário</button>
+    </form>
+
+    <div id="result"></div>
+
+    <h2>📋 Instruções Alternativas</h2>
+    <ol>
+        <li><strong>Método 1 - Dashboard Supabase (Recomendado):</strong>
+            <ul>
+                <li>Vá para: <a href="https://supabase.com/dashboard/project/alylochrlvgcvjdmkmum/auth/users" target="_blank">Dashboard do Supabase</a></li>
+                <li>Clique em "Add user"</li>
+                <li>Email: admin@teste.com</li>
+                <li>Password: 123456</li>
+                <li>✅ Marque "Email Confirmed"</li>
+                <li>Clique em "Create user"</li>
+            </ul>
+        </li>
+        
+        <li><strong>Método 2 - Habilitar Sign-up:</strong>
+            <ul>
+                <li>Vá para Authentication > Settings</li>
+                <li>Habilite "Enable email confirmations"</li>
+                <li>Use o formulário do sistema para se cadastrar</li>
+            </ul>
+        </li>
+    </ol>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+        const { createClient } = supabase;
+        const supabaseClient = createClient(
+            'https://alylochrlvgcvjdmkmum.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFseWxvY2hybHZnY3ZqZG1rbXVtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzNDcwMjAsImV4cCI6MjA3NTkyMzAyMH0.Jw6iJqy1JthecYfFKNJcftI-5yi_YyGL44f9hNQgqIY'
+        );
+
+        document.getElementById('createUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                resultDiv.innerHTML = '<div class="warning">Criando usuário...</div>';
+                
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email: email,
+                    password: password,
+                    options: {
+                        emailRedirectTo: window.location.origin
+                    }
+                });
+
+                if (error) {
+                    throw error;
+                }
+
+                if (data.user) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <strong>✅ Usuário criado com sucesso!</strong><br>
+                            Email: ${data.user.email}<br>
+                            ID: ${data.user.id}<br><br>
+                            ${data.user.email_confirmed_at ? 
+                                'Email confirmado automaticamente.' : 
+                                'Verifique seu email para confirmar a conta.'
+                            }
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = '<div class="error">Erro: Usuário não foi criado.</div>';
+                }
+
+            } catch (error) {
+                console.error('Erro:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <strong>❌ Erro ao criar usuário:</strong><br>
+                        ${error.message}<br><br>
+                        <strong>Soluções:</strong>
+                        <ul>
+                            <li>Use o Dashboard do Supabase (Método 1 acima)</li>
+                            <li>Verifique se o sign-up está habilitado</li>
+                            <li>Tente com um email diferente</li>
+                        </ul>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

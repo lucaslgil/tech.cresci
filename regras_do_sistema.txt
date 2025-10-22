@@ -1,0 +1,79 @@
+# REGRAS DO SISTEMA - INVENTÁRIO E CADASTRO
+
+## INSTRUÇÕES OBRIGATÓRIAS PARA DESENVOLVIMENTO
+
+### 1. DOCUMENTAÇÃO
+- Toda nova funcionalidade precisa ser registrada na documentação em /documentacao
+- Atualizar a documentação conforme mudanças no sistema
+- Descrever propósito, parâmetros e exemplos de uso
+
+### 2. PADRÕES DE CÓDIGO
+- As funções precisam ser escritas de forma clara e modular
+- Utilizar TypeScript para tipagem estrita
+- Criar components reutilizáveis para formulários
+- Evitar lógica de negócio nos componentes — usar hooks separados
+- Seguir convenções de nomenclatura consistentes
+
+### 3. PERSISTÊNCIA DE DADOS
+- Utilizar Supabase para todas as operações de banco de dados
+- Implementar autenticação via Supabase Auth
+- Garantir que todas as tabelas tenham relacionamentos adequados
+- Implementar validação tanto no frontend quanto no backend
+
+### 4. VALIDAÇÃO E UX
+- Garantir que todos os formulários tenham validação
+- Implementar feedback visual para ações do usuário
+- Criar mensagens de erro claras e úteis
+- Implementar loading states adequados
+
+### 5. DESIGN E RESPONSIVIDADE
+- O layout deve seguir design limpo e responsivo
+- Utilizar TailwindCSS para estilização
+- Manter consistência visual em todos os componentes
+- Otimizar para diferentes tamanhos de tela
+
+### 6. ARQUITETURA E ORGANIZAÇÃO
+- O código deve estar organizado em pastas por domínio:
+  - /features/empresa
+  - /features/colaborador  
+  - /features/inventario
+  - /features/auth
+- Usar Context API ou Zustand para estado global
+- Implementar roteamento protegido com React Router
+- Separar lógica de apresentação da lógica de negócio
+
+### 7. SEGURANÇA - ⚠️ CRÍTICO - OBRIGATÓRIO
+- **NUNCA EXPOR DADOS SENSÍVEIS NO FRONTEND**: Jamais incluir chaves privadas, senhas, tokens secretos ou credenciais administrativas no código do frontend
+- **USAR APENAS CHAVES PÚBLICAS**: No frontend, usar somente as chaves públicas (anon key) do Supabase
+- **VARIÁVEIS DE AMBIENTE**: Sempre prefixar com VITE_ apenas dados que podem ser públicos
+- **LOGS E CONSOLE PROIBIDOS**: 
+  * Jamais fazer console.log() de URLs, tokens, emails ou senhas
+  * Nunca logar responses completas de APIs
+  * Desabilitar debug do Supabase em produção
+  * Remover todos os console.log antes do deploy
+- **URLs E ENDPOINTS**: Nunca expor URLs completas de APIs no console do navegador
+- **TRATAMENTO DE ERROS**: Logs de erro devem ser genéricos, sem expor detalhes técnicos
+- **ROW LEVEL SECURITY**: Sempre habilitar RLS no Supabase para proteger dados
+- **VALIDAÇÃO DUPLA**: Validar tanto no frontend quanto no backend
+- Implementar autenticação em todas as rotas protegidas
+- Validar permissões de usuário antes de operações sensíveis
+- Sanitizar inputs do usuário
+- Implementar rate limiting quando necessário
+
+### 8. PROCESSO DE DESENVOLVIMENTO
+- Ler esse arquivo antes de escrever qualquer código novo
+- Testar funcionalidades antes de marcar como concluída
+- Manter commits organizados e descritivos
+- Documentar decisões técnicas importantes
+
+### 9. ESTRUTURA DE DADOS
+- Tabelas principais: empresas, colaboradores, itens
+- Implementar relacionamentos adequados entre tabelas
+- Manter consistência nos campos de auditoria (created_at, updated_at)
+- Utilizar UUIDs como chaves primárias
+
+### 10. PERFORMANCE
+- Implementar lazy loading quando apropriado
+- Otimizar queries do Supabase
+- Implementar cache quando necessário
+- Minimizar re-renders desnecessários
