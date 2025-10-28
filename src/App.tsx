@@ -8,6 +8,7 @@ import { CadastroEmpresa } from './features/empresa/CadastroEmpresa'
 import { CadastroColaborador } from './features/colaborador/CadastroColaborador'
 import { CadastroItem } from './features/inventario/CadastroItem'
 import { RelatorioItens } from './features/inventario/RelatorioItens'
+import { LinhasTelefonicas } from './features/inventario/LinhasTelefonicas'
 import { Documentacao } from './features/documentacao/Documentacao'
 import ConfiguracaoUsuario from './features/perfil/ConfiguracaoUsuario'
 
@@ -31,6 +32,7 @@ function App() {
             <Route path="cadastro/colaborador" element={<CadastroColaborador />} />
             <Route path="inventario/cadastrar-item" element={<CadastroItem />} />
             <Route path="inventario/relatorio" element={<RelatorioItens />} />
+            <Route path="inventario/linhas-telefonicas" element={<LinhasTelefonicas />} />
             <Route path="configuracao" element={<ConfiguracaoUsuario />} />
             <Route path="documentacao" element={<Documentacao />} />
           </Route>
