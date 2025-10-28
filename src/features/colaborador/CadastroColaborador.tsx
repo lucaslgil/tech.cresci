@@ -20,6 +20,7 @@ interface Colaborador {
   setor: string
   cargo: string
   empresa_id: string
+  status: string
   created_at: string
   empresas?: { razao_social: string }
 }
@@ -34,6 +35,7 @@ interface FormData {
   setor: string
   cargo: string
   empresa_id: string
+  status: string
 }
 
 export const CadastroColaborador: React.FC = () => {
@@ -59,7 +61,8 @@ export const CadastroColaborador: React.FC = () => {
     telefone: '',
     setor: '',
     cargo: '',
-    empresa_id: ''
+    empresa_id: '',
+    status: 'Ativo'
   })
 
   const [setores, setSetores] = useState<string[]>([])
@@ -199,6 +202,7 @@ export const CadastroColaborador: React.FC = () => {
           setor: 'Tecnologia da Informação',
           cargo: 'Desenvolvedor',
           empresa_id: '1',
+          status: 'Ativo',
           created_at: '2024-01-01T00:00:00.000Z',
           empresas: { razao_social: 'CRESCI E PERDI FRANCHISING LTDA' }
         }
@@ -221,6 +225,7 @@ export const CadastroColaborador: React.FC = () => {
           setor,
           cargo,
           empresa_id,
+          status,
           created_at,
           empresas:empresa_id (razao_social)
         `)
@@ -230,6 +235,7 @@ export const CadastroColaborador: React.FC = () => {
       
       setColaboradores((data || []).map(item => ({
         ...item,
+        status: item.status || 'Ativo',
         empresas: Array.isArray(item.empresas) ? item.empresas[0] : item.empresas
       })))
     } catch (error: any) {
@@ -248,6 +254,7 @@ export const CadastroColaborador: React.FC = () => {
           setor: 'Tecnologia da Informação',
           cargo: 'Desenvolvedor',
           empresa_id: '1',
+          status: 'Ativo',
           created_at: '2024-01-01T00:00:00.000Z',
           empresas: { razao_social: 'CRESCI E PERDI FRANCHISING LTDA' }
         }
@@ -417,7 +424,8 @@ export const CadastroColaborador: React.FC = () => {
       telefone: '',
       setor: '',
       cargo: '',
-      empresa_id: ''
+      empresa_id: '',
+      status: 'Ativo'
     })
     setEditingColaborador(null)
   }
@@ -434,7 +442,8 @@ export const CadastroColaborador: React.FC = () => {
         telefone: colaborador.telefone,
         setor: colaborador.setor,
         cargo: colaborador.cargo,
-        empresa_id: colaborador.empresa_id
+        empresa_id: colaborador.empresa_id,
+        status: colaborador.status || 'Ativo'
       })
     } else {
       resetForm()
@@ -611,6 +620,7 @@ export const CadastroColaborador: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Setor</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cargo</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Empresa</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                 </tr>
               </thead>
@@ -637,6 +647,15 @@ export const CadastroColaborador: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {colaborador.empresas?.razao_social || 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        colaborador.status === 'Ativo' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {colaborador.status}
+                      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
@@ -889,6 +908,22 @@ export const CadastroColaborador: React.FC = () => {
                         {empresa.razao_social}
                       </option>
                     ))}
+                  </select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status *
+                  </label>
+                  <select
+                    name="status"
+                    required
+                    value={formData.status}
+                    onChange={handleChange}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="Ativo">Ativo</option>
+                    <option value="Inativo">Inativo</option>
                   </select>
                 </div>
               </div>
