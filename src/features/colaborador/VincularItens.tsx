@@ -268,8 +268,11 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
   }
 
   // Gerar termo de responsabilidade
-  const gerarTermo = () => {
-    if (itensSelecionados.length === 0) return
+  const gerarTermo = (itensParaTermo?: Item[]) => {
+    // Usar os itens passados como parâmetro ou os itens selecionados
+    const itensParaGerar = itensParaTermo || itensSelecionados
+    
+    if (itensParaGerar.length === 0) return
 
     const empresaInfo = {
       nome: 'CRESCI E PERDI FRANCHISING LTDA',
@@ -280,7 +283,7 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
     const localData = 'São José do Rio Pardo - SP'
 
     // Criar lista de itens
-    const listaItens = itensSelecionados.map(item => `
+    const listaItens = itensParaGerar.map(item => `
       <li style="margin-bottom: 15px; line-height: 1.6;">
         <div><span class="bold">Código:</span> ${item.codigo}</div>
         <div><span class="bold">Item:</span> ${item.item}</div>
@@ -684,18 +687,30 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
                               )}
                             </div>
                             
-                            {/* Valor e Ação */}
+                            {/* Valor e Ações */}
                             <div className="text-right flex-shrink-0 flex flex-col items-end gap-2">
                               <div className="font-semibold text-gray-900">
                                 R$ {item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                               </div>
-                              <button
-                                onClick={() => desvincularItem(item.id)}
-                                disabled={saving}
-                                className="text-xs px-3 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 border border-red-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                              >
-                                Desvincular
-                              </button>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => gerarTermo([item])}
+                                  className="text-xs px-3 py-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-blue-300 rounded-md transition-colors flex items-center gap-1"
+                                  title="Gerar termo deste item"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                  Termo
+                                </button>
+                                <button
+                                  onClick={() => desvincularItem(item.id)}
+                                  disabled={saving}
+                                  className="text-xs px-3 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 border border-red-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                  Desvincular
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>

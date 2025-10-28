@@ -970,49 +970,45 @@ export const CadastroItem: React.FC = () => {
       </div>
       ) : (
         /* Visualização em Cards */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredItens.map((item) => (
-            <div key={item.id} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{item.item}</h3>
-                  <p className="text-sm text-gray-600">{item.codigo}</p>
-                  <p className="text-xs text-gray-500 mt-1">{item.categoria}</p>
-                </div>
-                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(item.status)}`}>
-                  {item.status}
-                </span>
-              </div>
-              
-              <div className="space-y-2 text-sm">
-                {item.modelo && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-gray-500 min-w-[80px]">Modelo:</span>
-                    <span className="text-gray-900 truncate">{item.modelo}</span>
+            <div key={item.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200">
+              <div className="p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-semibold text-gray-900 truncate">{item.item}</h3>
+                    <p className="text-xs text-gray-600 mt-0.5">{item.codigo}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">{item.categoria}</p>
                   </div>
-                )}
-                <div className="flex items-start gap-2">
-                  <span className="text-gray-500 min-w-[80px]">Setor:</span>
-                  <span className="text-gray-900 truncate">{item.setor}</span>
-                </div>
-                {item.fornecedor && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-gray-500 min-w-[80px]">Fornecedor:</span>
-                    <span className="text-gray-900 truncate">{item.fornecedor}</span>
-                  </div>
-                )}
-                <div className="flex items-start gap-2">
-                  <span className="text-gray-500 min-w-[80px]">Valor:</span>
-                  <span className="text-gray-900 font-semibold">
-                    R$ {item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <span className={`px-2 py-0.5 text-xs font-semibold rounded-full whitespace-nowrap ml-2 ${getStatusColor(item.status)}`}>
+                    {item.status}
                   </span>
+                </div>
+                
+                <div className="space-y-1.5 text-xs border-t border-gray-100 pt-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500 min-w-[70px]">Setor:</span>
+                    <span className="text-gray-900 truncate font-medium">{item.setor}</span>
+                  </div>
+                  {item.colaboradores?.nome && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500 min-w-[70px]">Responsável:</span>
+                      <span className="text-gray-900 truncate">{item.colaboradores.nome}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500 min-w-[70px]">Valor:</span>
+                    <span className="text-gray-900 font-semibold">
+                      R$ {item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end space-x-2">
+              <div className="px-4 py-2.5 bg-gray-50 border-t border-gray-200 rounded-b-lg flex justify-end gap-2">
                 <button
                   onClick={() => handleTermoResponsabilidade(item)}
-                  className="text-purple-600 hover:text-purple-900"
+                  className="text-purple-600 hover:text-purple-900 transition-colors"
                   title="Emitir Termo de Responsabilidade"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1021,7 +1017,7 @@ export const CadastroItem: React.FC = () => {
                 </button>
                 <button
                   onClick={() => handleEditItem(item)}
-                  className="text-blue-600 hover:text-blue-900"
+                  className="text-blue-600 hover:text-blue-900 transition-colors"
                   title="Editar"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1030,7 +1026,7 @@ export const CadastroItem: React.FC = () => {
                 </button>
                 <button
                   onClick={() => handleDeleteItem(item)}
-                  className="text-red-600 hover:text-red-900"
+                  className="text-red-600 hover:text-red-900 transition-colors"
                   title="Excluir"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
