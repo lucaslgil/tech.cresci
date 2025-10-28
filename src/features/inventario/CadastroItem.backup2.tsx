@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase, isSupabaseConfigured } from '../../lib/supabase'
-import TermoResponsabilidade from './TermoResponsabilidade'
+import { SelectWithManagement } from '../../shared/components/SelectWithManagement'
+import { Package, Plus, Search, Edit, Trash2, FileUp, Grid3X3, FileText, Tag, DollarSign, Hash } from 'lucide-react'
 import * as XLSX from 'xlsx'
 
 interface Item {
@@ -58,33 +59,65 @@ export const CadastroItem: React.FC = () => {
     valor: 0
   })
 
+  // Estados para categorias e setores dinâmicos (iniciando vazios)
+  const [categorias, setCategorias] = useState<string[]>([])
+  const [setores, setSetores] = useState<string[]>([])
+
   // Estados para importação
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importLoading, setImportLoading] = useState(false)
   const [importPreview, setImportPreview] = useState<any[]>([])
   const [importErrors, setImportErrors] = useState<string[]>([])
 
-  // Estados para exclusão
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [itemToDelete, setItemToDelete] = useState<Item | null>(null)
+  // Buscar categorias do banco
+  const fetchCategorias = async () => {
+    if (!isSupabaseConfigured) {
+      setCategorias([])
+      return
+    }
 
-  // Estados para termo de responsabilidade  
-  const [showTermoModal, setShowTermoModal] = useState(false)
-  const [itemParaTermo, setItemParaTermo] = useState<Item | null>(null)
+    try {
+      const { data, error } = await supabase
+        .from('categorias_itens')
+        .select('nome')
+        .eq('ativo', true)
+        .order('nome')
 
-  // Estados para redimensionamento de colunas
-  const [columnWidths, setColumnWidths] = useState({
-    codigo: 80,
-    categoria: 140,
-    item: 300,
-    modelo: 120,
-    setor: 160,
-    status: 120,
-    acoes: 100
+      if (error) throw error
+      setCategorias((data || []).map(item => item.nome))
+    } catch (error: any) {
+      console.error('Erro ao buscar categorias:', error)
+      setCategorias([])
+    }
+  }
+
+  // Buscar setores do banco
+  const fetchSetores = async () => {
+    if (!isSupabaseConfigured) {
+      setSetores([])
+      return
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('setores')
+        .select('nome')
+        .eq('ativo', true)
+        .order('nome')
+
+      if (error) throw error
+      setSetores((data || []).map(item => item.nome))
+    } catch (error: any) {
+      console.error('Erro ao buscar setores:', error)
+      setSetores([
+      'TI',
+      'RH',
+      'Operacional',
+      'Comercial',
+      'Logística',
+      'Outros'
+    ]
   })
-
-  // Ref para tabela
-  const tableRef = React.useRef<HTMLTableElement>(null)
 
   const statusOptions = [
     'Ativo',
@@ -94,6 +127,17 @@ export const CadastroItem: React.FC = () => {
     'Disponível',
     'Descartado',
   ]
+
+  // Funções para atualizar categorias e setores
+  const updateCategorias = (newCategorias: string[]) => {
+    setCategorias(newCategorias)
+    localStorage.setItem('categorias-inventario', JSON.stringify(newCategorias))
+  }
+
+  const updateSetores = (newSetores: string[]) => {
+    setSetores(newSetores)
+    localStorage.setItem('setores-inventario', JSON.stringify(newSetores))
+  }
 
   // Funções para redimensionamento de colunas
   const saveColumnWidths = (widths: typeof columnWidths) => {
@@ -404,6 +448,10 @@ export const CadastroItem: React.FC = () => {
     const errors: string[] = []
     const preview: Item[] = []
     const usedCodes = new Set<string>() // Para detectar códigos duplicados na planilha
+    
+    // Arrays temporários para novos setores e categorias
+    const newSetores = [...setores]
+    const newCategorias = [...categorias]
 
     // Processar itens sequencialmente para evitar códigos duplicados
     for (let index = 0; index < data.length; index++) {
@@ -413,6 +461,16 @@ export const CadastroItem: React.FC = () => {
       // Validar apenas valor numérico
       if (row.valor && isNaN(parseFloat(row.valor.toString().replace(',', '.')))) {
         errors.push(`Linha ${lineNumber}: Campo 'valor' deve ser um número`)
+      }
+
+      // Auto-criar setor se não existir
+      if (row.setor && row.setor.toString().trim() !== '' && !newSetores.includes(row.setor)) {
+        newSetores.push(row.setor)
+      }
+
+      // Auto-criar categoria se não existir
+      if (row.categoria && row.categoria.toString().trim() !== '' && !newCategorias.includes(row.categoria)) {
+        newCategorias.push(row.categoria)
       }
 
       // Auto-criar status se não existir (mas manter validação básica)
@@ -432,7 +490,7 @@ export const CadastroItem: React.FC = () => {
       
       usedCodes.add(codigo)
 
-      // Criar preview do item
+      // Criar preview do item (remover validação obrigatória de 'item')
       const itemData = {
         id: `preview-${index}`,
         codigo,
@@ -450,6 +508,14 @@ export const CadastroItem: React.FC = () => {
       }
       
       preview.push(itemData)
+    }
+
+    // Atualizar arrays de setores e categorias se houver novos
+    if (newSetores.length > setores.length) {
+      updateSetores(newSetores.sort())
+    }
+    if (newCategorias.length > categorias.length) {
+      updateCategorias(newCategorias.sort())
     }
 
     setImportErrors(errors)
@@ -973,85 +1039,155 @@ export const CadastroItem: React.FC = () => {
       </div>
       ) : (
         /* Visualização em Cards */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredItens.map((item) => (
-            <div key={item.id} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{item.item}</h3>
-                  <p className="text-sm text-gray-600">{item.codigo}</p>
-                  <p className="text-xs text-gray-500 mt-1">{item.categoria}</p>
-                </div>
-                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(item.status)}`}>
-                  {item.status}
-                </span>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          {filteredItens.length === 0 ? (
+            <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-full p-6 mb-6">
+                <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                </svg>
               </div>
-              
-              <div className="space-y-2 text-sm">
-                {item.modelo && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-gray-500 min-w-[80px]">Modelo:</span>
-                    <span className="text-gray-900 truncate">{item.modelo}</span>
-                  </div>
-                )}
-                <div className="flex items-start gap-2">
-                  <span className="text-gray-500 min-w-[80px]">Setor:</span>
-                  <span className="text-gray-900 truncate">{item.setor}</span>
-                </div>
-                {item.fornecedor && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-gray-500 min-w-[80px]">Fornecedor:</span>
-                    <span className="text-gray-900 truncate">{item.fornecedor}</span>
-                  </div>
-                )}
-                <div className="flex items-start gap-2">
-                  <span className="text-gray-500 min-w-[80px]">Valor:</span>
-                  <span className="text-gray-900 font-semibold">
-                    R$ {item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-gray-200 flex justify-end space-x-2">
-                <button
-                  onClick={() => handleTermoResponsabilidade(item)}
-                  className="text-purple-600 hover:text-purple-900"
-                  title="Emitir Termo de Responsabilidade"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => handleEditItem(item)}
-                  className="text-blue-600 hover:text-blue-900"
-                  title="Editar"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => handleDeleteItem(item)}
-                  className="text-red-600 hover:text-red-900"
-                  title="Excluir"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
+              <h3 className="text-2xl font-semibold text-gray-900 mb-3">Nenhum item encontrado</h3>
+              <p className="text-gray-600 mb-8 max-w-md">Comece criando seu primeiro item de inventário para ver seus dados organizados aqui.</p>
+              <button
+                onClick={() => setShowModal(true)}
+                className="inline-flex items-center px-6 py-3 border border-transparent shadow-lg text-base font-medium rounded-xl text-white bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transform hover:scale-105 transition-all duration-200"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Criar Primeiro Item
+              </button>
             </div>
-          ))}
-        </div>
-      )}
+          ) : (
+            filteredItens.map((item) => (
+              <div key={item.id} className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-gray-200 overflow-hidden transform hover:-translate-y-1">
+                {/* Header do Card */}
+                <div className="relative p-6 bg-gradient-to-br from-gray-50 to-white">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1 pr-3">
+                      <h3 className="text-xl font-bold text-gray-900 leading-tight mb-2 line-clamp-2" title={item.item}>
+                        {item.item || 'Item sem nome'}
+                      </h3>
+                      <div className="flex items-center space-x-2">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                          </svg>
+                          {item.codigo}
+                        </span>
+                      </div>
+                    </div>
+                    <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold ${getStatusColor(item.status)} shadow-sm`}>
+                      <div className="w-2 h-2 rounded-full bg-current mr-1.5 opacity-75"></div>
+                      {item.status}
+                    </span>
+                  </div>
+                </div>
 
-      {filteredItens.length === 0 && (
-        <div className="text-center py-12">
-          <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-          </svg>
-          <p className="text-gray-500">Nenhum item encontrado</p>
+                {/* Conteúdo do Card */}
+                <div className="px-6 pb-6 space-y-4">
+                  {item.categoria && (
+                    <div className="flex items-center text-sm group/item">
+                      <div className="flex-shrink-0 w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</p>
+                        <p className="text-sm font-semibold text-gray-900 truncate">{item.categoria}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {item.modelo && (
+                    <div className="flex items-center text-sm group/item">
+                      <div className="flex-shrink-0 w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Modelo</p>
+                        <p className="text-sm font-semibold text-gray-900 truncate">{item.modelo}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center text-sm group/item">
+                    <div className="flex-shrink-0 w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center mr-3">
+                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Setor</p>
+                      <p className="text-sm font-semibold text-gray-900 truncate">{item.setor}</p>
+                    </div>
+                  </div>
+
+                  {item.fornecedor && (
+                    <div className="flex items-center text-sm group/item">
+                      <div className="flex-shrink-0 w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-4 h-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Fornecedor</p>
+                        <p className="text-sm font-semibold text-gray-900 truncate">{item.fornecedor}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer do Card */}
+                <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-baseline space-x-1">
+                      <span className="text-2xl font-bold text-gray-900">
+                        R$ {Math.floor(item.valor).toLocaleString('pt-BR')}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        ,{(item.valor % 1).toFixed(2).slice(2)}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <button 
+                        className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors duration-200" 
+                        title="Emitir Termo de Responsabilidade"
+                        onClick={() => handleTermoResponsabilidade(item)}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </button>
+                      <button 
+                        className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors duration-200" 
+                        title="Editar"
+                        onClick={() => handleEditItem(item)}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                      <button 
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200" 
+                        title="Excluir"
+                        onClick={() => handleDeleteItem(item)}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 
@@ -1144,20 +1280,15 @@ export const CadastroItem: React.FC = () => {
             </div>
 
             {/* Categoria */}
-            <div>
-              <label htmlFor="categoria" className="block text-sm font-medium text-gray-700">
-                Categoria
-              </label>
-              <input
-                type="text"
-                name="categoria"
-                id="categoria"
-                value={formData.categoria}
-                onChange={handleChange}
-                placeholder="Digite a categoria"
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-slate-500 focus:border-slate-500"
-              />
-            </div>
+            <SelectWithManagement
+              label="Categoria"
+              name="categoria"
+              value={formData.categoria}
+              options={categorias}
+              onOptionChange={updateCategorias}
+              onChange={handleChange}
+              placeholder="Selecione uma categoria"
+            />
 
             {/* Número de Série */}
             <div>
@@ -1208,21 +1339,16 @@ export const CadastroItem: React.FC = () => {
             </div>
 
             {/* Setor */}
-            <div>
-              <label htmlFor="setor" className="block text-sm font-medium text-gray-700">
-                Setor *
-              </label>
-              <input
-                type="text"
-                name="setor"
-                id="setor"
-                required
-                value={formData.setor}
-                onChange={handleChange}
-                placeholder="Digite o setor"
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-slate-500 focus:border-slate-500"
-              />
-            </div>
+            <SelectWithManagement
+              label="Setor"
+              name="setor"
+              value={formData.setor}
+              options={setores}
+              onOptionChange={updateSetores}
+              onChange={handleChange}
+              placeholder="Selecione o setor"
+              required={true}
+            />
 
             {/* Status */}
             <div>
