@@ -17,6 +17,12 @@ interface Item {
   status: string
   valor: number
   created_at: string
+  responsavel_id?: string | null
+  colaboradores?: {
+    nome: string
+    cpf?: string
+    email?: string
+  }
 }
 
 interface FormData {
@@ -43,6 +49,18 @@ export const CadastroItem: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'cards'>('list')
   const [showImportModal, setShowImportModal] = useState(false)
+  
+  // Estados para filtros e ordenação
+  const [filters, setFilters] = useState({
+    categoria: '',
+    setor: '',
+    status: '',
+    responsavel: ''
+  })
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof Item | 'responsavel'
+    direction: 'asc' | 'desc'
+  } | null>(null)
   
   const [formData, setFormData] = useState<FormData>({
     codigo: '',
@@ -72,20 +90,6 @@ export const CadastroItem: React.FC = () => {
   const [showTermoModal, setShowTermoModal] = useState(false)
   const [itemParaTermo, setItemParaTermo] = useState<Item | null>(null)
 
-  // Estados para redimensionamento de colunas
-  const [columnWidths, setColumnWidths] = useState({
-    codigo: 80,
-    categoria: 140,
-    item: 300,
-    modelo: 120,
-    setor: 160,
-    status: 120,
-    acoes: 100
-  })
-
-  // Ref para tabela
-  const tableRef = React.useRef<HTMLTableElement>(null)
-
   const statusOptions = [
     'Ativo',
     'Inativo',
@@ -95,46 +99,9 @@ export const CadastroItem: React.FC = () => {
     'Descartado',
   ]
 
-  // Funções para redimensionamento de colunas
-  const saveColumnWidths = (widths: typeof columnWidths) => {
-    localStorage.setItem('inventario-column-widths', JSON.stringify(widths))
-  }
-
-  const handleMouseDown = (columnKey: string, e: React.MouseEvent) => {
-    e.preventDefault()
-    
-    const startX = e.pageX
-    const startWidth = columnWidths[columnKey as keyof typeof columnWidths]
-    
-    const handleMouseMove = (e: MouseEvent) => {
-      const newWidth = Math.max(50, startWidth + (e.pageX - startX))
-      const newWidths = { ...columnWidths, [columnKey]: newWidth }
-      setColumnWidths(newWidths)
-    }
-    
-    const handleMouseUp = () => {
-      // Salvar as larguras finais quando terminar o drag
-      const finalWidths = { ...columnWidths }
-      setTimeout(() => {
-        saveColumnWidths(finalWidths)
-      }, 100) // Pequeno delay para garantir que o estado foi atualizado
-      
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
-    
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-  }
-
   useEffect(() => {
     fetchItens()
   }, [])
-
-  // Salvar larguras das colunas quando mudarem (removido para evitar conflitos durante drag)
-  // useEffect(() => {
-  //   saveColumnWidths(columnWidths)
-  // }, [columnWidths])
 
   const fetchItens = async () => {
     if (!isSupabaseConfigured) {
@@ -162,7 +129,14 @@ export const CadastroItem: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('itens')
-        .select('*')
+        .select(`
+          *,
+          colaboradores (
+            nome,
+            cpf,
+            email
+          )
+        `)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -520,11 +494,65 @@ export const CadastroItem: React.FC = () => {
     }
   }
 
-  const filteredItens = itens.filter((item) =>
-    item.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.fornecedor.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Função de ordenação
+  const handleSort = (key: keyof Item | 'responsavel') => {
+    let direction: 'asc' | 'desc' = 'asc'
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
+    }
+    setSortConfig({ key, direction })
+  }
+
+  // Aplicar filtros e ordenação
+  const filteredItens = itens
+    .filter((item) => {
+      // Filtro de busca textual
+      const matchesSearch = 
+        item.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.fornecedor.toLowerCase().includes(searchTerm.toLowerCase())
+      
+      // Filtros por categoria, setor, status e responsável
+      const matchesCategoria = !filters.categoria || item.categoria === filters.categoria
+      const matchesSetor = !filters.setor || item.setor === filters.setor
+      const matchesStatus = !filters.status || item.status === filters.status
+      const matchesResponsavel = !filters.responsavel || 
+        (item.colaboradores?.nome || '').toLowerCase().includes(filters.responsavel.toLowerCase())
+      
+      return matchesSearch && matchesCategoria && matchesSetor && matchesStatus && matchesResponsavel
+    })
+    .sort((a, b) => {
+      if (!sortConfig) return 0
+
+      let aValue: any
+      let bValue: any
+
+      if (sortConfig.key === 'responsavel') {
+        aValue = a.colaboradores?.nome || ''
+        bValue = b.colaboradores?.nome || ''
+      } else {
+        aValue = a[sortConfig.key]
+        bValue = b[sortConfig.key]
+      }
+
+      // Tratamento para valores numéricos
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
+      }
+
+      // Tratamento para strings
+      const aString = String(aValue).toLowerCase()
+      const bString = String(bValue).toLowerCase()
+
+      if (aString < bString) return sortConfig.direction === 'asc' ? -1 : 1
+      if (aString > bString) return sortConfig.direction === 'asc' ? 1 : -1
+      return 0
+    })
+
+  // Obter valores únicos para os filtros
+  const uniqueCategories = [...new Set(itens.map(item => item.categoria))].filter(Boolean).sort()
+  const uniqueSetores = [...new Set(itens.map(item => item.setor))].filter(Boolean).sort()
+  const uniqueStatus = [...new Set(itens.map(item => item.status))].filter(Boolean).sort()
 
   const getStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
@@ -654,8 +682,8 @@ export const CadastroItem: React.FC = () => {
         </div>
 
         {/* Busca e Toggle de Visualização */}
-        <div className="px-6 py-5 bg-gradient-to-r from-gray-50 via-white to-gray-50 border-b border-gray-100">
-          <div className="flex items-center justify-between gap-6">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between gap-4">
             {/* Campo de Busca */}
             <div className="flex-1 relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -665,300 +693,269 @@ export const CadastroItem: React.FC = () => {
               </div>
               <input
                 type="text"
-                placeholder="Buscar por código, item, categoria ou fornecedor..."
+                placeholder="Buscar itens..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all duration-200 bg-white shadow-sm hover:shadow-md"
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-slate-500 focus:border-slate-500 sm:text-sm"
               />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
             </div>
             
-            {/* Toggle de Visualização Premium */}
-            <div className="flex items-center space-x-3">
-              {/* Botão Reset Colunas */}
-              {viewMode === 'list' && (
-                <>
-                  <button
-                    onClick={() => {
-                      const defaultWidths = {
-                        codigo: 80,
-                        item: 300,
-                        modelo: 120,
-                        categoria: 140,
-                        setor: 160,
-                        status: 120,
-                        acoes: 100
-                      }
-                      setColumnWidths(defaultWidths)
-                      saveColumnWidths(defaultWidths)
-                    }}
-                    className="inline-flex items-center px-3 py-2 text-xs font-medium text-gray-600 hover:text-slate-800 hover:bg-gray-100 rounded-lg transition-all duration-200"
-                    title="Resetar larguras das colunas"
-                  >
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Reset
-                  </button>
-                  
-                  {/* Dica de redimensionamento */}
-                  <div className="inline-flex items-center px-3 py-1 text-xs text-gray-500 bg-gray-50 rounded-lg border">
-                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-                    </svg>
-                    Arraste as bordas das colunas para redimensionar
-                  </div>
-                </>
-              )}
-              
-              <div className="flex bg-gray-100 rounded-xl p-1.5 shadow-inner">
-                <button
-                  onClick={() => {
-                    setViewMode('list')
-                    localStorage.setItem('inventario-view-mode', 'list')
-                  }}
-                  className={`inline-flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${
-                    viewMode === 'list'
-                      ? 'bg-white text-slate-800 shadow-lg transform scale-105 ring-1 ring-slate-200'
-                      : 'text-gray-600 hover:text-slate-800 hover:bg-gray-50'
-                  }`}
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                  </svg>
-                  Lista
-                </button>
-                <button
-                  onClick={() => {
-                    setViewMode('cards')
-                    localStorage.setItem('inventario-view-mode', 'cards')
-                  }}
-                  className={`inline-flex items-center px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${
-                    viewMode === 'cards'
-                      ? 'bg-white text-slate-800 shadow-lg transform scale-105 ring-1 ring-slate-200'
-                      : 'text-gray-600 hover:text-slate-800 hover:bg-gray-50'
-                  }`}
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                  </svg>
-                  Cards
-                </button>
-              </div>
+            {/* Toggle de Visualização */}
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => {
+                  setViewMode('list')
+                  localStorage.setItem('inventario-view-mode', 'list')
+                }}
+                className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                  viewMode === 'list'
+                    ? 'bg-slate-100 text-slate-700'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+                Lista
+              </button>
+              <button
+                onClick={() => {
+                  setViewMode('cards')
+                  localStorage.setItem('inventario-view-mode', 'cards')
+                }}
+                className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                  viewMode === 'cards'
+                    ? 'bg-slate-100 text-slate-700'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                Cards
+              </button>
             </div>
           </div>
+        </div>
+
+        {/* Filtros */}
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Filtro Categoria */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Categoria</label>
+              <select
+                value={filters.categoria}
+                onChange={(e) => setFilters({ ...filters, categoria: e.target.value })}
+                className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-500 focus:border-slate-500"
+              >
+                <option value="">Todas</option>
+                {uniqueCategories.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtro Setor */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Setor</label>
+              <select
+                value={filters.setor}
+                onChange={(e) => setFilters({ ...filters, setor: e.target.value })}
+                className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-500 focus:border-slate-500"
+              >
+                <option value="">Todos</option>
+                {uniqueSetores.map((setor) => (
+                  <option key={setor} value={setor}>{setor}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtro Status */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-500 focus:border-slate-500"
+              >
+                <option value="">Todos</option>
+                {uniqueStatus.map((status) => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtro Responsável */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Responsável</label>
+              <input
+                type="text"
+                placeholder="Nome do responsável..."
+                value={filters.responsavel}
+                onChange={(e) => setFilters({ ...filters, responsavel: e.target.value })}
+                className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-500 focus:border-slate-500"
+              />
+            </div>
+          </div>
+
+          {/* Botão Limpar Filtros */}
+          {(filters.categoria || filters.setor || filters.status || filters.responsavel) && (
+            <div className="mt-3 flex justify-end">
+              <button
+                onClick={() => setFilters({ categoria: '', setor: '', status: '', responsavel: '' })}
+                className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
+              >
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Limpar Filtros
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Conteúdo baseado no modo de visualização */}
       {viewMode === 'list' ? (
         /* Visualização em Lista */
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
-          <table ref={tableRef} className="min-w-full">
-            <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
               <tr>
                 <th 
-                  className="px-1 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200 relative select-none"
-                  style={{ width: `${columnWidths.codigo}px` }}
+                  className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none" 
+                  style={{ width: '100px' }}
+                  onClick={() => handleSort('codigo')}
                 >
-                  <div className="flex items-center space-x-1">
-                    <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-                    </svg>
-                    <span>Código</span>
+                  <div className="flex items-center gap-1">
+                    Código
+                    {sortConfig?.key === 'codigo' && (
+                      <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                    )}
                   </div>
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-400 hover:w-3 transition-all duration-200 opacity-0 hover:opacity-100"
-                    onMouseDown={(e) => handleMouseDown('codigo', e)}
-                    title="Arraste para redimensionar coluna"
-                  />
                 </th>
                 <th 
-                  className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200 relative select-none"
-                  style={{ width: `${columnWidths.categoria}px` }}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('item')}
                 >
-                  <div className="flex items-center space-x-1">
-                    <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                    <span>Categoria</span>
+                  <div className="flex items-center gap-1">
+                    Item
+                    {sortConfig?.key === 'item' && (
+                      <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                    )}
                   </div>
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-400 hover:w-3 transition-all duration-200 opacity-0 hover:opacity-100"
-                    onMouseDown={(e) => handleMouseDown('categoria', e)}
-                    title="Arraste para redimensionar coluna"
-                  />
                 </th>
                 <th 
-                  className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200 relative select-none"
-                  style={{ width: `${columnWidths.item}px` }}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('categoria')}
                 >
-                  <div className="flex items-center space-x-1">
-                    <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                    </svg>
-                    <span>Item</span>
+                  <div className="flex items-center gap-1">
+                    Categoria
+                    {sortConfig?.key === 'categoria' && (
+                      <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                    )}
                   </div>
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-400 hover:w-3 transition-all duration-200 opacity-0 hover:opacity-100"
-                    onMouseDown={(e) => handleMouseDown('item', e)}
-                    title="Arraste para redimensionar coluna"
-                  />
                 </th>
                 <th 
-                  className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200 relative select-none"
-                  style={{ width: `${columnWidths.modelo}px` }}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('setor')}
                 >
-                  <div className="flex items-center space-x-1">
-                    <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                    </svg>
-                    <span>Modelo</span>
+                  <div className="flex items-center gap-1">
+                    Setor
+                    {sortConfig?.key === 'setor' && (
+                      <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                    )}
                   </div>
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-400 hover:w-3 transition-all duration-200 opacity-0 hover:opacity-100"
-                    onMouseDown={(e) => handleMouseDown('modelo', e)}
-                    title="Arraste para redimensionar coluna"
-                  />
                 </th>
                 <th 
-                  className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200 relative select-none"
-                  style={{ width: `${columnWidths.setor}px` }}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('responsavel')}
                 >
-                  <div className="flex items-center space-x-1">
-                    <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                    <span>Setor</span>
+                  <div className="flex items-center gap-1">
+                    Responsável
+                    {sortConfig?.key === 'responsavel' && (
+                      <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                    )}
                   </div>
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-400 hover:w-3 transition-all duration-200 opacity-0 hover:opacity-100"
-                    onMouseDown={(e) => handleMouseDown('setor', e)}
-                    title="Arraste para redimensionar coluna"
-                  />
                 </th>
                 <th 
-                  className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200 relative select-none"
-                  style={{ width: `${columnWidths.status}px` }}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  onClick={() => handleSort('status')}
                 >
-                  <div className="flex items-center space-x-1">
-                    <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>Status</span>
+                  <div className="flex items-center gap-1">
+                    Status
+                    {sortConfig?.key === 'status' && (
+                      <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
+                    )}
                   </div>
-                  <div 
-                    className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-blue-400 hover:w-3 transition-all duration-200 opacity-0 hover:opacity-100"
-                    onMouseDown={(e) => handleMouseDown('status', e)}
-                    title="Arraste para redimensionar coluna"
-                  />
                 </th>
-                <th 
-                  className="px-1 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200"
-                  style={{ width: `${columnWidths.acoes}px` }}
-                >
-                  <span>Ações</span>
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="bg-white divide-y divide-gray-200">
               {filteredItens.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-20 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-4">
-                      <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-full p-8">
-                        <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                        </svg>
-                      </div>
-                      <div className="space-y-2">
-                        <h3 className="text-xl font-semibold text-gray-900">Nenhum item encontrado</h3>
-                        <p className="text-gray-600 max-w-md">Comece criando seu primeiro item de inventário para ver seus dados organizados aqui.</p>
-                      </div>
-                      <button
-                        onClick={() => setShowModal(true)}
-                        className="inline-flex items-center px-6 py-3 border border-transparent shadow-lg text-base font-medium rounded-xl text-white bg-gradient-to-r from-slate-600 to-slate-700 hover:from-slate-700 hover:to-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transform hover:scale-105 transition-all duration-200"
-                      >
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        Criar Primeiro Item
-                      </button>
+                  <td colSpan={7} className="px-6 py-12 text-center">
+                    <div className="text-center">
+                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                      </svg>
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum item encontrado</h3>
+                      <p className="mt-1 text-sm text-gray-500">Comece adicionando um novo item ao inventário.</p>
                     </div>
                   </td>
                 </tr>
               ) : (
-                filteredItens.map((item, index) => (
-                  <tr key={item.id} className={`group transition-all duration-200 hover:bg-gradient-to-r hover:from-slate-50 hover:to-blue-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                    <td className="px-1 py-3 whitespace-nowrap" style={{ width: `${columnWidths.codigo}px` }}>
-                      <div className="flex items-center justify-center">
-                        <span className="inline-flex items-center px-1 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-700 group-hover:bg-gray-200 transition-colors duration-200">
-                          {item.codigo}
-                        </span>
-                      </div>
+                filteredItens.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {item.codigo}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-700 group-hover:text-gray-900 transition-colors duration-200" style={{ width: `${columnWidths.categoria}px` }}>
-                      {item.categoria ? (item.categoria.length > 12 ? `${item.categoria.substring(0, 12)}...` : item.categoria) : <span className="text-gray-400 italic">-</span>}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {item.item || 'Item sem nome'}
                     </td>
-                    <td className="px-4 py-3" style={{ width: `${columnWidths.item}px` }}>
-                      <div className="flex items-center">
-                        <div className="min-w-0 flex-1">
-                          <div className="text-xs font-semibold text-gray-900 group-hover:text-slate-800 transition-colors duration-200 truncate" title={item.item}>
-                            {item.item ? (item.item.length > 50 ? `${item.item.substring(0, 50)}...` : item.item) : 'Item sem nome'}
-                          </div>
-                        </div>
-                      </div>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.categoria || '-'}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-700 group-hover:text-gray-900 transition-colors duration-200" style={{ width: `${columnWidths.modelo}px` }}>
-                      {item.modelo ? (item.modelo.length > 15 ? `${item.modelo.substring(0, 15)}...` : item.modelo) : <span className="text-gray-400 italic">-</span>}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.setor}
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-700 group-hover:text-gray-900 transition-colors duration-200" style={{ width: `${columnWidths.setor}px` }}>
-                      <div className="overflow-hidden" title={item.setor}>
-                        <span className="block truncate">{item.setor}</span>
-                      </div>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {item.colaboradores?.nome || '-'}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap" style={{ width: `${columnWidths.status}px` }}>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(item.status)} shadow-sm hover:shadow-md transition-shadow duration-200`}>
-                        <div className="w-1.5 h-1.5 rounded-full bg-white mr-1 opacity-75"></div>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
                         {item.status}
                       </span>
                     </td>
-                    <td className="px-1 py-3 whitespace-nowrap text-center" style={{ width: `${columnWidths.acoes}px` }}>
-                      <div className="flex items-center justify-center space-x-0.5 opacity-70 group-hover:opacity-100 transition-opacity duration-200">
-                        <button 
-                          className="p-1 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-all duration-200 transform hover:scale-110" 
-                          title="Emitir Termo de Responsabilidade"
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button
                           onClick={() => handleTermoResponsabilidade(item)}
+                          className="text-purple-600 hover:text-purple-900"
+                          title="Emitir Termo de Responsabilidade"
                         >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
                         </button>
-                        <button 
-                          className="p-1 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-all duration-200 transform hover:scale-110" 
-                          title="Editar"
+                        <button
                           onClick={() => handleEditItem(item)}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Editar"
                         >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                           </svg>
                         </button>
-                        <button 
-                          className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-all duration-200 transform hover:scale-110" 
-                          title="Excluir"
+                        <button
                           onClick={() => handleDeleteItem(item)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Excluir"
                         >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
                         </button>
