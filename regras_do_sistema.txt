@@ -26,11 +26,36 @@
 - Criar mensagens de erro claras e úteis
 - Implementar loading states adequados
 
-### 5. DESIGN E RESPONSIVIDADE
-- O layout deve seguir design limpo e responsivo
-- Utilizar TailwindCSS para estilização
+### 5. DESIGN E RESPONSIVIDADE ⭐ OBRIGATÓRIO
+- O layout DEVE ser completamente responsivo para mobile, tablet e desktop
+- Utilizar TailwindCSS para estilização com breakpoints:
+  * Mobile first: classes base sem prefixo
+  * sm: (≥640px) - tablets pequenos
+  * md: (≥768px) - tablets
+  * lg: (≥1024px) - desktops pequenos
+  * xl: (≥1280px) - desktops grandes
+- **PADRÕES OBRIGATÓRIOS DE RESPONSIVIDADE**:
+  * Container principal: `p-3 sm:p-4 md:p-6 max-w-full overflow-x-hidden`
+  * Cabeçalhos: `flex-col sm:flex-row sm:items-center sm:justify-between gap-4`
+  * Botões: `flex-col sm:flex-row gap-2 sm:gap-3` com `justify-center` em mobile
+  * Ícones: `w-4 h-4 sm:w-5 sm:h-5` com margem condicional `sm:mr-2`
+  * Texto: `text-xs sm:text-sm` ou `text-sm sm:text-base`
+  * Padding: `px-3 sm:px-4 md:px-6` e `py-2 sm:py-3 md:py-4`
+  * Tabelas: Ocultar colunas menos importantes com `hidden md:table-cell`, `hidden lg:table-cell`, `hidden xl:table-cell`
+  * Tabelas mobile: Mostrar informações secundárias inline na célula principal
+  * Cards grid: `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`
+  * Modais: `max-h-[90vh] sm:max-h-[85vh]` com padding responsivo
+  * Toggle buttons: Ocultar texto em mobile com `hidden sm:inline`, mostrar apenas ícones
+  * Sempre usar `min-w-0` e `truncate` para evitar overflow de texto
+  * Sempre usar `flex-shrink-0` em ícones e badges para evitar compressão
+- **PREVENÇÃO DE SCROLL HORIZONTAL**:
+  * Adicionar `overflow-x-hidden` no container principal
+  * Usar `min-w-0` em elementos flex para permitir shrinking
+  * Aplicar `max-w-full` globalmente
+  * Testar em telas de 320px, 640px, 768px, 1024px e 1280px
 - Manter consistência visual em todos os componentes
-- Otimizar para diferentes tamanhos de tela
+- Cores: Usar palette slate para elementos principais
+- Sombras: `shadow-sm` em botões, `shadow` em cards
 
 ### 6. ARQUITETURA E ORGANIZAÇÃO
 - O código deve estar organizado em pastas por domínio:

@@ -1,3 +1,18 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Prevenir scroll horizontal global */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+body {
+  position: relative;
+}
+
+/* Garantir que todos os elementos não excedam a largura da viewport */
+* {
+  max-width: 100%;
+}

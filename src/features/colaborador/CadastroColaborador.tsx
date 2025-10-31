@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { supabase, isSupabaseConfigured } from '../../lib/supabase'
-import { Search, Edit, Trash2, Plus, Users, Grid3X3, Mail, Phone, FileText, Building, Package } from 'lucide-react'
+import { Edit, Trash2, Mail, Phone, FileText, Building, Package } from 'lucide-react'
 import VincularItens from './VincularItens'
+import * as XLSX from 'xlsx'
 
 interface Empresa {
   id: string
@@ -50,6 +51,11 @@ export const CadastroColaborador: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'cards'>('list')
   const [showVincularItens, setShowVincularItens] = useState(false)
   const [colaboradorParaVincular, setColaboradorParaVincular] = useState<Colaborador | null>(null)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importResult, setImportResult] = useState<{
+    success: number
+    errors: string[]
+  } | null>(null)
   
   const [formData, setFormData] = useState<FormData>({
     tipo_pessoa: 'fisica',
@@ -526,6 +532,178 @@ export const CadastroColaborador: React.FC = () => {
     }
   }
 
+  // Função para baixar modelo Excel
+  const handleDownloadTemplate = () => {
+    // Criar dados de exemplo
+    const templateData = [
+      {
+        nome: 'João Silva',
+        email: 'joao@email.com',
+        empresa: empresas[0]?.razao_social || 'Nome da Empresa',
+        cpf: '123.456.789-00',
+        cnpj: '',
+        telefone: '(11) 98765-4321',
+        setor: 'Tecnologia da Informação',
+        cargo: 'Desenvolvedor',
+        status: 'Ativo'
+      },
+      {
+        nome: 'Maria Santos',
+        email: 'maria@email.com',
+        empresa: empresas[0]?.razao_social || 'Nome da Empresa',
+        cpf: '987.654.321-00',
+        cnpj: '',
+        telefone: '(11) 91234-5678',
+        setor: 'Recursos Humanos',
+        cargo: 'Analista',
+        status: 'Ativo'
+      }
+    ]
+
+    // Criar workbook e worksheet
+    const worksheet = XLSX.utils.json_to_sheet(templateData)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Colaboradores')
+
+    // Ajustar largura das colunas
+    const colWidths = [
+      { wch: 25 }, // nome
+      { wch: 30 }, // email
+      { wch: 30 }, // empresa
+      { wch: 18 }, // cpf
+      { wch: 20 }, // cnpj
+      { wch: 18 }, // telefone
+      { wch: 25 }, // setor
+      { wch: 25 }, // cargo
+      { wch: 10 }  // status
+    ]
+    worksheet['!cols'] = colWidths
+
+    // Download do arquivo
+    XLSX.writeFile(workbook, 'template_colaboradores.xlsx')
+    setMessage({ type: 'success', text: 'Modelo baixado com sucesso! Preencha e importe o arquivo.' })
+  }
+
+  // Função para importar colaboradores via Excel
+  const handleImportExcel = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    try {
+      setLoading(true)
+      const data = await file.arrayBuffer()
+      const workbook = XLSX.read(data)
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]]
+      const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[]
+
+      if (jsonData.length === 0) {
+        setMessage({ type: 'error', text: 'O arquivo está vazio!' })
+        return
+      }
+
+      // Validar e processar cada linha
+      const colaboradoresParaImportar = []
+      const erros: string[] = []
+
+      for (let i = 0; i < jsonData.length; i++) {
+        const row = jsonData[i]
+        const linha = i + 2 // +2 porque começa na linha 2 do Excel (linha 1 é o cabeçalho)
+
+        // Validações básicas
+        if (!row.nome && !row.Nome) {
+          erros.push(`Linha ${linha}: Nome é obrigatório`)
+          continue
+        }
+
+        if (!row.email && !row.Email) {
+          erros.push(`Linha ${linha}: Email é obrigatório`)
+          continue
+        }
+
+        if (!row.empresa_id && !row.empresa && !row.Empresa) {
+          erros.push(`Linha ${linha}: Empresa é obrigatória`)
+          continue
+        }
+
+        // Buscar empresa pelo nome se não for ID
+        let empresa_id = row.empresa_id || row.Empresa_ID
+        if (!empresa_id) {
+          const nomeEmpresa = row.empresa || row.Empresa
+          const empresaEncontrada = empresas.find(e => 
+            e.razao_social.toLowerCase() === nomeEmpresa.toLowerCase()
+          )
+          if (empresaEncontrada) {
+            empresa_id = empresaEncontrada.id
+          } else {
+            erros.push(`Linha ${linha}: Empresa "${nomeEmpresa}" não encontrada`)
+            continue
+          }
+        }
+
+        // Determinar tipo de pessoa
+        const cpf = row.cpf || row.CPF || ''
+        const cnpj = row.cnpj || row.CNPJ || ''
+        const tipo_pessoa = cnpj ? 'juridica' : 'fisica'
+
+        colaboradoresParaImportar.push({
+          tipo_pessoa,
+          nome: row.nome || row.Nome,
+          cpf: cpf || null,
+          cnpj: cnpj || null,
+          email: row.email || row.Email,
+          telefone: row.telefone || row.Telefone || '',
+          setor: row.setor || row.Setor || '',
+          cargo: row.cargo || row.Cargo || '',
+          empresa_id: empresa_id,
+          status: row.status || row.Status || 'Ativo'
+        })
+      }
+
+      // Verificar se há dados para importar
+      if (colaboradoresParaImportar.length === 0) {
+        setImportResult({
+          success: 0,
+          errors: erros
+        })
+        setShowImportModal(true)
+        return
+      }
+
+      // Importar colaboradores válidos
+      if (!isSupabaseConfigured) {
+        setImportResult({
+          success: colaboradoresParaImportar.length,
+          errors: erros
+        })
+        setShowImportModal(true)
+        return
+      }
+
+      const { data: insertedData, error } = await supabase
+        .from('colaboradores')
+        .insert(colaboradoresParaImportar)
+        .select()
+
+      if (error) throw error
+
+      const totalImportados = insertedData?.length || 0
+      
+      setImportResult({
+        success: totalImportados,
+        errors: erros
+      })
+      setShowImportModal(true)
+      fetchColaboradores()
+    } catch (error: any) {
+      console.error('Erro ao importar:', error)
+      setMessage({ type: 'error', text: 'Erro ao importar arquivo: ' + error.message })
+    } finally {
+      setLoading(false)
+      // Limpar o input file
+      event.target.value = ''
+    }
+  }
+
   // Filtrar colaboradores
   const filteredColaboradores = colaboradores.filter(colaborador =>
     colaborador.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -547,100 +725,172 @@ export const CadastroColaborador: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Users className="w-8 h-8 text-blue-600" />
-            Gestão de Colaboradores
-          </h1>
-          <p className="text-gray-600 mt-1">{colaboradores.length} colaboradores cadastrados</p>
+    <div className="p-3 sm:p-4 md:p-6 max-w-full overflow-x-hidden">
+      {/* Cabeçalho com botões */}
+      <div className="bg-white shadow rounded-lg mb-4 sm:mb-6">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Gestão de Colaboradores</h1>
+              <p className="text-sm text-gray-600 mt-1">
+                {filteredColaboradores.length} {filteredColaboradores.length === 1 ? 'colaborador cadastrado' : 'colaboradores cadastrados'}
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <button
+                onClick={handleDownloadTemplate}
+                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-slate-300 shadow-sm text-xs sm:text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
+              >
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="sm:inline">Baixar Modelo</span>
+              </button>
+              <label className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-slate-300 shadow-sm text-xs sm:text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 cursor-pointer">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                </svg>
+                <span className="sm:inline">Importar Excel</span>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleImportExcel}
+                  className="hidden"
+                  disabled={loading}
+                />
+              </label>
+              <button
+                onClick={() => openModal()}
+                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-medium rounded-md text-white bg-slate-700 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
+              >
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="sm:inline">Adicionar Colaborador</span>
+              </button>
+            </div>
+          </div>
         </div>
-        <button
-          onClick={() => openModal()}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Novo Colaborador
-        </button>
+
+        {/* Busca e Toggle de Visualização */}
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* Campo de Busca */}
+            <div className="flex-1 relative min-w-0">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                placeholder="Buscar colaboradores..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-slate-500 focus:border-slate-500 text-sm"
+              />
+            </div>
+            
+            {/* Toggle de Visualização */}
+            <div className="flex items-center space-x-2 flex-shrink-0">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`inline-flex items-center px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-md ${
+                  viewMode === 'list'
+                    ? 'bg-slate-100 text-slate-700'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <svg className="w-4 h-4 sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+                <span className="hidden sm:inline">Lista</span>
+              </button>
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`inline-flex items-center px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-md ${
+                  viewMode === 'cards'
+                    ? 'bg-slate-100 text-slate-700'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <svg className="w-4 h-4 sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                <span className="hidden sm:inline">Cards</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
+      {/* Mensagem de Feedback */}
       {message && (
-        <div className={`p-4 rounded-md mb-6 ${
+        <div className={`rounded-lg p-3 sm:p-4 mb-4 sm:mb-6 ${
           message.type === 'success' 
-            ? 'bg-green-100 text-green-700 border border-green-400' 
-            : 'bg-red-100 text-red-700 border border-red-400'
+            ? 'bg-green-50 border border-green-200 text-green-800' 
+            : 'bg-red-50 border border-red-200 text-red-800'
         }`}>
-          {message.text}
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              {message.type === 'success' ? (
+                <svg className="h-4 w-4 sm:h-5 sm:w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4 sm:h-5 sm:w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              )}
+            </div>
+            <div className="ml-2 sm:ml-3 flex-1 min-w-0">
+              <p className="text-xs sm:text-sm font-medium break-words">{message.text}</p>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Filtros e visualização */}
-      <div className="bg-white p-4 rounded-lg shadow mb-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Pesquisar por nome, email, CPF/CNPJ, setor, cargo ou empresa..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded-lg ${viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              <Users className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('cards')}
-              className={`p-2 rounded-lg ${viewMode === 'cards' ? 'bg-blue-100 text-blue-600' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              <Grid3X3 className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Lista de colaboradores */}
       {viewMode === 'list' ? (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Setor</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cargo</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Empresa</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Email</th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Setor</th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden xl:table-cell">Cargo</th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden xl:table-cell">Empresa</th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredColaboradores.map((colaborador) => (
                   <tr key={colaborador.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {colaborador.nome}
+                    <td className="px-3 sm:px-6 py-4 text-sm font-medium text-gray-900">
+                      <div className="min-w-[120px]">
+                        <div className="font-medium">{colaborador.nome}</div>
+                        <div className="text-xs text-gray-500 lg:hidden">{colaborador.email}</div>
+                        <div className="text-xs text-gray-500 md:hidden mt-1">
+                          {colaborador.setor} • {colaborador.cargo}
+                        </div>
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 hidden lg:table-cell">
                       {colaborador.email}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 hidden md:table-cell">
                       {colaborador.setor}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 hidden xl:table-cell">
                       {colaborador.cargo}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 hidden xl:table-cell">
                       {colaborador.empresas?.razao_social || 'N/A'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         colaborador.status === 'Ativo' 
                           ? 'bg-green-100 text-green-800' 
@@ -649,7 +899,7 @@ export const CadastroColaborador: React.FC = () => {
                         {colaborador.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
                         <button
                           onClick={() => {
@@ -684,36 +934,36 @@ export const CadastroColaborador: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filteredColaboradores.map((colaborador) => (
-            <div key={colaborador.id} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{colaborador.nome}</h3>
-                  <p className="text-sm text-gray-600">{colaborador.cargo}</p>
-                  <p className="text-xs text-gray-500 mt-1">{colaborador.setor}</p>
+            <div key={colaborador.id} className="bg-white rounded-lg shadow p-4 sm:p-6 hover:shadow-lg transition-shadow">
+              <div className="flex justify-between items-start mb-3 sm:mb-4">
+                <div className="min-w-0 flex-1 pr-2">
+                  <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{colaborador.nome}</h3>
+                  <p className="text-sm text-gray-600 truncate">{colaborador.cargo}</p>
+                  <p className="text-xs text-gray-500 mt-1 truncate">{colaborador.setor}</p>
                 </div>
-                <div className="flex space-x-2">
+                <div className="flex space-x-1.5 sm:space-x-2 flex-shrink-0">
                   <button
                     onClick={() => {
                       setColaboradorParaVincular(colaborador)
                       setShowVincularItens(true)
                     }}
-                    className="text-green-600 hover:text-green-900"
+                    className="text-green-600 hover:text-green-900 p-1"
                     title="Vincular Itens e Gerar Termo"
                   >
                     <Package className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => openModal(colaborador)}
-                    className="text-blue-600 hover:text-blue-900"
+                    className="text-blue-600 hover:text-blue-900 p-1"
                     title="Editar"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(colaborador)}
-                    className="text-red-600 hover:text-red-900"
+                    className="text-red-600 hover:text-red-900 p-1"
                     title="Excluir"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -721,21 +971,21 @@ export const CadastroColaborador: React.FC = () => {
                 </div>
               </div>
               
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-gray-400" />
-                  <span>{colaborador.cpf || colaborador.cnpj || '-'}</span>
+              <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
+                  <span className="truncate">{colaborador.cpf || colaborador.cnpj || '-'}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-gray-400" />
+                <div className="flex items-center gap-2 min-w-0">
+                  <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
                   <span className="truncate">{colaborador.email}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-gray-400" />
-                  <span>{colaborador.telefone}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
+                  <span className="truncate">{colaborador.telefone}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Building className="w-4 h-4 text-gray-400" />
+                <div className="flex items-center gap-2 min-w-0">
+                  <Building className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 flex-shrink-0" />
                   <span className="truncate">{colaborador.empresas?.razao_social || 'N/A'}</span>
                 </div>
               </div>
@@ -745,25 +995,27 @@ export const CadastroColaborador: React.FC = () => {
       )}
 
       {filteredColaboradores.length === 0 && (
-        <div className="text-center py-12">
-          <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+        <div className="text-center py-12 bg-white rounded-lg shadow">
+          <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
           <p className="text-gray-500">Nenhum colaborador encontrado</p>
         </div>
       )}
 
       {/* Modal de cadastro/edição */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 overflow-y-auto h-full w-full z-50 flex items-start justify-center pt-10 pb-10">
-          <div className="relative w-full max-w-2xl mx-4">
-            <div className="bg-white rounded-lg shadow-xl max-h-[85vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-40 overflow-y-auto h-full w-full z-50 flex items-start justify-center p-4 sm:pt-10 sm:pb-10">
+          <div className="relative w-full max-w-2xl mx-auto">
+            <div className="bg-white rounded-lg shadow-xl max-h-[90vh] sm:max-h-[85vh] overflow-y-auto">
               {/* Header */}
-              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center rounded-t-lg">
-                <h3 className="text-base font-semibold text-gray-900">
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center rounded-t-lg z-10">
+                <h3 className="text-sm sm:text-base font-semibold text-gray-900">
                   {editingColaborador ? 'Editar Colaborador' : 'Novo Colaborador'}
                 </h3>
                 <button 
                   onClick={closeModal} 
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
                   type="button"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -774,8 +1026,8 @@ export const CadastroColaborador: React.FC = () => {
 
               <form onSubmit={handleSubmit}>
                 {/* Content */}
-                <div className="px-6 py-5">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="px-4 sm:px-6 py-4 sm:py-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                     <div className="md:col-span-2">
                       <label className="block text-xs font-medium text-gray-700 mb-1.5">
                         Tipo de Pessoa *
@@ -939,18 +1191,18 @@ export const CadastroColaborador: React.FC = () => {
                 </div>
 
                 {/* Footer */}
-                <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end gap-3 rounded-b-lg">
+                <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 rounded-b-lg z-10">
                   <button
                     type="button"
                     onClick={closeModal}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors order-2 sm:order-1"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors order-1 sm:order-2"
                   >
                     {loading ? 'Salvando...' : (editingColaborador ? 'Atualizar' : 'Cadastrar')}
                   </button>
@@ -976,6 +1228,135 @@ export const CadastroColaborador: React.FC = () => {
             setTimeout(() => setMessage(null), 3000)
           }}
         />
+      )}
+
+      {/* Modal de Resultado da Importação */}
+      {showImportModal && importResult && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] flex flex-col">
+            {/* Header */}
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-base sm:text-xl font-bold text-gray-800 flex items-center gap-2 pr-2">
+                {importResult.success > 0 && importResult.errors.length === 0 ? (
+                  <>
+                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="hidden sm:inline">Importação Concluída com Sucesso!</span>
+                    <span className="sm:hidden">Sucesso!</span>
+                  </>
+                ) : importResult.success > 0 ? (
+                  <>
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span className="hidden sm:inline">Importação Concluída com Avisos</span>
+                    <span className="sm:hidden">Com Avisos</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="hidden sm:inline">Erro na Importação</span>
+                    <span className="sm:hidden">Erro</span>
+                  </>
+                )}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowImportModal(false)
+                  setImportResult(null)
+                }}
+                className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+              >
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="px-4 sm:px-6 py-3 sm:py-4 overflow-y-auto flex-1">
+              {/* Resumo */}
+              <div className="mb-4 sm:mb-6">
+                <div className={`p-3 sm:p-4 rounded-lg ${
+                  importResult.success > 0 && importResult.errors.length === 0
+                    ? 'bg-green-50 border border-green-200'
+                    : importResult.success > 0
+                    ? 'bg-yellow-50 border border-yellow-200'
+                    : 'bg-red-50 border border-red-200'
+                }`}>
+                  <div className="flex items-start gap-2 sm:gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">Resumo da Importação</h3>
+                      <div className="space-y-1 text-xs sm:text-sm">
+                        <p className="text-green-700">
+                          <span className="font-medium">✓ Importados:</span> {importResult.success}
+                        </p>
+                        {importResult.errors.length > 0 && (
+                          <p className="text-red-700">
+                            <span className="font-medium">✗ Erros:</span> {importResult.errors.length}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Lista de Erros */}
+              {importResult.errors.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
+                    <svg className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Detalhes dos Erros
+                  </h3>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 max-h-48 sm:max-h-60 overflow-y-auto">
+                    <ul className="space-y-1.5 sm:space-y-2">
+                      {importResult.errors.map((erro, index) => (
+                        <li key={index} className="text-xs sm:text-sm text-red-700 flex items-start gap-1.5 sm:gap-2">
+                          <span className="text-red-500 mt-0.5 flex-shrink-0">•</span>
+                          <span className="break-words">{erro}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <p className="text-xs sm:text-sm text-gray-600 mt-2 sm:mt-3">
+                    💡 Corrija os erros e tente importar novamente.
+                  </p>
+                </div>
+              )}
+
+              {/* Mensagem de Sucesso Total */}
+              {importResult.success > 0 && importResult.errors.length === 0 && (
+                <div className="text-center py-4 sm:py-6">
+                  <svg className="w-16 h-16 sm:w-20 sm:h-20 text-green-500 mx-auto mb-3 sm:mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm sm:text-lg text-gray-700 px-4">
+                    Todos os colaboradores foram importados com sucesso!
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-2 sm:gap-3">
+              <button
+                onClick={() => {
+                  setShowImportModal(false)
+                  setImportResult(null)
+                }}
+                className="px-4 py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors w-full sm:w-auto"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
