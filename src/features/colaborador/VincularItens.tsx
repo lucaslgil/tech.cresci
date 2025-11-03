@@ -18,6 +18,27 @@ interface Item {
   responsavel_id?: string | null
 }
 
+interface HistoricoVinculacao {
+  id: string
+  colaborador_id: string
+  item_id: string
+  acao: 'vinculado' | 'desvinculado'
+  data_acao: string
+  usuario_acao?: string
+  observacao?: string
+  item_codigo: string
+  item_nome: string
+  item_modelo?: string
+  item_categoria?: string
+  item_numero_serie?: string
+  item_valor: number
+  colaborador_nome: string
+  colaborador_cpf_cnpj?: string | null
+  colaborador_cargo?: string
+  colaborador_setor?: string
+  created_at: string
+}
+
 interface Colaborador {
   id: string
   tipo_pessoa: 'fisica' | 'juridica'
@@ -47,7 +68,9 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
   const [loadingItens, setLoadingItens] = useState(false)
   const [loadingVinculados, setLoadingVinculados] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<'disponivel' | 'vinculado'>('disponivel')
+  const [activeTab, setActiveTab] = useState<'disponivel' | 'vinculado' | 'historico'>('disponivel')
+  const [historico, setHistorico] = useState<HistoricoVinculacao[]>([])
+  const [loadingHistorico, setLoadingHistorico] = useState(false)
 
   // Buscar itens disponíveis (sem responsável)
   const fetchItens = async () => {
@@ -167,13 +190,128 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
     }
   }
 
+  // Buscar histórico de vinculações
+  const fetchHistorico = async () => {
+    try {
+      setLoadingHistorico(true)
+      
+      if (!isSupabaseConfigured) {
+        // Dados mock para demo
+        setHistorico([
+          {
+            id: '1',
+            colaborador_id: colaborador.id,
+            item_id: '10',
+            acao: 'vinculado',
+            data_acao: '2024-01-10T10:30:00Z',
+            usuario_acao: 'admin@empresa.com',
+            item_codigo: 'ITEM-010',
+            item_nome: 'Notebook HP ProBook',
+            item_modelo: 'ProBook 450 G8',
+            item_categoria: 'Informática',
+            item_numero_serie: 'SN555666777',
+            item_valor: 4200.00,
+            colaborador_nome: colaborador.nome,
+            colaborador_cpf_cnpj: colaborador.tipo_pessoa === 'fisica' ? colaborador.cpf : colaborador.cnpj,
+            colaborador_cargo: colaborador.cargo,
+            colaborador_setor: colaborador.setor,
+            created_at: '2024-01-10T10:30:00Z'
+          },
+          {
+            id: '2',
+            colaborador_id: colaborador.id,
+            item_id: '5',
+            acao: 'vinculado',
+            data_acao: '2024-01-05T14:20:00Z',
+            usuario_acao: 'admin@empresa.com',
+            item_codigo: 'ITEM-005',
+            item_nome: 'Teclado Mecânico Logitech',
+            item_modelo: 'MX Keys',
+            item_categoria: 'Informática',
+            item_valor: 650.00,
+            colaborador_nome: colaborador.nome,
+            colaborador_cpf_cnpj: colaborador.tipo_pessoa === 'fisica' ? colaborador.cpf : colaborador.cnpj,
+            colaborador_cargo: colaborador.cargo,
+            colaborador_setor: colaborador.setor,
+            created_at: '2024-01-05T14:20:00Z'
+          },
+          {
+            id: '3',
+            colaborador_id: colaborador.id,
+            item_id: '5',
+            acao: 'desvinculado',
+            data_acao: '2024-01-15T16:45:00Z',
+            usuario_acao: 'admin@empresa.com',
+            observacao: 'Item devolvido para manutenção',
+            item_codigo: 'ITEM-005',
+            item_nome: 'Teclado Mecânico Logitech',
+            item_modelo: 'MX Keys',
+            item_categoria: 'Informática',
+            item_valor: 650.00,
+            colaborador_nome: colaborador.nome,
+            colaborador_cpf_cnpj: colaborador.tipo_pessoa === 'fisica' ? colaborador.cpf : colaborador.cnpj,
+            colaborador_cargo: colaborador.cargo,
+            colaborador_setor: colaborador.setor,
+            created_at: '2024-01-15T16:45:00Z'
+          }
+        ])
+      } else {
+        const { data, error } = await supabase
+          .from('historico_vinculacao_itens')
+          .select('*')
+          .eq('colaborador_id', colaborador.id)
+          .order('data_acao', { ascending: false })
+
+        if (error) throw error
+        setHistorico(data || [])
+      }
+    } catch (error) {
+      console.error('Erro ao carregar histórico:', error)
+      setHistorico([])
+    } finally {
+      setLoadingHistorico(false)
+    }
+  }
+
+  // Registrar histórico de vinculação
+  const registrarHistorico = async (item: Item, acao: 'vinculado' | 'desvinculado', observacao?: string) => {
+    if (!isSupabaseConfigured) return
+
+    try {
+      const { data: userData } = await supabase.auth.getUser()
+      
+      await supabase
+        .from('historico_vinculacao_itens')
+        .insert({
+          colaborador_id: colaborador.id,
+          item_id: item.id,
+          acao,
+          usuario_acao: userData?.user?.email || 'Sistema',
+          observacao,
+          item_codigo: item.codigo,
+          item_nome: item.item,
+          item_modelo: item.modelo,
+          item_categoria: item.categoria,
+          item_numero_serie: item.numero_serie,
+          item_valor: item.valor,
+          colaborador_nome: colaborador.nome,
+          colaborador_cpf_cnpj: colaborador.tipo_pessoa === 'fisica' ? colaborador.cpf : colaborador.cnpj,
+          colaborador_cargo: colaborador.cargo,
+          colaborador_setor: colaborador.setor
+        })
+    } catch (error) {
+      console.error('Erro ao registrar histórico:', error)
+    }
+  }
+
   useEffect(() => {
     if (isOpen) {
       fetchItens()
       fetchItensVinculados()
+      fetchHistorico()
       setItensSelecionados([])
     }
-  }, [isOpen])
+  }, [isOpen, colaborador.id])
 
   // Filtrar itens
   const itensFiltrados = itens.filter(item =>
@@ -214,15 +352,22 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
       }))
 
       for (const update of updates) {
+        const item = itensSelecionados.find(i => i.id === update.id)
+        if (!item) continue
+
         const { error } = await supabase
           .from('itens')
           .update({ responsavel_id: update.responsavel_id })
           .eq('id', update.id)
 
         if (error) throw error
+
+        // Registrar no histórico
+        await registrarHistorico(item, 'vinculado')
       }
 
       alert(`${itensSelecionados.length} item(ns) vinculado(s) com sucesso!`)
+      fetchHistorico() // Atualizar histórico
       onSuccess?.()
       onClose()
     } catch (error) {
@@ -248,6 +393,9 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
         return
       }
 
+      // Buscar o item antes de desvincular para registrar no histórico
+      const item = itensVinculados.find(i => i.id === itemId)
+      
       const { error } = await supabase
         .from('itens')
         .update({ responsavel_id: null })
@@ -255,9 +403,15 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
 
       if (error) throw error
 
+      // Registrar no histórico
+      if (item) {
+        await registrarHistorico(item, 'desvinculado')
+      }
+
       alert('Item desvinculado com sucesso!')
       fetchItens()
       fetchItensVinculados()
+      fetchHistorico() // Atualizar histórico
       onSuccess?.()
     } catch (error) {
       console.error('Erro ao desvincular item:', error)
@@ -526,6 +680,17 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
                 Itens Vinculados
                 {itensVinculados.length > 0 && <span className="ml-2 bg-blue-100 text-blue-700 py-0.5 px-2 rounded-full text-xs">{itensVinculados.length}</span>}
               </button>
+              <button
+                onClick={() => setActiveTab('historico')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'historico'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Histórico
+                {historico.length > 0 && <span className="ml-2 bg-purple-100 text-purple-700 py-0.5 px-2 rounded-full text-xs">{historico.length}</span>}
+              </button>
             </nav>
           </div>
 
@@ -734,6 +899,177 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
                     </div>
                     <div className="text-sm text-blue-700">
                       Valor total: R$ {itensVinculados.reduce((sum, item) => sum + item.valor, 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Conteúdo da Aba: Histórico */}
+          {activeTab === 'historico' && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Histórico de Vinculações</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Registro completo de todas as vinculações e desvinculações de itens com {colaborador.nome}.
+              </p>
+
+              {/* Lista de Histórico */}
+              <div className="border border-gray-200 rounded-lg max-h-96 overflow-y-auto">
+                {loadingHistorico ? (
+                  <div className="p-8 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="text-sm text-gray-500 mt-2">Carregando histórico...</p>
+                  </div>
+                ) : historico.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500">
+                    <svg className="w-12 h-12 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-sm">Nenhum histórico de vinculação encontrado</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {historico.map((registro) => (
+                      <div key={registro.id} className="p-4 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start gap-4">
+                          {/* Ícone da Ação */}
+                          <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                            registro.acao === 'vinculado' 
+                              ? 'bg-green-100' 
+                              : 'bg-red-100'
+                          }`}>
+                            {registro.acao === 'vinculado' ? (
+                              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                              </svg>
+                            ) : (
+                              <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                              </svg>
+                            )}
+                          </div>
+
+                          {/* Conteúdo */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                {/* Ação */}
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className={`font-semibold text-sm ${
+                                    registro.acao === 'vinculado' 
+                                      ? 'text-green-700' 
+                                      : 'text-red-700'
+                                  }`}>
+                                    {registro.acao === 'vinculado' ? '✓ VINCULADO' : '✗ DESVINCULADO'}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {new Date(registro.data_acao).toLocaleString('pt-BR', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                </div>
+
+                                {/* Item */}
+                                <div className="font-medium text-gray-900 mb-1">
+                                  {registro.item_nome}
+                                </div>
+
+                                {/* Informações do Item */}
+                                <div className="text-sm text-gray-600">
+                                  <span>Cód: {registro.item_codigo}</span>
+                                  {registro.item_categoria && <span className="ml-3">• {registro.item_categoria}</span>}
+                                </div>
+
+                                {/* Modelo e S/N */}
+                                {(registro.item_modelo || registro.item_numero_serie) && (
+                                  <div className="text-xs text-gray-500 mt-0.5">
+                                    {registro.item_modelo && <span>Modelo: {registro.item_modelo}</span>}
+                                    {registro.item_numero_serie && (
+                                      <span className={registro.item_modelo ? " ml-3" : ""}>
+                                        S/N: {registro.item_numero_serie}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+
+                                {/* Usuário que fez a ação */}
+                                {registro.usuario_acao && (
+                                  <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                    <span>Por: {registro.usuario_acao}</span>
+                                  </div>
+                                )}
+
+                                {/* Observação */}
+                                {registro.observacao && (
+                                  <div className="mt-2 text-xs text-gray-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
+                                    💬 {registro.observacao}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Valor */}
+                              <div className="text-right flex-shrink-0">
+                                <div className="font-semibold text-gray-900 text-sm">
+                                  R$ {registro.item_valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Estatísticas do Histórico */}
+              {historico.length > 0 && (
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      <div>
+                        <div className="text-xs text-purple-600 font-medium">Total de Registros</div>
+                        <div className="text-lg font-bold text-purple-900">{historico.length}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div>
+                        <div className="text-xs text-green-600 font-medium">Vinculações</div>
+                        <div className="text-lg font-bold text-green-900">
+                          {historico.filter(h => h.acao === 'vinculado').length}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div>
+                        <div className="text-xs text-red-600 font-medium">Desvinculações</div>
+                        <div className="text-lg font-bold text-red-900">
+                          {historico.filter(h => h.acao === 'desvinculado').length}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

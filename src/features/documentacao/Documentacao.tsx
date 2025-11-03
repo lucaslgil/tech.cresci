@@ -51,6 +51,7 @@ export const Documentacao: React.FC = () => {
                 <ul className="space-y-2 text-gray-700">
                   <li>• <strong>Cadastro de Itens:</strong> Código, Nome, Modelo, Status, Valor</li>
                   <li>• <strong>Responsabilidade:</strong> Vinculação de itens aos colaboradores responsáveis</li>
+                  <li>• <strong>Histórico de Vinculações:</strong> ⭐ Registro completo de todas as vinculações e desvinculações de itens com colaboradores, mantendo histórico permanente mesmo após desvinculação</li>
                   <li>• <strong>Relatório de Equipamentos:</strong> Lista todos os itens com seus responsáveis</li>
                   <li>• <strong>Termo de Responsabilidade:</strong> Geração automática de documento PDF</li>
                   <li>• <strong>Cadastrar Item:</strong> Código, Item, Modelo, Número de Série, Detalhes, Nota Fiscal, Fornecedor, Setor, Status, Valor</li>
@@ -178,6 +179,42 @@ export const Documentacao: React.FC = () => {
                       <tr><td className="py-1">responsavel_id</td><td>UUID</td><td>FK para colaboradores - responsável pelo item</td></tr>
                     </tbody>
                   </table>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-300 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-purple-900 mb-3 flex items-center">
+                  <span className="mr-2">⭐</span>
+                  Tabela: historico_vinculacao_itens
+                  <span className="ml-2 text-xs bg-purple-200 text-purple-800 px-2 py-0.5 rounded">NOVO</span>
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm text-purple-900">
+                    <thead>
+                      <tr className="border-b border-purple-200">
+                        <th className="text-left py-2">Campo</th>
+                        <th className="text-left py-2">Tipo</th>
+                        <th className="text-left py-2">Descrição</th>
+                      </tr>
+                    </thead>
+                    <tbody className="space-y-1">
+                      <tr><td className="py-1">id</td><td>UUID</td><td>Chave primária</td></tr>
+                      <tr><td className="py-1">colaborador_id</td><td>UUID</td><td>FK para colaboradores (CASCADE)</td></tr>
+                      <tr><td className="py-1">item_id</td><td>UUID</td><td>FK para itens (CASCADE)</td></tr>
+                      <tr><td className="py-1">acao</td><td>VARCHAR(20)</td><td>'vinculado' ou 'desvinculado'</td></tr>
+                      <tr><td className="py-1">data_acao</td><td>TIMESTAMP</td><td>Data e hora da ação</td></tr>
+                      <tr><td className="py-1">usuario_acao</td><td>VARCHAR(255)</td><td>Email do usuário que fez a ação</td></tr>
+                      <tr><td className="py-1">observacao</td><td>TEXT</td><td>Observação opcional</td></tr>
+                      <tr><td className="py-1">item_codigo</td><td>VARCHAR(50)</td><td>Snapshot: código do item</td></tr>
+                      <tr><td className="py-1">item_nome</td><td>TEXT</td><td>Snapshot: nome do item</td></tr>
+                      <tr><td className="py-1">item_valor</td><td>DECIMAL(10,2)</td><td>Snapshot: valor do item</td></tr>
+                      <tr><td className="py-1">colaborador_nome</td><td>VARCHAR(255)</td><td>Snapshot: nome do colaborador</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-3 text-xs text-purple-700 bg-purple-100 rounded p-2">
+                  📝 <strong>Nota:</strong> Esta tabela mantém histórico imutável de todas as vinculações e desvinculações. 
+                  Armazena snapshots dos dados no momento da ação para auditoria completa.
                 </div>
               </div>
             </div>

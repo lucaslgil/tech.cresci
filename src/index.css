@@ -16,3 +16,19 @@ body {
 * {
   max-width: 100%;
 }
+
+/* Cursor de redimensionamento de colunas */
+.cursor-col-resize {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* Quando estiver redimensionando, aplicar cursor em todo o documento */
+body.resizing-column {
+  cursor: col-resize !important;
+  user-select: none;
+}
+
+body.resizing-column * {
+  cursor: col-resize !important;
+}

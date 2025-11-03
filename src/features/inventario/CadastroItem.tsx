@@ -90,6 +90,15 @@ export const CadastroItem: React.FC = () => {
   const [showTermoModal, setShowTermoModal] = useState(false)
   const [itemParaTermo, setItemParaTermo] = useState<Item | null>(null)
 
+  // Estados para redimensionamento de colunas
+  const [columnWidths, setColumnWidths] = useState(() => {
+    const saved = localStorage.getItem('inventario-column-widths')
+    return saved ? JSON.parse(saved) : { codigo: 100, item: 200 }
+  })
+  const [isResizing, setIsResizing] = useState<string | null>(null)
+  const [startX, setStartX] = useState(0)
+  const [startWidth, setStartWidth] = useState(0)
+
   const statusOptions = [
     'Ativo',
     'Inativo',
@@ -206,6 +215,50 @@ export const CadastroItem: React.FC = () => {
     console.warn('Usando código fallback:', fallbackCode)
     return fallbackCode
   }
+
+  // Funções para redimensionamento de colunas
+  const handleMouseDown = (e: React.MouseEvent, column: 'codigo' | 'item') => {
+    e.preventDefault()
+    setIsResizing(column)
+    setStartX(e.clientX)
+    setStartWidth(columnWidths[column])
+  }
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isResizing) return
+    
+    const diff = e.clientX - startX
+    const newWidth = Math.max(80, startWidth + diff) // Largura mínima de 80px
+    
+    setColumnWidths((prev: { codigo: number; item: number }) => {
+      const newWidths = {
+        ...prev,
+        [isResizing]: newWidth
+      }
+      // Salvar no localStorage
+      localStorage.setItem('inventario-column-widths', JSON.stringify(newWidths))
+      return newWidths
+    })
+  }
+
+  const handleMouseUp = () => {
+    setIsResizing(null)
+  }
+
+  // Adicionar e remover event listeners para o redimensionamento
+  useEffect(() => {
+    if (isResizing) {
+      document.body.classList.add('resizing-column')
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+      
+      return () => {
+        document.body.classList.remove('resizing-column')
+        window.removeEventListener('mousemove', handleMouseMove)
+        window.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  }, [isResizing, startX, startWidth])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -825,26 +878,59 @@ export const CadastroItem: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th 
-                  className="px-2 sm:px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none" 
-                  style={{ minWidth: '80px' }}
-                  onClick={() => handleSort('codigo')}
+                  className="px-2 sm:px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hover:bg-gray-100 select-none relative" 
+                  style={{ width: `${columnWidths.codigo}px`, minWidth: '80px' }}
                 >
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 cursor-pointer" onClick={() => handleSort('codigo')}>
                     Código
                     {sortConfig?.key === 'codigo' && (
                       <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
                     )}
                   </div>
+                  {/* Resize handle */}
+                  <div
+                    className="absolute top-0 right-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500 hover:w-1.5 transition-all group"
+                    onMouseDown={(e) => handleMouseDown(e, 'codigo')}
+                    style={{ 
+                      backgroundColor: isResizing === 'codigo' ? '#3b82f6' : 'transparent',
+                      width: isResizing === 'codigo' ? '3px' : '4px'
+                    }}
+                    title="Arraste para redimensionar"
+                  >
+                    {/* Indicador visual */}
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <svg className="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5h2v14H8V5zm6 0h2v14h-2V5z"/>
+                      </svg>
+                    </div>
+                  </div>
                 </th>
                 <th 
-                  className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
-                  onClick={() => handleSort('item')}
+                  className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hover:bg-gray-100 select-none relative"
+                  style={{ width: `${columnWidths.item}px`, minWidth: '120px' }}
                 >
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1 cursor-pointer" onClick={() => handleSort('item')}>
                     Item
                     {sortConfig?.key === 'item' && (
                       <span>{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>
                     )}
+                  </div>
+                  {/* Resize handle */}
+                  <div
+                    className="absolute top-0 right-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500 hover:w-1.5 transition-all group"
+                    onMouseDown={(e) => handleMouseDown(e, 'item')}
+                    style={{ 
+                      backgroundColor: isResizing === 'item' ? '#3b82f6' : 'transparent',
+                      width: isResizing === 'item' ? '3px' : '4px'
+                    }}
+                    title="Arraste para redimensionar"
+                  >
+                    {/* Indicador visual */}
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <svg className="w-3 h-3 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5h2v14H8V5zm6 0h2v14h-2V5z"/>
+                      </svg>
+                    </div>
                   </div>
                 </th>
                 <th 
@@ -910,11 +996,11 @@ export const CadastroItem: React.FC = () => {
               ) : (
                 filteredItens.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-2 sm:px-3 py-4 text-sm text-gray-900">
-                      <div className="min-w-[70px]">{item.codigo}</div>
+                    <td className="px-2 sm:px-3 py-4 text-sm text-gray-900" style={{ width: `${columnWidths.codigo}px` }}>
+                      <div className="overflow-hidden text-ellipsis">{item.codigo}</div>
                     </td>
-                    <td className="px-3 sm:px-6 py-4 text-sm font-medium text-gray-900">
-                      <div className="min-w-[120px]">
+                    <td className="px-3 sm:px-6 py-4 text-sm font-medium text-gray-900" style={{ width: `${columnWidths.item}px` }}>
+                      <div className="overflow-hidden">
                         <div>{item.item || 'Item sem nome'}</div>
                         <div className="text-xs text-gray-500 md:hidden mt-1">
                           {item.categoria || '-'}
