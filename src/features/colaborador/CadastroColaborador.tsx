@@ -1030,11 +1030,10 @@ export const CadastroColaborador: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                     <div className="md:col-span-2">
                       <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                        Tipo de Pessoa *
+                        Tipo de Pessoa
                       </label>
                       <select
                         name="tipo_pessoa"
-                        required
                         value={formData.tipo_pessoa}
                         onChange={handleChange}
                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
@@ -1061,12 +1060,11 @@ export const CadastroColaborador: React.FC = () => {
                     {formData.tipo_pessoa === 'fisica' ? (
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                          CPF *
+                          CPF
                         </label>
                         <input
                           type="text"
                           name="cpf"
-                          required
                           maxLength={14}
                           value={formData.cpf}
                           onChange={handleChange}
@@ -1077,12 +1075,11 @@ export const CadastroColaborador: React.FC = () => {
                     ) : (
                       <div>
                         <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                          CNPJ *
+                          CNPJ
                         </label>
                         <input
                           type="text"
                           name="cnpj"
-                          required
                           maxLength={18}
                           value={formData.cnpj}
                           onChange={handleChange}
@@ -1094,12 +1091,11 @@ export const CadastroColaborador: React.FC = () => {
 
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                        Email *
+                        Email
                       </label>
                       <input
                         type="email"
                         name="email"
-                        required
                         value={formData.email}
                         onChange={handleChange}
                         placeholder="email@exemplo.com"
@@ -1109,12 +1105,11 @@ export const CadastroColaborador: React.FC = () => {
 
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                        Telefone *
+                        Telefone
                       </label>
                       <input
                         type="tel"
                         name="telefone"
-                        required
                         value={formData.telefone}
                         onChange={handleChange}
                         placeholder="(00) 00000-0000"
@@ -1124,12 +1119,11 @@ export const CadastroColaborador: React.FC = () => {
 
                     <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Setor *
+                    Setor
                   </label>
                   <input
                     type="text"
                     name="setor"
-                    required
                     value={formData.setor}
                     onChange={handleChange}
                     placeholder="Digite o setor"
@@ -1139,12 +1133,11 @@ export const CadastroColaborador: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Cargo *
+                    Cargo
                   </label>
                   <input
                     type="text"
                     name="cargo"
-                    required
                     value={formData.cargo}
                     onChange={handleChange}
                     placeholder="Digite o cargo"
@@ -1154,11 +1147,10 @@ export const CadastroColaborador: React.FC = () => {
 
                     <div className="md:col-span-2">
                       <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                        Empresa *
+                        Empresa
                       </label>
                       <select
                         name="empresa_id"
-                        required
                         value={formData.empresa_id}
                         onChange={handleChange}
                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
@@ -1174,11 +1166,10 @@ export const CadastroColaborador: React.FC = () => {
 
                     <div className="md:col-span-2">
                       <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                        Status *
+                        Status
                       </label>
                       <select
                         name="status"
-                        required
                         value={formData.status}
                         onChange={handleChange}
                         className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
