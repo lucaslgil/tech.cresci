@@ -9,6 +9,7 @@ interface LinhaTelefonica {
   numero_linha: string
   tipo: 'eSIM' | 'Chip Físico'
   operadora: string
+  usuario_setor: string | null
   plano: string
   valor_plano: number
   created_at?: string
@@ -40,6 +41,7 @@ export const LinhasTelefonicas: React.FC = () => {
     numero_linha: '',
     tipo: 'Chip Físico',
     operadora: '',
+    usuario_setor: null,
     plano: '',
     valor_plano: 0
   })
@@ -120,6 +122,7 @@ export const LinhasTelefonicas: React.FC = () => {
         numero_linha: linha.numero_linha,
         tipo: linha.tipo,
         operadora: linha.operadora,
+        usuario_setor: linha.usuario_setor,
         plano: linha.plano,
         valor_plano: linha.valor_plano
       })
@@ -147,6 +150,7 @@ export const LinhasTelefonicas: React.FC = () => {
       numero_linha: '',
       tipo: 'Chip Físico',
       operadora: '',
+      usuario_setor: null,
       plano: '',
       valor_plano: 0
     })
@@ -287,6 +291,7 @@ export const LinhasTelefonicas: React.FC = () => {
         'Número da Linha': '(11) 98765-4321',
         'Tipo': 'Chip Físico',
         'Operadora': 'Vivo',
+        'Usuário/Setor': 'TI - Suporte',
         'Plano': 'Plano Controle 20GB',
         'Valor do Plano': 79.90,
         'Responsável': colaboradores[0]?.nome || 'Nome do Colaborador'
@@ -295,6 +300,7 @@ export const LinhasTelefonicas: React.FC = () => {
         'Número da Linha': '(11) 91234-5678',
         'Tipo': 'eSIM',
         'Operadora': 'Claro',
+        'Usuário/Setor': 'Vendas',
         'Plano': 'Plano Pós 30GB',
         'Valor do Plano': 99.90,
         'Responsável': ''
@@ -310,6 +316,7 @@ export const LinhasTelefonicas: React.FC = () => {
       { wch: 20 }, // Número da Linha
       { wch: 15 }, // Tipo
       { wch: 20 }, // Operadora
+      { wch: 25 }, // Usuário/Setor
       { wch: 25 }, // Plano
       { wch: 18 }, // Valor do Plano
       { wch: 30 }  // Responsável
@@ -364,6 +371,13 @@ export const LinhasTelefonicas: React.FC = () => {
           continue
         }
 
+        // Usuário/Setor é opcional, mas limitado a 30 caracteres
+        let usuarioSetor = row['Usuário/Setor'] || row['usuario_setor'] || row['Usuario/Setor'] || null
+        if (usuarioSetor && usuarioSetor.length > 30) {
+          erros.push(`Linha ${linha}: Usuário/Setor não pode ter mais de 30 caracteres`)
+          continue
+        }
+
         const plano = row['Plano'] || row['plano']
         if (!plano) {
           erros.push(`Linha ${linha}: Plano é obrigatório`)
@@ -394,6 +408,7 @@ export const LinhasTelefonicas: React.FC = () => {
           numero_linha: numeroLinha,
           tipo: tipo as 'eSIM' | 'Chip Físico',
           operadora: operadora,
+          usuario_setor: usuarioSetor,
           plano: plano,
           valor_plano: valorPlano,
           responsavel_id: responsavel_id
@@ -521,6 +536,9 @@ export const LinhasTelefonicas: React.FC = () => {
                     Operadora
                   </th>
                   <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                    Usuário/Setor
+                  </th>
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
                     Responsável
                   </th>
                   <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
@@ -551,6 +569,11 @@ export const LinhasTelefonicas: React.FC = () => {
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                       {linha.operadora}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                      {linha.usuario_setor || (
+                        <span className="text-gray-400 italic">-</span>
+                      )}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                       {linha.responsavel_nome || (
@@ -719,6 +742,22 @@ export const LinhasTelefonicas: React.FC = () => {
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                     required
                   />
+                </div>
+
+                {/* Usuário/Setor */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    Usuário/Setor
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.usuario_setor || ''}
+                    onChange={(e) => setFormData({ ...formData, usuario_setor: e.target.value || null })}
+                    placeholder="Ex: TI - Suporte, Vendas, Marketing"
+                    maxLength={30}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Máximo 30 caracteres</p>
                 </div>
 
                 {/* Plano */}
