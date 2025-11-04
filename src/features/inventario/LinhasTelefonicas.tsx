@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import * as XLSX from 'xlsx'
+import { Edit, Trash2 } from 'lucide-react'
 
 interface LinhaTelefonica {
   id: string
@@ -576,19 +577,23 @@ export const LinhasTelefonicas: React.FC = () => {
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {formatarValor(linha.valor_plano)}
                     </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                      <button
-                        onClick={() => openModal(linha)}
-                        className="text-slate-600 hover:text-slate-900 font-medium transition-colors"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(linha.id)}
-                        className="text-red-600 hover:text-red-900 font-medium transition-colors"
-                      >
-                        Excluir
-                      </button>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          onClick={() => openModal(linha)}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Editar"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(linha.id)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Excluir"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
