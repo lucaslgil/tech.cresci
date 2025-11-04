@@ -367,10 +367,10 @@ export const LinhasTelefonicas: React.FC = () => {
 
         const operadora = row['Operadora'] || row['operadora'] || ''
 
-        // Usuário/Setor é opcional, mas limitado a 30 caracteres
+        // Usuário/Setor é opcional, mas limitado a 50 caracteres
         let usuarioSetor = row['Usuário/Setor'] || row['usuario_setor'] || row['Usuario/Setor'] || null
-        if (usuarioSetor && usuarioSetor.length > 30) {
-          erros.push(`Linha ${linha}: Usuário/Setor não pode ter mais de 30 caracteres`)
+        if (usuarioSetor && usuarioSetor.length > 50) {
+          erros.push(`Linha ${linha}: Usuário/Setor não pode ter mais de 50 caracteres`)
           continue
         }
 
@@ -743,10 +743,10 @@ export const LinhasTelefonicas: React.FC = () => {
                     value={formData.usuario_setor || ''}
                     onChange={(e) => setFormData({ ...formData, usuario_setor: e.target.value || null })}
                     placeholder="Ex: TI - Suporte, Vendas, Marketing"
-                    maxLength={30}
+                    maxLength={50}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Máximo 30 caracteres</p>
+                  <p className="text-xs text-gray-500 mt-1">Máximo 50 caracteres</p>
                 </div>
 
                 {/* Plano */}

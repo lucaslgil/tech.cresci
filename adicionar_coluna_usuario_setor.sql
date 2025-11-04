@@ -7,7 +7,7 @@
 
 -- Adicionar a coluna 'usuario_setor' na tabela linhas_telefonicas
 ALTER TABLE linhas_telefonicas 
-ADD COLUMN usuario_setor VARCHAR(30) NULL;
+ADD COLUMN usuario_setor VARCHAR(50) NULL;
 
 -- Criar índice para melhorar performance em buscas por usuario_setor
 CREATE INDEX idx_linhas_telefonicas_usuario_setor ON linhas_telefonicas(usuario_setor);
@@ -60,7 +60,7 @@ WHERE tablename = 'linhas_telefonicas'
 -- NOTAS IMPORTANTES
 -- ============================================================
 -- 1. A coluna aceita NULL (campo opcional)
--- 2. Tamanho máximo: 30 caracteres (VARCHAR(30))
+-- 2. Tamanho máximo: 50 caracteres (VARCHAR(50))
 -- 3. Pode conter qualquer texto livre
 -- 4. Útil para identificar usuário final ou setor que usa a linha
 -- 5. Diferente de 'responsavel_id' que referencia um colaborador cadastrado
