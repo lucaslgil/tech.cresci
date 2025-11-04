@@ -87,7 +87,7 @@ export const LinhasTelefonicas: React.FC = () => {
 
       const linhasFormatadas = data?.map((linha: any) => ({
         ...linha,
-        responsavel_nome: linha.colaboradores?.nome || 'Sem responsável'
+        responsavel_nome: linha.colaboradores?.nome || ''
       })) || []
 
       setLinhas(linhasFormatadas)
@@ -359,17 +359,13 @@ export const LinhasTelefonicas: React.FC = () => {
           continue
         }
 
-        const tipo = row['Tipo'] || row['tipo']
-        if (!tipo || (tipo !== 'Chip Físico' && tipo !== 'eSIM')) {
+        const tipo = row['Tipo'] || row['tipo'] || 'Chip Físico' // Default se não informado
+        if (tipo && tipo !== 'Chip Físico' && tipo !== 'eSIM') {
           erros.push(`Linha ${linha}: Tipo deve ser "Chip Físico" ou "eSIM"`)
           continue
         }
 
-        const operadora = row['Operadora'] || row['operadora']
-        if (!operadora) {
-          erros.push(`Linha ${linha}: Operadora é obrigatória`)
-          continue
-        }
+        const operadora = row['Operadora'] || row['operadora'] || ''
 
         // Usuário/Setor é opcional, mas limitado a 30 caracteres
         let usuarioSetor = row['Usuário/Setor'] || row['usuario_setor'] || row['Usuario/Setor'] || null
@@ -378,11 +374,7 @@ export const LinhasTelefonicas: React.FC = () => {
           continue
         }
 
-        const plano = row['Plano'] || row['plano']
-        if (!plano) {
-          erros.push(`Linha ${linha}: Plano é obrigatório`)
-          continue
-        }
+        const plano = row['Plano'] || row['plano'] || ''
 
         const valorPlano = parseFloat(row['Valor do Plano'] || row['valor_plano'] || row['Valor do Plano'] || 0)
         if (valorPlano < 0) {
@@ -576,9 +568,7 @@ export const LinhasTelefonicas: React.FC = () => {
                       )}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {linha.responsavel_nome || (
-                        <span className="text-gray-400 italic">Sem responsável</span>
-                      )}
+                      {linha.responsavel_nome || ''}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                       {linha.plano}
@@ -701,7 +691,7 @@ export const LinhasTelefonicas: React.FC = () => {
                 {/* Tipo - Radio buttons estilizados como checkboxes */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-2">
-                    Tipo <span className="text-red-500">*</span>
+                    Tipo
                   </label>
                   <div className="space-y-2">
                     <label className="flex items-center cursor-pointer">
@@ -732,7 +722,7 @@ export const LinhasTelefonicas: React.FC = () => {
                 {/* Operadora */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Operadora <span className="text-red-500">*</span>
+                    Operadora
                   </label>
                   <input
                     type="text"
@@ -740,7 +730,6 @@ export const LinhasTelefonicas: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, operadora: e.target.value })}
                     placeholder="Ex: Vivo, Claro, Tim, Oi"
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    required
                   />
                 </div>
 
@@ -763,7 +752,7 @@ export const LinhasTelefonicas: React.FC = () => {
                 {/* Plano */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Plano <span className="text-red-500">*</span>
+                    Plano
                   </label>
                   <input
                     type="text"
@@ -771,14 +760,13 @@ export const LinhasTelefonicas: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, plano: e.target.value })}
                     placeholder="Ex: Plano Controle 20GB"
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    required
                   />
                 </div>
 
                 {/* Valor do Plano */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Valor do Plano <span className="text-red-500">*</span>
+                    Valor do Plano
                   </label>
                   <input
                     type="number"
@@ -788,7 +776,6 @@ export const LinhasTelefonicas: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, valor_plano: parseFloat(e.target.value) || 0 })}
                     placeholder="0.00"
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    required
                   />
                 </div>
               </form>
