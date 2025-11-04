@@ -8,6 +8,7 @@ interface LinhaTelefonica {
   responsavel_nome?: string
   numero_linha: string
   tipo: 'eSIM' | 'Chip Físico'
+  operadora: string
   plano: string
   valor_plano: number
   created_at?: string
@@ -38,6 +39,7 @@ export const LinhasTelefonicas: React.FC = () => {
     responsavel_id: null,
     numero_linha: '',
     tipo: 'Chip Físico',
+    operadora: '',
     plano: '',
     valor_plano: 0
   })
@@ -117,6 +119,7 @@ export const LinhasTelefonicas: React.FC = () => {
         responsavel_id: linha.responsavel_id,
         numero_linha: linha.numero_linha,
         tipo: linha.tipo,
+        operadora: linha.operadora,
         plano: linha.plano,
         valor_plano: linha.valor_plano
       })
@@ -143,6 +146,7 @@ export const LinhasTelefonicas: React.FC = () => {
       responsavel_id: null,
       numero_linha: '',
       tipo: 'Chip Físico',
+      operadora: '',
       plano: '',
       valor_plano: 0
     })
@@ -188,6 +192,11 @@ export const LinhasTelefonicas: React.FC = () => {
     // Validações
     if (!formData.numero_linha.trim()) {
       alert('Número da linha é obrigatório')
+      return
+    }
+
+    if (!formData.operadora.trim()) {
+      alert('Operadora é obrigatória')
       return
     }
 
@@ -277,6 +286,7 @@ export const LinhasTelefonicas: React.FC = () => {
       {
         'Número da Linha': '(11) 98765-4321',
         'Tipo': 'Chip Físico',
+        'Operadora': 'Vivo',
         'Plano': 'Plano Controle 20GB',
         'Valor do Plano': 79.90,
         'Responsável': colaboradores[0]?.nome || 'Nome do Colaborador'
@@ -284,6 +294,7 @@ export const LinhasTelefonicas: React.FC = () => {
       {
         'Número da Linha': '(11) 91234-5678',
         'Tipo': 'eSIM',
+        'Operadora': 'Claro',
         'Plano': 'Plano Pós 30GB',
         'Valor do Plano': 99.90,
         'Responsável': ''
@@ -298,6 +309,7 @@ export const LinhasTelefonicas: React.FC = () => {
     const colWidths = [
       { wch: 20 }, // Número da Linha
       { wch: 15 }, // Tipo
+      { wch: 20 }, // Operadora
       { wch: 25 }, // Plano
       { wch: 18 }, // Valor do Plano
       { wch: 30 }  // Responsável
@@ -346,6 +358,12 @@ export const LinhasTelefonicas: React.FC = () => {
           continue
         }
 
+        const operadora = row['Operadora'] || row['operadora']
+        if (!operadora) {
+          erros.push(`Linha ${linha}: Operadora é obrigatória`)
+          continue
+        }
+
         const plano = row['Plano'] || row['plano']
         if (!plano) {
           erros.push(`Linha ${linha}: Plano é obrigatório`)
@@ -375,6 +393,7 @@ export const LinhasTelefonicas: React.FC = () => {
         linhasParaImportar.push({
           numero_linha: numeroLinha,
           tipo: tipo as 'eSIM' | 'Chip Físico',
+          operadora: operadora,
           plano: plano,
           valor_plano: valorPlano,
           responsavel_id: responsavel_id
@@ -499,6 +518,9 @@ export const LinhasTelefonicas: React.FC = () => {
                     Tipo
                   </th>
                   <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
+                    Operadora
+                  </th>
+                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
                     Responsável
                   </th>
                   <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
@@ -526,6 +548,9 @@ export const LinhasTelefonicas: React.FC = () => {
                       }`}>
                         {linha.tipo}
                       </span>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                      {linha.operadora}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                       {linha.responsavel_nome || (
@@ -679,6 +704,21 @@ export const LinhasTelefonicas: React.FC = () => {
                       <span className="ml-2 text-sm text-gray-700">eSIM</span>
                     </label>
                   </div>
+                </div>
+
+                {/* Operadora */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    Operadora <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.operadora}
+                    onChange={(e) => setFormData({ ...formData, operadora: e.target.value })}
+                    placeholder="Ex: Vivo, Claro, Tim, Oi"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    required
+                  />
                 </div>
 
                 {/* Plano */}
