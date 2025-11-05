@@ -37,6 +37,11 @@ export const LinhasTelefonicas: React.FC = () => {
   const [showImportModal, setShowImportModal] = useState(false)
   const [importResult, setImportResult] = useState<{ success: number; errors: string[] }>({ success: 0, errors: [] })
   
+  // Estados para filtros e busca
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterTipo, setFilterTipo] = useState<'Todos' | 'eSIM' | 'Chip Físico'>('Todos')
+  const [filterOperadora, setFilterOperadora] = useState<string>('Todas')
+  
   const [formData, setFormData] = useState<Omit<LinhaTelefonica, 'id' | 'created_at' | 'responsavel_nome'>>({
     responsavel_id: null,
     numero_linha: '',
@@ -69,6 +74,29 @@ export const LinhasTelefonicas: React.FC = () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [showDropdown])
+
+  // Obter lista única de operadoras
+  const operadorasUnicas = ['Todas', ...Array.from(new Set(linhas.map(l => l.operadora).filter(Boolean)))]
+
+  // Função de filtragem
+  const linhasFiltradas = linhas.filter(linha => {
+    // Filtro de busca (busca em múltiplos campos)
+    const searchLower = searchTerm.toLowerCase()
+    const matchSearch = searchTerm === '' || 
+      linha.numero_linha.toLowerCase().includes(searchLower) ||
+      linha.operadora.toLowerCase().includes(searchLower) ||
+      linha.plano.toLowerCase().includes(searchLower) ||
+      (linha.usuario_setor && linha.usuario_setor.toLowerCase().includes(searchLower)) ||
+      (linha.responsavel_nome && linha.responsavel_nome.toLowerCase().includes(searchLower))
+
+    // Filtro de tipo
+    const matchTipo = filterTipo === 'Todos' || linha.tipo === filterTipo
+
+    // Filtro de operadora
+    const matchOperadora = filterOperadora === 'Todas' || linha.operadora === filterOperadora
+
+    return matchSearch && matchTipo && matchOperadora
+  })
 
   const fetchLinhas = async () => {
     try {
@@ -502,15 +530,89 @@ export const LinhasTelefonicas: React.FC = () => {
         </div>
       </div>
 
+      {/* Filtros e Busca */}
+      <div className="bg-white shadow rounded-lg mb-4 sm:mb-6 p-4 sm:p-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Campo de Busca */}
+          <div className="md:col-span-2">
+            <label className="block text-xs font-medium text-gray-700 mb-2">
+              Buscar
+            </label>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar por número, operadora, plano, usuário/setor..."
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+            />
+          </div>
+
+          {/* Filtro por Tipo */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">
+              Tipo
+            </label>
+            <select
+              value={filterTipo}
+              onChange={(e) => setFilterTipo(e.target.value as 'Todos' | 'eSIM' | 'Chip Físico')}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+            >
+              <option value="Todos">Todos</option>
+              <option value="eSIM">eSIM</option>
+              <option value="Chip Físico">Chip Físico</option>
+            </select>
+          </div>
+
+          {/* Filtro por Operadora */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">
+              Operadora
+            </label>
+            <select
+              value={filterOperadora}
+              onChange={(e) => setFilterOperadora(e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+            >
+              {operadorasUnicas.map((op) => (
+                <option key={op} value={op}>{op}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Indicador de resultados filtrados */}
+        {(searchTerm || filterTipo !== 'Todos' || filterOperadora !== 'Todas') && (
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-sm text-gray-600">
+              Exibindo {linhasFiltradas.length} de {linhas.length} linhas
+            </p>
+            <button
+              onClick={() => {
+                setSearchTerm('')
+                setFilterTipo('Todos')
+                setFilterOperadora('Todas')
+              }}
+              className="text-sm text-slate-600 hover:text-slate-800 underline"
+            >
+              Limpar filtros
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Lista de Linhas */}
-      {linhas.length === 0 ? (
+      {linhasFiltradas.length === 0 ? (
         <div className="bg-white shadow rounded-lg">
           <div className="text-center py-12">
             <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
-            <p className="text-gray-500 text-lg font-medium">Nenhuma linha telefônica cadastrada</p>
-            <p className="text-gray-400 text-sm mt-1">Clique em "Adicionar Linha" para começar</p>
+            <p className="text-gray-500 text-lg font-medium">
+              {linhas.length === 0 ? 'Nenhuma linha telefônica cadastrada' : 'Nenhum resultado encontrado'}
+            </p>
+            <p className="text-gray-400 text-sm mt-1">
+              {linhas.length === 0 ? 'Clique em "Adicionar Linha" para começar' : 'Tente ajustar os filtros de busca'}
+            </p>
           </div>
         </div>
       ) : (
@@ -546,7 +648,7 @@ export const LinhasTelefonicas: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {linhas.map((linha) => (
+                {linhasFiltradas.map((linha) => (
                   <tr key={linha.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {formatarNumero(linha.numero_linha)}
