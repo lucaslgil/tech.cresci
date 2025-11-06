@@ -186,7 +186,7 @@ export const Layout: React.FC = () => {
           {/* Footer - Config and Logout */}
           <div className="border-t border-slate-800 p-3 space-y-2">
             <Link
-              to="/configuracao"
+              to="/configuracoes"
               className="w-full flex items-center justify-center px-3 py-2.5 text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white rounded transition-colors duration-200"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

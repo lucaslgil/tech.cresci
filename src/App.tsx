@@ -10,6 +10,7 @@ import { CadastroItem } from './features/inventario/CadastroItem'
 import { RelatorioItens } from './features/inventario/RelatorioItens'
 import { LinhasTelefonicas } from './features/inventario/LinhasTelefonicas'
 import { Documentacao } from './features/documentacao/Documentacao'
+import { Configuracoes } from './features/configuracoes/Configuracoes'
 import ConfiguracaoUsuario from './features/perfil/ConfiguracaoUsuario'
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
             <Route path="inventario/cadastrar-item" element={<CadastroItem />} />
             <Route path="inventario/relatorio" element={<RelatorioItens />} />
             <Route path="inventario/linhas-telefonicas" element={<LinhasTelefonicas />} />
+            <Route path="configuracoes" element={<Configuracoes />} />
             <Route path="configuracao" element={<ConfiguracaoUsuario />} />
             <Route path="documentacao" element={<Documentacao />} />
           </Route>
