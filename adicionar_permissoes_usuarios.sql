@@ -1,8 +1,9 @@
 -- ============================================================
--- ATUALIZAR TABELA 'USUARIOS' COM SISTEMA DE PERMISSÕES
+-- ADICIONAR COLUNA 'PERMISSOES' E 'ATIVO' NA TABELA USUARIOS
 -- ============================================================
 -- Data: 06 de Novembro de 2025
--- Objetivo: Adicionar coluna de permissões e status ativo/inativo para usuários
+-- Objetivo: Adicionar colunas de permissões e status (se a tabela já existir)
+-- ATENÇÃO: Se a tabela 'usuarios' não existe, execute primeiro 'criar_tabela_usuarios.sql'
 -- ============================================================
 
 -- 1. Adicionar coluna de permissões (JSONB para flexibilidade)
