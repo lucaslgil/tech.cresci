@@ -30,13 +30,17 @@ ALTER TABLE public.usuarios ENABLE ROW LEVEL SECURITY;
 
 -- 4. Criar políticas de segurança (RLS Policies)
 
--- Permitir que usuários vejam apenas seu próprio perfil (ou todos se tiver permissão de configurações)
-CREATE POLICY "Usuários podem ver seu próprio perfil"
+-- Política 1: Usuários podem ver seu próprio perfil
+CREATE POLICY "Ver próprio perfil"
+  ON public.usuarios
+  FOR SELECT
+  USING (auth.uid() = id);
+
+-- Política 2: Admins podem ver todos os usuários
+CREATE POLICY "Admins podem ver todos"
   ON public.usuarios
   FOR SELECT
   USING (
-    auth.uid() = id 
-    OR 
     EXISTS (
       SELECT 1 FROM public.usuarios
       WHERE id = auth.uid()
@@ -45,17 +49,43 @@ CREATE POLICY "Usuários podem ver seu próprio perfil"
     )
   );
 
--- Permitir que usuários atualizem apenas seu próprio perfil (exceto permissões)
-CREATE POLICY "Usuários podem atualizar seu próprio perfil"
+-- Política 3: Usuários podem atualizar seu próprio perfil (nome, telefone, cargo, foto)
+CREATE POLICY "Atualizar próprio perfil"
   ON public.usuarios
   FOR UPDATE
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
--- Permitir que usuários com permissão de configurações gerenciem todos os usuários
-CREATE POLICY "Admins podem gerenciar todos os usuários"
+-- Política 4: Admins podem inserir novos usuários
+CREATE POLICY "Admins podem criar usuários"
   ON public.usuarios
-  FOR ALL
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.usuarios
+      WHERE id = auth.uid()
+      AND ativo = true
+      AND permissoes->>'configuracoes' = 'true'
+    )
+  );
+
+-- Política 5: Admins podem atualizar qualquer usuário
+CREATE POLICY "Admins podem atualizar usuários"
+  ON public.usuarios
+  FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.usuarios
+      WHERE id = auth.uid()
+      AND ativo = true
+      AND permissoes->>'configuracoes' = 'true'
+    )
+  );
+
+-- Política 6: Admins podem deletar usuários
+CREATE POLICY "Admins podem deletar usuários"
+  ON public.usuarios
+  FOR DELETE
   USING (
     EXISTS (
       SELECT 1 FROM public.usuarios
