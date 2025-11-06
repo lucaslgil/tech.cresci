@@ -6,6 +6,9 @@
 -- ============================================================
 
 -- IMPORTANTE: Substitua 'SEU-EMAIL@EXEMPLO.COM' pelo seu e-mail real!
+-- E-mails dos usuários existentes no sistema:
+-- - paulo.pinheiro@crescieperdi.com.br
+-- - suporte.ti@crescieperdi.com.br
 
 -- 1. Atualizar permissões do primeiro usuário
 UPDATE public.usuarios 
@@ -13,7 +16,7 @@ SET permissoes = '{"cadastro_empresa": true, "cadastro_colaborador": true, "inve
     ativo = true,
     nome = COALESCE(nome, 'Administrador'),
     cargo = COALESCE(cargo, 'Administrador do Sistema')
-WHERE email = 'SEU-EMAIL@EXEMPLO.COM';
+WHERE email = 'paulo.pinheiro@crescieperdi.com.br';  -- Altere para seu e-mail
 
 -- 2. Verificar se a atualização foi bem-sucedida
 SELECT 
@@ -28,7 +31,7 @@ SELECT
   permissoes->>'inventario_linhas' as inventario_linhas,
   permissoes->>'configuracoes' as configuracoes
 FROM public.usuarios
-WHERE email = 'SEU-EMAIL@EXEMPLO.COM';
+WHERE email = 'paulo.pinheiro@crescieperdi.com.br';  -- Altere para seu e-mail
 
 -- ============================================================
 -- ALTERNATIVA: Se não souber o e-mail, atualize o primeiro usuário
