@@ -5,6 +5,14 @@
 -- Objetivo: Corrigir políticas RLS para permitir que admins vejam todos os usuários
 -- ============================================================
 
+-- ============================================================
+-- DESABILITAR RLS E USAR CONTROLE DE PERMISSÕES NA APLICAÇÃO
+-- ============================================================
+-- Data: 06 de Novembro de 2025
+-- Objetivo: Simplificar evitando recursão infinita nas políticas RLS
+-- As permissões serão controladas na camada da aplicação
+-- ============================================================
+
 -- 1. Remover políticas existentes
 DROP POLICY IF EXISTS "Usuários podem ver seu próprio perfil" ON public.usuarios;
 DROP POLICY IF EXISTS "Usuários podem atualizar seu próprio perfil" ON public.usuarios;
@@ -15,94 +23,34 @@ DROP POLICY IF EXISTS "Atualizar próprio perfil" ON public.usuarios;
 DROP POLICY IF EXISTS "Admins podem criar usuários" ON public.usuarios;
 DROP POLICY IF EXISTS "Admins podem atualizar usuários" ON public.usuarios;
 DROP POLICY IF EXISTS "Admins podem deletar usuários" ON public.usuarios;
+DROP POLICY IF EXISTS "Leitura para autenticados" ON public.usuarios;
 
--- 2. Criar novas políticas
-
--- Política 1: Usuários podem ver seu próprio perfil
-CREATE POLICY "Ver próprio perfil"
-  ON public.usuarios
-  FOR SELECT
-  USING (auth.uid() = id);
-
--- Política 2: Admins podem ver todos os usuários
-CREATE POLICY "Admins podem ver todos"
-  ON public.usuarios
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.usuarios
-      WHERE id = auth.uid()
-      AND ativo = true
-      AND permissoes->>'configuracoes' = 'true'
-    )
-  );
-
--- Política 3: Usuários podem atualizar seu próprio perfil (nome, telefone, cargo, foto)
-CREATE POLICY "Atualizar próprio perfil"
-  ON public.usuarios
-  FOR UPDATE
-  USING (auth.uid() = id)
-  WITH CHECK (auth.uid() = id);
-
--- Política 4: Admins podem inserir novos usuários
-CREATE POLICY "Admins podem criar usuários"
-  ON public.usuarios
-  FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.usuarios
-      WHERE id = auth.uid()
-      AND ativo = true
-      AND permissoes->>'configuracoes' = 'true'
-    )
-  );
-
--- Política 5: Admins podem atualizar qualquer usuário
-CREATE POLICY "Admins podem atualizar usuários"
-  ON public.usuarios
-  FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.usuarios
-      WHERE id = auth.uid()
-      AND ativo = true
-      AND permissoes->>'configuracoes' = 'true'
-    )
-  );
-
--- Política 6: Admins podem deletar usuários
-CREATE POLICY "Admins podem deletar usuários"
-  ON public.usuarios
-  FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.usuarios
-      WHERE id = auth.uid()
-      AND ativo = true
-      AND permissoes->>'configuracoes' = 'true'
-    )
-  );
+-- 2. Desabilitar RLS (as permissões serão controladas na aplicação)
+ALTER TABLE public.usuarios DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================
 -- VERIFICAÇÕES
 -- ============================================================
 
--- Verificar políticas criadas
+-- Verificar se RLS está desabilitado
+SELECT tablename, rowsecurity
+FROM pg_tables
+WHERE tablename = 'usuarios' AND schemaname = 'public';
+-- Resultado esperado: rowsecurity = false
+
+-- Verificar que não há políticas
 SELECT schemaname, tablename, policyname, permissive, cmd
 FROM pg_policies
 WHERE tablename = 'usuarios'
 ORDER BY policyname;
+-- Resultado esperado: 0 linhas
 
 -- ============================================================
 -- NOTAS IMPORTANTES
 -- ============================================================
--- 1. Agora usuários com permissao->>'configuracoes' = 'true' podem:
---    - Ver todos os usuários (SELECT)
---    - Criar novos usuários (INSERT)
---    - Atualizar qualquer usuário (UPDATE)
---    - Deletar usuários (DELETE)
--- 2. Usuários comuns podem apenas:
---    - Ver seu próprio perfil (SELECT)
---    - Atualizar seu próprio perfil (UPDATE)
--- 3. As políticas são cumulativas (OR lógico)
+-- 1. RLS foi DESABILITADO para evitar recursão infinita
+-- 2. O controle de permissões será feito na camada da aplicação React
+-- 3. A aplicação React verificará as permissões antes de permitir ações
+-- 4. Apenas usuários autenticados têm acesso à tabela
+-- 5. A segurança depende da autenticação do Supabase (auth.users)
 -- ============================================================

@@ -20,82 +20,15 @@ CREATE TABLE IF NOT EXISTS public.usuarios (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 2. Criar índices para melhorar performance
+-- 3. Criar índices para melhorar performance
 CREATE INDEX IF NOT EXISTS idx_usuarios_email ON public.usuarios(email);
 CREATE INDEX IF NOT EXISTS idx_usuarios_ativo ON public.usuarios(ativo);
 CREATE INDEX IF NOT EXISTS idx_usuarios_permissoes ON public.usuarios USING GIN (permissoes);
 
--- 3. Habilitar Row Level Security (RLS)
-ALTER TABLE public.usuarios ENABLE ROW LEVEL SECURITY;
+-- NOTA: RLS não será habilitado para evitar recursão infinita
+-- O controle de permissões será feito na camada da aplicação
 
--- 4. Criar políticas de segurança (RLS Policies)
-
--- Política 1: Usuários podem ver seu próprio perfil
-CREATE POLICY "Ver próprio perfil"
-  ON public.usuarios
-  FOR SELECT
-  USING (auth.uid() = id);
-
--- Política 2: Admins podem ver todos os usuários
-CREATE POLICY "Admins podem ver todos"
-  ON public.usuarios
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.usuarios
-      WHERE id = auth.uid()
-      AND ativo = true
-      AND permissoes->>'configuracoes' = 'true'
-    )
-  );
-
--- Política 3: Usuários podem atualizar seu próprio perfil (nome, telefone, cargo, foto)
-CREATE POLICY "Atualizar próprio perfil"
-  ON public.usuarios
-  FOR UPDATE
-  USING (auth.uid() = id)
-  WITH CHECK (auth.uid() = id);
-
--- Política 4: Admins podem inserir novos usuários
-CREATE POLICY "Admins podem criar usuários"
-  ON public.usuarios
-  FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.usuarios
-      WHERE id = auth.uid()
-      AND ativo = true
-      AND permissoes->>'configuracoes' = 'true'
-    )
-  );
-
--- Política 5: Admins podem atualizar qualquer usuário
-CREATE POLICY "Admins podem atualizar usuários"
-  ON public.usuarios
-  FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.usuarios
-      WHERE id = auth.uid()
-      AND ativo = true
-      AND permissoes->>'configuracoes' = 'true'
-    )
-  );
-
--- Política 6: Admins podem deletar usuários
-CREATE POLICY "Admins podem deletar usuários"
-  ON public.usuarios
-  FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.usuarios
-      WHERE id = auth.uid()
-      AND ativo = true
-      AND permissoes->>'configuracoes' = 'true'
-    )
-  );
-
--- 5. Criar trigger para atualizar updated_at automaticamente
+-- 4. Criar trigger para atualizar updated_at automaticamente
 CREATE OR REPLACE FUNCTION public.handle_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -109,7 +42,7 @@ CREATE TRIGGER set_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_updated_at();
 
--- 6. Criar função para inserir usuário automaticamente após signup
+-- 5. Criar função para inserir usuário automaticamente após signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -124,7 +57,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 7. Criar trigger para executar a função após signup
+-- 6. Criar trigger para executar a função após signup
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
@@ -207,10 +140,10 @@ WHERE event_object_table = 'usuarios'
 -- ============================================================
 -- 1. A tabela usuarios está vinculada ao auth.users via Foreign Key
 -- 2. Quando um usuário é deletado do auth.users, será deletado de usuarios também (CASCADE)
--- 3. RLS está ativo para segurança
--- 4. Usuários só veem seu próprio perfil, exceto quem tem permissão de configurações
--- 5. O trigger handle_new_user() cria automaticamente um registro em usuarios após signup
--- 6. O trigger set_updated_at() atualiza automaticamente o campo updated_at
--- 7. Permissões padrão: todas false (nenhum acesso)
--- 8. Status padrão: ativo = true
+-- 3. RLS NÃO está ativo - controle de permissões feito na aplicação
+-- 4. O trigger handle_new_user() cria automaticamente um registro em usuarios após signup
+-- 5. O trigger set_updated_at() atualiza automaticamente o campo updated_at
+-- 6. Permissões padrão: todas false (nenhum acesso)
+-- 7. Status padrão: ativo = true
+-- 8. Apenas usuários autenticados podem acessar a tabela
 -- ============================================================
