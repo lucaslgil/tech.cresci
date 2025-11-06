@@ -7,14 +7,7 @@
 
 -- 1. Adicionar coluna de permissões (JSONB para flexibilidade)
 ALTER TABLE usuarios 
-ADD COLUMN IF NOT EXISTS permissoes JSONB DEFAULT '{
-  "cadastro_empresa": false,
-  "cadastro_colaborador": false,
-  "inventario_item": false,
-  "inventario_relatorio": false,
-  "inventario_linhas": false,
-  "configuracoes": false
-}'::jsonb;
+ADD COLUMN IF NOT EXISTS permissoes JSONB DEFAULT '{"cadastro_empresa": false, "cadastro_colaborador": false, "inventario_item": false, "inventario_relatorio": false, "inventario_linhas": false, "configuracoes": false}'::jsonb;
 
 -- 2. Adicionar coluna de status ativo/inativo
 ALTER TABLE usuarios 
@@ -59,26 +52,12 @@ WHERE tablename = 'usuarios'
 
 -- Exemplo: Dar todas as permissões para um usuário administrador
 -- UPDATE usuarios 
--- SET permissoes = '{
---   "cadastro_empresa": true,
---   "cadastro_colaborador": true,
---   "inventario_item": true,
---   "inventario_relatorio": true,
---   "inventario_linhas": true,
---   "configuracoes": true
--- }'::jsonb
+-- SET permissoes = '{"cadastro_empresa": true, "cadastro_colaborador": true, "inventario_item": true, "inventario_relatorio": true, "inventario_linhas": true, "configuracoes": true}'::jsonb
 -- WHERE email = 'admin@empresa.com';
 
 -- Exemplo: Dar permissões específicas para um usuário
 -- UPDATE usuarios 
--- SET permissoes = '{
---   "cadastro_empresa": false,
---   "cadastro_colaborador": true,
---   "inventario_item": true,
---   "inventario_relatorio": true,
---   "inventario_linhas": false,
---   "configuracoes": false
--- }'::jsonb
+-- SET permissoes = '{"cadastro_empresa": false, "cadastro_colaborador": true, "inventario_item": true, "inventario_relatorio": true, "inventario_linhas": false, "configuracoes": false}'::jsonb
 -- WHERE email = 'usuario@empresa.com';
 
 -- ============================================================
