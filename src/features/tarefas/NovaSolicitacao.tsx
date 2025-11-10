@@ -208,19 +208,9 @@ export const NovaSolicitacao: React.FC = () => {
       `}}>
       </style>
 
-      <div className="max-w-2xl mx-auto relative z-10">
-        {/* Header com Logo/Título */}
+      <div className="max-w-7xl mx-auto relative z-10 px-4">
+        {/* Header com Título */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center mb-6">
-            <img 
-              src={girafaImage} 
-              alt="Girafa Cresci e Perdi" 
-              className="w-48 h-48 sm:w-56 sm:h-56 object-contain drop-shadow-2xl animate-float"
-              style={{
-                filter: 'drop-shadow(0 20px 60px rgba(0, 0, 0, 0.3))'
-              }}
-            />
-          </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-white mb-3 drop-shadow-lg">
             Central de Solicitações
           </h1>
@@ -232,8 +222,10 @@ export const NovaSolicitacao: React.FC = () => {
           </p>
         </div>
 
-        {/* Formulário */}
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-white/20">
+        {/* Container Grid: Formulário + Girafa */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          {/* Formulário */}
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-white/20 order-2 lg:order-1">
           {error && (
             <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded">
               <div className="flex items-center">
@@ -351,6 +343,19 @@ export const NovaSolicitacao: React.FC = () => {
               </button>
             </div>
           </form>
+        </div>
+
+          {/* Girafa Lateral */}
+          <div className="hidden lg:flex items-center justify-center order-1 lg:order-2">
+            <img 
+              src={girafaImage} 
+              alt="Girafa Cresci e Perdi" 
+              className="w-full max-w-md object-contain drop-shadow-2xl animate-float"
+              style={{
+                filter: 'drop-shadow(0 20px 60px rgba(0, 0, 0, 0.4))'
+              }}
+            />
+          </div>
         </div>
 
         {/* Footer */}
