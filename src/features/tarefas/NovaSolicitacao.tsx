@@ -196,6 +196,13 @@ export const NovaSolicitacao: React.FC = () => {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
+        .animate-float {
+          animation: floatGirafa 3s ease-in-out infinite;
+        }
+        @keyframes floatGirafa {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-15px); }
+        }
         .delay-500 { animation-delay: 0.5s; }
         .delay-1000 { animation-delay: 1s; }
       `}}>
@@ -204,14 +211,17 @@ export const NovaSolicitacao: React.FC = () => {
       <div className="max-w-2xl mx-auto relative z-10">
         {/* Header com Logo/Título */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center mb-4">
+          <div className="inline-flex items-center justify-center mb-6">
             <img 
               src={girafaImage} 
               alt="Girafa Cresci e Perdi" 
-              className="w-32 h-32 object-contain drop-shadow-2xl"
+              className="w-48 h-48 sm:w-56 sm:h-56 object-contain drop-shadow-2xl animate-float"
+              style={{
+                filter: 'drop-shadow(0 20px 60px rgba(0, 0, 0, 0.3))'
+              }}
             />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-3 drop-shadow-lg">
+          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-3 drop-shadow-lg">
             Central de Solicitações
           </h1>
           <p className="text-lg text-blue-100 mb-2">
