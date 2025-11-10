@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { supabase, isSupabaseConfigured } from '../../lib/supabase'
 import { Edit, Trash2, Mail, Phone, FileText, Building, Package } from 'lucide-react'
 import VincularItens from './VincularItens'
 import * as XLSX from 'xlsx'
+import { Toast } from '../../shared/components/Toast'
+
 
 interface Empresa {
   id: string
@@ -56,6 +58,12 @@ export const CadastroColaborador: React.FC = () => {
     success: number
     errors: string[]
   } | null>(null)
+  
+  // Estados para notificações
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null)
+  
+  // Ref para manter a posição do scroll
+  const editingRowRef = useRef<string | null>(null)
   
   const [formData, setFormData] = useState<FormData>({
     tipo_pessoa: 'fisica',
@@ -468,9 +476,9 @@ export const CadastroColaborador: React.FC = () => {
     setMessage(null)
 
     if (!isSupabaseConfigured) {
-      setMessage({ 
-        type: 'success', 
-        text: `Modo Demo: Colaborador ${editingColaborador ? 'atualizado' : 'cadastrado'} com sucesso!` 
+      setToast({ 
+        message: `Modo Demo: Colaborador ${editingColaborador ? 'atualizado' : 'cadastrado'} com sucesso!`,
+        type: 'success'
       })
       setLoading(false)
       closeModal()
@@ -485,26 +493,40 @@ export const CadastroColaborador: React.FC = () => {
       }
 
       if (editingColaborador) {
+        // Salvar ID para scroll posterior
+        editingRowRef.current = editingColaborador.id
+        
         const { error } = await supabase
           .from('colaboradores')
           .update(dataToSave)
           .eq('id', editingColaborador.id)
 
         if (error) throw error
-        setMessage({ type: 'success', text: 'Colaborador atualizado com sucesso!' })
+        setToast({ message: 'Colaborador atualizado com sucesso!', type: 'success' })
       } else {
         const { error } = await supabase
           .from('colaboradores')
           .insert([dataToSave])
 
         if (error) throw error
-        setMessage({ type: 'success', text: 'Colaborador cadastrado com sucesso!' })
+        setToast({ message: 'Colaborador cadastrado com sucesso!', type: 'success' })
       }
 
-      fetchColaboradores()
+      await fetchColaboradores()
       closeModal()
+      
+      // Scroll para a linha editada após atualizar a lista
+      if (editingRowRef.current) {
+        setTimeout(() => {
+          const element = document.getElementById(`colaborador-${editingRowRef.current}`)
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+          editingRowRef.current = null
+        }, 100)
+      }
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Erro ao salvar colaborador' })
+      setToast({ message: error.message || 'Erro ao salvar colaborador', type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -514,7 +536,7 @@ export const CadastroColaborador: React.FC = () => {
     if (!window.confirm(`Deseja realmente excluir o colaborador ${colaborador.nome}?`)) return
 
     if (!isSupabaseConfigured) {
-      setMessage({ type: 'success', text: 'Modo Demo: Colaborador excluído com sucesso!' })
+      setToast({ message: 'Modo Demo: Colaborador excluído com sucesso!', type: 'success' })
       return
     }
 
@@ -525,10 +547,10 @@ export const CadastroColaborador: React.FC = () => {
         .eq('id', colaborador.id)
 
       if (error) throw error
-      setMessage({ type: 'success', text: 'Colaborador excluído com sucesso!' })
+      setToast({ message: 'Colaborador excluído com sucesso!', type: 'success' })
       fetchColaboradores()
     } catch (error: any) {
-      setMessage({ type: 'error', text: 'Erro ao excluir colaborador: ' + error.message })
+      setToast({ message: 'Erro ao excluir colaborador: ' + error.message, type: 'error' })
     }
   }
 
@@ -868,7 +890,7 @@ export const CadastroColaborador: React.FC = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredColaboradores.map((colaborador) => (
-                  <tr key={colaborador.id} className="hover:bg-gray-50">
+                  <tr key={colaborador.id} id={`colaborador-${colaborador.id}`} className="hover:bg-gray-50">
                     <td className="px-3 sm:px-6 py-4 text-sm font-medium text-gray-900">
                       <div className="min-w-[120px]">
                         <div className="font-medium">{colaborador.nome}</div>
@@ -936,7 +958,7 @@ export const CadastroColaborador: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filteredColaboradores.map((colaborador) => (
-            <div key={colaborador.id} className="bg-white rounded-lg shadow p-4 sm:p-6 hover:shadow-lg transition-shadow">
+            <div key={colaborador.id} id={`colaborador-${colaborador.id}`} className="bg-white rounded-lg shadow p-4 sm:p-6 hover:shadow-lg transition-shadow">
               <div className="flex justify-between items-start mb-3 sm:mb-4">
                 <div className="min-w-0 flex-1 pr-2">
                   <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate">{colaborador.nome}</h3>
@@ -1348,6 +1370,15 @@ export const CadastroColaborador: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Toast de Notificação */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   )

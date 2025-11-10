@@ -1,7 +1,12 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import * as XLSX from 'xlsx'
-import { Edit, Trash2 } from 'lucide-react'
+import { Edit, Trash2, Phone, CheckCircle, XCircle, DollarSign, ArrowUpDown, ArrowUp, ArrowDown, History } from 'lucide-react'
+import { Toast } from '../../shared/components/Toast'
+import { SelectAparelho } from '../../shared/components/SelectAparelho'
+
+
+
 
 interface LinhaTelefonica {
   id: string
@@ -13,7 +18,20 @@ interface LinhaTelefonica {
   usuario_setor: string | null
   plano: string
   valor_plano: number
+  status: 'Ativa' | 'Inativa'
+  aparelho_id: string | null
+  aparelho_nome?: string
   created_at?: string
+}
+
+interface HistoricoLinha {
+  id: string
+  linha_id: string
+  campo_alterado: 'responsavel' | 'usuario_setor'
+  valor_anterior: string | null
+  valor_novo: string | null
+  usuario_id: string | null
+  data_alteracao: string
 }
 
 interface Colaborador {
@@ -33,6 +51,9 @@ export const LinhasTelefonicas: React.FC = () => {
   const [showDropdown, setShowDropdown] = useState(false)
   const [responsavelSelecionado, setResponsavelSelecionado] = useState<Colaborador | null>(null)
   
+  // Estados para busca de aparelho
+  const [aparelhoSelecionado, setAparelhoSelecionado] = useState<{ id: string; codigo: string; item: string; modelo: string } | null>(null)
+  
   // Estados para importação de Excel
   const [showImportModal, setShowImportModal] = useState(false)
   const [importResult, setImportResult] = useState<{ success: number; errors: string[] }>({ success: 0, errors: [] })
@@ -41,15 +62,34 @@ export const LinhasTelefonicas: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterTipo, setFilterTipo] = useState<'Todos' | 'eSIM' | 'Chip Físico'>('Todos')
   const [filterOperadora, setFilterOperadora] = useState<string>('Todas')
+  const [filterStatus, setFilterStatus] = useState<'Todos' | 'Ativa' | 'Inativa'>('Todos')
   
-  const [formData, setFormData] = useState<Omit<LinhaTelefonica, 'id' | 'created_at' | 'responsavel_nome'>>({
+  // Estados para histórico
+  const [showHistoricoModal, setShowHistoricoModal] = useState(false)
+  const [historicoAtual, setHistoricoAtual] = useState<HistoricoLinha[]>([])
+  const [linhaHistorico, setLinhaHistorico] = useState<LinhaTelefonica | null>(null)
+  const [loadingHistorico, setLoadingHistorico] = useState(false)
+  
+  // Estados para ordenação
+  const [sortColumn, setSortColumn] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  
+  // Estados para notificações
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null)
+  
+  // Ref para manter a posição do scroll
+  const editingRowRef = useRef<string | null>(null)
+  
+  const [formData, setFormData] = useState<Omit<LinhaTelefonica, 'id' | 'created_at' | 'responsavel_nome' | 'aparelho_nome'>>({
     responsavel_id: null,
     numero_linha: '',
     tipo: 'Chip Físico',
     operadora: '',
     usuario_setor: null,
     plano: '',
-    valor_plano: 0
+    valor_plano: 0,
+    status: 'Ativa',
+    aparelho_id: null
   })
 
   useEffect(() => {
@@ -95,8 +135,50 @@ export const LinhasTelefonicas: React.FC = () => {
     // Filtro de operadora
     const matchOperadora = filterOperadora === 'Todas' || linha.operadora === filterOperadora
 
-    return matchSearch && matchTipo && matchOperadora
+    // Filtro de status
+    const matchStatus = filterStatus === 'Todos' || linha.status === filterStatus
+
+    return matchSearch && matchTipo && matchOperadora && matchStatus
   })
+
+  // Função de ordenação
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      // Se já está ordenando por essa coluna, inverte a direção
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      // Nova coluna, ordena ascendente
+      setSortColumn(column)
+      setSortDirection('asc')
+    }
+  }
+
+  // Aplicar ordenação
+  const linhasOrdenadas = [...linhasFiltradas].sort((a, b) => {
+    if (!sortColumn) return 0
+
+    let aValue: any = a[sortColumn as keyof LinhaTelefonica]
+    let bValue: any = b[sortColumn as keyof LinhaTelefonica]
+
+    // Tratamento especial para campos que podem ser null
+    if (aValue === null || aValue === undefined) aValue = ''
+    if (bValue === null || bValue === undefined) bValue = ''
+
+    // Comparação para números
+    if (sortColumn === 'valor_plano') {
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue
+    }
+
+    // Comparação para strings
+    const comparison = String(aValue).localeCompare(String(bValue), 'pt-BR')
+    return sortDirection === 'asc' ? comparison : -comparison
+  })
+
+  // Cálculos para o dashboard
+  const totalLinhas = linhas.length
+  const linhasAtivas = linhas.filter(l => l.status === 'Ativa').length
+  const linhasInativas = linhas.filter(l => l.status === 'Inativa').length
+  const valorTotal = linhas.reduce((sum, l) => sum + l.valor_plano, 0)
 
   const fetchLinhas = async () => {
     try {
@@ -108,6 +190,12 @@ export const LinhasTelefonicas: React.FC = () => {
           colaboradores:responsavel_id (
             id,
             nome
+          ),
+          itens:aparelho_id (
+            id,
+            codigo,
+            item,
+            modelo
           )
         `)
         .order('created_at', { ascending: false })
@@ -116,7 +204,10 @@ export const LinhasTelefonicas: React.FC = () => {
 
       const linhasFormatadas = data?.map((linha: any) => ({
         ...linha,
-        responsavel_nome: linha.colaboradores?.nome || ''
+        responsavel_nome: linha.colaboradores?.nome || '',
+        aparelho_nome: linha.itens 
+          ? `${linha.itens.codigo} - ${linha.itens.item}${linha.itens.modelo ? ` (${linha.itens.modelo})` : ''}`
+          : ''
       })) || []
 
       setLinhas(linhasFormatadas)
@@ -126,6 +217,31 @@ export const LinhasTelefonicas: React.FC = () => {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchHistorico = async (linhaId: string) => {
+    try {
+      setLoadingHistorico(true)
+      const { data, error } = await supabase
+        .from('historico_linhas_telefonicas')
+        .select('*')
+        .eq('linha_id', linhaId)
+        .order('data_alteracao', { ascending: false })
+
+      if (error) throw error
+      setHistoricoAtual(data || [])
+    } catch (error) {
+      console.error('Erro ao buscar histórico:', error)
+      setToast({ message: 'Erro ao carregar histórico', type: 'error' })
+    } finally {
+      setLoadingHistorico(false)
+    }
+  }
+
+  const abrirHistorico = async (linha: LinhaTelefonica) => {
+    setLinhaHistorico(linha)
+    setShowHistoricoModal(true)
+    await fetchHistorico(linha.id)
   }
 
   const fetchColaboradores = async () => {
@@ -153,7 +269,9 @@ export const LinhasTelefonicas: React.FC = () => {
         operadora: linha.operadora,
         usuario_setor: linha.usuario_setor,
         plano: linha.plano,
-        valor_plano: linha.valor_plano
+        valor_plano: linha.valor_plano,
+        status: linha.status,
+        aparelho_id: linha.aparelho_id
       })
       // Buscar o nome do responsável se houver
       if (linha.responsavel_id) {
@@ -165,6 +283,18 @@ export const LinhasTelefonicas: React.FC = () => {
       } else {
         setResponsavelSelecionado(null)
         setSearchResponsavel('')
+      }
+      // Configurar aparelho selecionado se houver (buscar da linha que vem com dados do join)
+      if (linha.aparelho_id && (linha as any).itens) {
+        const aparelhoData = (linha as any).itens
+        setAparelhoSelecionado({
+          id: aparelhoData.id,
+          codigo: aparelhoData.codigo,
+          item: aparelhoData.item,
+          modelo: aparelhoData.modelo
+        })
+      } else {
+        setAparelhoSelecionado(null)
       }
     } else {
       resetForm()
@@ -181,10 +311,13 @@ export const LinhasTelefonicas: React.FC = () => {
       operadora: '',
       usuario_setor: null,
       plano: '',
-      valor_plano: 0
+      valor_plano: 0,
+      status: 'Ativa',
+      aparelho_id: null
     })
     setSearchResponsavel('')
     setResponsavelSelecionado(null)
+    setAparelhoSelecionado(null)
     setShowDropdown(false)
   }
 
@@ -219,32 +352,64 @@ export const LinhasTelefonicas: React.FC = () => {
     colab.nome.toLowerCase().includes(searchResponsavel.toLowerCase())
   )
 
+  // Função para registrar alterações no histórico
+  const registrarHistorico = async (
+    linhaId: string,
+    campo: 'responsavel' | 'usuario_setor',
+    valorAnterior: string | null,
+    valorNovo: string | null
+  ) => {
+    try {
+      // Obter o ID do usuário autenticado
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      await supabase
+        .from('historico_linhas_telefonicas')
+        .insert([{
+          linha_id: linhaId,
+          campo_alterado: campo,
+          valor_anterior: valorAnterior,
+          valor_novo: valorNovo,
+          usuario_id: user?.id || null
+        }])
+    } catch (error) {
+      console.error('Erro ao registrar histórico:', error)
+      // Não lança erro para não interromper o fluxo principal
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     // Validações
     if (!formData.numero_linha.trim()) {
-      alert('Número da linha é obrigatório')
+      setToast({ message: 'Número da linha é obrigatório', type: 'warning' })
       return
     }
 
     if (!formData.operadora.trim()) {
-      alert('Operadora é obrigatória')
+      setToast({ message: 'Operadora é obrigatória', type: 'warning' })
       return
     }
 
     if (!formData.plano.trim()) {
-      alert('Plano é obrigatório')
+      setToast({ message: 'Plano é obrigatório', type: 'warning' })
       return
     }
 
     if (formData.valor_plano < 0) {
-      alert('Valor do plano não pode ser negativo')
+      setToast({ message: 'Valor do plano não pode ser negativo', type: 'warning' })
       return
     }
 
     try {
       if (editingId) {
+        // Buscar dados anteriores para comparação
+        const linhaAnterior = linhas.find(l => l.id === editingId)
+        
+        // Salvar ID para scroll posterior
+        editingRowRef.current = editingId
+        
         // Atualizar
         const { error } = await supabase
           .from('linhas_telefonicas')
@@ -252,7 +417,25 @@ export const LinhasTelefonicas: React.FC = () => {
           .eq('id', editingId)
 
         if (error) throw error
-        alert('Linha telefônica atualizada com sucesso!')
+        
+        // Registrar histórico se houve mudança no responsável
+        if (linhaAnterior && linhaAnterior.responsavel_id !== formData.responsavel_id) {
+          const nomeAnterior = linhaAnterior.responsavel_nome || null
+          const nomeNovo = colaboradores.find(c => c.id === formData.responsavel_id)?.nome || null
+          await registrarHistorico(editingId, 'responsavel', nomeAnterior, nomeNovo)
+        }
+        
+        // Registrar histórico se houve mudança no usuário/setor
+        if (linhaAnterior && linhaAnterior.usuario_setor !== formData.usuario_setor) {
+          await registrarHistorico(
+            editingId, 
+            'usuario_setor', 
+            linhaAnterior.usuario_setor, 
+            formData.usuario_setor
+          )
+        }
+        
+        setToast({ message: 'Linha telefônica atualizada com sucesso!', type: 'success' })
       } else {
         // Criar
         const { error } = await supabase
@@ -260,15 +443,26 @@ export const LinhasTelefonicas: React.FC = () => {
           .insert([formData])
 
         if (error) throw error
-        alert('Linha telefônica cadastrada com sucesso!')
+        setToast({ message: 'Linha telefônica cadastrada com sucesso!', type: 'success' })
       }
 
       setShowModal(false)
       resetForm()
-      fetchLinhas()
+      await fetchLinhas()
+      
+      // Scroll para a linha editada após atualizar a lista
+      if (editingRowRef.current) {
+        setTimeout(() => {
+          const element = document.getElementById(`linha-${editingRowRef.current}`)
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+          editingRowRef.current = null
+        }, 100)
+      }
     } catch (error: any) {
       console.error('Erro ao salvar linha:', error)
-      alert(`Erro ao salvar linha telefônica: ${error.message}`)
+      setToast({ message: `Erro ao salvar linha telefônica: ${error.message}`, type: 'error' })
     }
   }
 
@@ -285,7 +479,7 @@ export const LinhasTelefonicas: React.FC = () => {
 
       if (error) throw error
       
-      alert('Linha telefônica excluída com sucesso!')
+      setToast({ message: 'Linha telefônica excluída com sucesso!', type: 'success' })
       fetchLinhas()
     } catch (error: any) {
       console.error('Erro ao excluir linha:', error)
@@ -323,6 +517,7 @@ export const LinhasTelefonicas: React.FC = () => {
         'Usuário/Setor': 'TI - Suporte',
         'Plano': 'Plano Controle 20GB',
         'Valor do Plano': 79.90,
+        'Status': 'Ativa',
         'Responsável': colaboradores[0]?.nome || 'Nome do Colaborador'
       },
       {
@@ -332,6 +527,7 @@ export const LinhasTelefonicas: React.FC = () => {
         'Usuário/Setor': 'Vendas',
         'Plano': 'Plano Pós 30GB',
         'Valor do Plano': 99.90,
+        'Status': 'Ativa',
         'Responsável': ''
       }
     ]
@@ -348,6 +544,7 @@ export const LinhasTelefonicas: React.FC = () => {
       { wch: 25 }, // Usuário/Setor
       { wch: 25 }, // Plano
       { wch: 18 }, // Valor do Plano
+      { wch: 15 }, // Status
       { wch: 30 }  // Responsável
     ]
     worksheet['!cols'] = colWidths
@@ -411,6 +608,13 @@ export const LinhasTelefonicas: React.FC = () => {
           continue
         }
 
+        // Status (padrão: Ativa)
+        const status = row['Status'] || row['status'] || 'Ativa'
+        if (status !== 'Ativa' && status !== 'Inativa') {
+          erros.push(`Linha ${linha}: Status deve ser "Ativa" ou "Inativa"`)
+          continue
+        }
+
         // Buscar responsável pelo nome (opcional)
         let responsavel_id = null
         const nomeResponsavel = row['Responsável'] || row['responsavel'] || row['Responsavel']
@@ -432,6 +636,7 @@ export const LinhasTelefonicas: React.FC = () => {
           usuario_setor: usuarioSetor,
           plano: plano,
           valor_plano: valorPlano,
+          status: status as 'Ativa' | 'Inativa',
           responsavel_id: responsavel_id
         })
       }
@@ -530,9 +735,66 @@ export const LinhasTelefonicas: React.FC = () => {
         </div>
       </div>
 
+      {/* Dashboard Minimalista */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6">
+        {/* Total de Linhas */}
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0 bg-slate-100 rounded-md p-3">
+              <Phone className="h-6 w-6 text-slate-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total de Linhas</p>
+              <p className="text-2xl font-bold text-gray-900">{totalLinhas}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Linhas Ativas */}
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0 bg-green-100 rounded-md p-3">
+              <CheckCircle className="h-6 w-6 text-green-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Linhas Ativas</p>
+              <p className="text-2xl font-bold text-green-600">{linhasAtivas}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Linhas Inativas */}
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0 bg-red-100 rounded-md p-3">
+              <XCircle className="h-6 w-6 text-red-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Linhas Inativas</p>
+              <p className="text-2xl font-bold text-red-600">{linhasInativas}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Valor Total Mensal */}
+        <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+          <div className="flex items-center">
+            <div className="flex-shrink-0 bg-blue-100 rounded-md p-3">
+              <DollarSign className="h-6 w-6 text-blue-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Valor Total</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Filtros e Busca */}
       <div className="bg-white shadow rounded-lg mb-4 sm:mb-6 p-4 sm:p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {/* Campo de Busca */}
           <div className="md:col-span-2">
             <label className="block text-xs font-medium text-gray-700 mb-2">
@@ -542,7 +804,7 @@ export const LinhasTelefonicas: React.FC = () => {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por número, operadora, plano, usuário/setor..."
+              placeholder="Buscar por número, operadora, plano..."
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
             />
           </div>
@@ -578,10 +840,26 @@ export const LinhasTelefonicas: React.FC = () => {
               ))}
             </select>
           </div>
+
+          {/* Filtro por Status */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-2">
+              Status
+            </label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as 'Todos' | 'Ativa' | 'Inativa')}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+            >
+              <option value="Todos">Todos</option>
+              <option value="Ativa">Ativa</option>
+              <option value="Inativa">Inativa</option>
+            </select>
+          </div>
         </div>
 
         {/* Indicador de resultados filtrados */}
-        {(searchTerm || filterTipo !== 'Todos' || filterOperadora !== 'Todas') && (
+        {(searchTerm || filterTipo !== 'Todos' || filterOperadora !== 'Todas' || filterStatus !== 'Todos') && (
           <div className="mt-4 flex items-center justify-between">
             <p className="text-sm text-gray-600">
               Exibindo {linhasFiltradas.length} de {linhas.length} linhas
@@ -591,6 +869,7 @@ export const LinhasTelefonicas: React.FC = () => {
                 setSearchTerm('')
                 setFilterTipo('Todos')
                 setFilterOperadora('Todas')
+                setFilterStatus('Todos')
               }}
               className="text-sm text-slate-600 hover:text-slate-800 underline"
             >
@@ -621,26 +900,113 @@ export const LinhasTelefonicas: React.FC = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                    Número
+                  <th 
+                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('numero_linha')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Número
+                      {sortColumn === 'numero_linha' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      )}
+                      {sortColumn !== 'numero_linha' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </div>
                   </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                    Tipo
+                  <th 
+                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('tipo')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Tipo
+                      {sortColumn === 'tipo' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      )}
+                      {sortColumn !== 'tipo' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </div>
                   </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                    Operadora
+                  <th 
+                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('operadora')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Operadora
+                      {sortColumn === 'operadora' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      )}
+                      {sortColumn !== 'operadora' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </div>
                   </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                    Usuário/Setor
+                  <th 
+                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('usuario_setor')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Usuário/Setor
+                      {sortColumn === 'usuario_setor' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      )}
+                      {sortColumn !== 'usuario_setor' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </div>
                   </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                    Responsável
+                  <th 
+                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('responsavel_nome')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Responsável
+                      {sortColumn === 'responsavel_nome' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      )}
+                      {sortColumn !== 'responsavel_nome' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </div>
                   </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                    Plano
+                  <th 
+                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('plano')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Plano
+                      {sortColumn === 'plano' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      )}
+                      {sortColumn !== 'plano' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </div>
                   </th>
-                  <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider">
-                    Valor
+                  <th 
+                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('valor_plano')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Valor
+                      {sortColumn === 'valor_plano' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      )}
+                      {sortColumn !== 'valor_plano' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Status
+                      {sortColumn === 'status' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      )}
+                      {sortColumn !== 'status' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('aparelho_nome')}
+                  >
+                    <div className="flex items-center gap-1">
+                      Aparelho
+                      {sortColumn === 'aparelho_nome' && (
+                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                      )}
+                      {sortColumn !== 'aparelho_nome' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                    </div>
                   </th>
                   <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider">
                     Ações
@@ -648,8 +1014,8 @@ export const LinhasTelefonicas: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {linhasFiltradas.map((linha) => (
-                  <tr key={linha.id} className="hover:bg-slate-50 transition-colors">
+                {linhasOrdenadas.map((linha) => (
+                  <tr key={linha.id} id={`linha-${linha.id}`} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {formatarNumero(linha.numero_linha)}
                     </td>
@@ -679,8 +1045,29 @@ export const LinhasTelefonicas: React.FC = () => {
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {formatarValor(linha.valor_plano)}
                     </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        linha.status === 'Ativa' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {linha.status}
+                      </span>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-700 max-w-xs truncate" title={linha.aparelho_nome || ''}>
+                      {linha.aparelho_nome || (
+                        <span className="text-gray-400 italic">-</span>
+                      )}
+                    </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-3">
+                        <button
+                          onClick={() => abrirHistorico(linha)}
+                          className="text-slate-600 hover:text-slate-900"
+                          title="Ver Histórico"
+                        >
+                          <History className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => openModal(linha)}
                           className="text-blue-600 hover:text-blue-900"
@@ -885,6 +1272,34 @@ export const LinhasTelefonicas: React.FC = () => {
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                   />
                 </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    Status
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Ativa' | 'Inativa' })}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="Ativa">Ativa</option>
+                    <option value="Inativa">Inativa</option>
+                  </select>
+                </div>
+
+                {/* Aparelho Vinculado */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                    Aparelho Vinculado
+                  </label>
+                  <SelectAparelho
+                    value={formData.aparelho_id}
+                    onChange={(value) => setFormData({ ...formData, aparelho_id: value })}
+                    aparelhoSelecionado={aparelhoSelecionado}
+                    onAparelhoSelecionadoChange={setAparelhoSelecionado}
+                  />
+                </div>
               </form>
             </div>
 
@@ -982,6 +1397,133 @@ export const LinhasTelefonicas: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de Histórico */}
+      {showHistoricoModal && linhaHistorico && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200 bg-slate-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900">Histórico de Alterações</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Linha: <span className="font-medium">{linhaHistorico.numero_linha}</span>
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowHistoricoModal(false)
+                    setLinhaHistorico(null)
+                    setHistoricoAtual([])
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-4 overflow-y-auto max-h-[calc(90vh-140px)]">
+              {loadingHistorico ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-700 mx-auto"></div>
+                  <p className="text-gray-600 mt-4">Carregando histórico...</p>
+                </div>
+              ) : historicoAtual.length === 0 ? (
+                <div className="text-center py-12">
+                  <History className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                  <p className="text-gray-500 text-lg">Nenhuma alteração registrada</p>
+                  <p className="text-gray-400 text-sm mt-2">
+                    As alterações nos campos "Responsável" e "Usuário/Setor" serão registradas aqui
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {historicoAtual.map((registro, index) => (
+                    <div
+                      key={registro.id}
+                      className={`border-l-4 ${
+                        registro.campo_alterado === 'responsavel' 
+                          ? 'border-blue-500 bg-blue-50' 
+                          : 'border-purple-500 bg-purple-50'
+                      } p-4 rounded-r-lg`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              registro.campo_alterado === 'responsavel'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-purple-100 text-purple-800'
+                            }`}>
+                              {registro.campo_alterado === 'responsavel' ? 'Responsável' : 'Usuário/Setor'}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(registro.data_alteracao).toLocaleString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="text-sm">
+                              <span className="text-gray-600">De:</span>{' '}
+                              <span className="font-medium text-gray-900">
+                                {registro.valor_anterior || <span className="italic text-gray-400">(vazio)</span>}
+                              </span>
+                            </div>
+                            <div className="text-sm">
+                              <span className="text-gray-600">Para:</span>{' '}
+                              <span className="font-medium text-gray-900">
+                                {registro.valor_novo || <span className="italic text-gray-400">(vazio)</span>}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        {index === 0 && (
+                          <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded">
+                            Mais recente
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  setShowHistoricoModal(false)
+                  setLinhaHistorico(null)
+                  setHistoricoAtual([])
+                }}
+                className="w-full px-4 py-2 text-sm font-medium text-white bg-slate-700 rounded-md hover:bg-slate-800 transition-colors"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast de Notificação */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   )

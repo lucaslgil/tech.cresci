@@ -9,6 +9,8 @@ import { CadastroColaborador } from './features/colaborador/CadastroColaborador'
 import { CadastroItem } from './features/inventario/CadastroItem'
 import { RelatorioItens } from './features/inventario/RelatorioItens'
 import { LinhasTelefonicas } from './features/inventario/LinhasTelefonicas'
+import { GerenciamentoTarefas } from './features/tarefas/GerenciamentoTarefas'
+import { NovaSolicitacao } from './features/tarefas/NovaSolicitacao'
 import { Documentacao } from './features/documentacao/Documentacao'
 import { Configuracoes } from './features/configuracoes/Configuracoes'
 import ConfiguracaoUsuario from './features/perfil/ConfiguracaoUsuario'
@@ -19,6 +21,10 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<LoginForm />} />
+          
+          {/* Rota Pública - Nova Solicitação */}
+          <Route path="/nova-solicitacao" element={<NovaSolicitacao />} />
+          
           <Route
             path="/"
             element={
@@ -34,6 +40,8 @@ function App() {
             <Route path="inventario/cadastrar-item" element={<CadastroItem />} />
             <Route path="inventario/relatorio" element={<RelatorioItens />} />
             <Route path="inventario/linhas-telefonicas" element={<LinhasTelefonicas />} />
+            <Route path="tarefas" element={<GerenciamentoTarefas />} />
+            <Route path="tarefas/nova-solicitacao" element={<NovaSolicitacao />} />
             <Route path="configuracoes" element={<Configuracoes />} />
             <Route path="configuracao" element={<ConfiguracaoUsuario />} />
             <Route path="documentacao" element={<Documentacao />} />

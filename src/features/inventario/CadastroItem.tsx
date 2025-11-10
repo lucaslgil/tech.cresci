@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { supabase, isSupabaseConfigured } from '../../lib/supabase'
 import TermoResponsabilidade from './TermoResponsabilidade'
 import * as XLSX from 'xlsx'
+import { Toast } from '../../shared/components/Toast'
+
 
 interface Item {
   id: string
@@ -61,6 +63,12 @@ export const CadastroItem: React.FC = () => {
     key: keyof Item | 'responsavel'
     direction: 'asc' | 'desc'
   } | null>(null)
+  
+  // Estados para notificações
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null)
+  
+  // Ref para manter a posição do scroll
+  const editingRowRef = useRef<string | null>(null)
   
   const [formData, setFormData] = useState<FormData>({
     codigo: '',
@@ -266,9 +274,9 @@ export const CadastroItem: React.FC = () => {
     setMessage(null)
 
     if (!isSupabaseConfigured) {
-      setMessage({ 
-        type: 'success', 
-        text: `Modo Demo: Item seria ${editingItem ? 'atualizado' : 'cadastrado'} com sucesso! Configure o Supabase para salvar de verdade.` 
+      setToast({ 
+        message: `Modo Demo: Item seria ${editingItem ? 'atualizado' : 'cadastrado'} com sucesso! Configure o Supabase para salvar de verdade.`,
+        type: 'success'
       })
       setLoading(false)
       return
@@ -282,6 +290,9 @@ export const CadastroItem: React.FC = () => {
       }
 
       if (editingItem) {
+        // Salvar ID para scroll posterior
+        editingRowRef.current = editingItem.id
+        
         // Atualizar item existente
         const { error } = await supabase
           .from('itens')
@@ -289,7 +300,7 @@ export const CadastroItem: React.FC = () => {
           .eq('id', editingItem.id)
 
         if (error) throw error
-        setMessage({ type: 'success', text: 'Item atualizado com sucesso!' })
+        setToast({ message: 'Item atualizado com sucesso!', type: 'success' })
       } else {
         // Inserir novo item
         const { error } = await supabase
@@ -297,7 +308,7 @@ export const CadastroItem: React.FC = () => {
           .insert([itemData])
 
         if (error) throw error
-        setMessage({ type: 'success', text: 'Item cadastrado com sucesso!' })
+        setToast({ message: 'Item cadastrado com sucesso!', type: 'success' })
       }
 
       setFormData({
@@ -315,14 +326,23 @@ export const CadastroItem: React.FC = () => {
       });
       setEditingItem(null); // Limpar estado de edição
       
-      // Recarregar lista e fechar modal após 1.5s
+      // Recarregar lista e fechar modal
       await fetchItens()
-      setTimeout(() => {
-        setShowModal(false)
-        setMessage(null)
-      }, 1500)
+      setShowModal(false)
+      setMessage(null)
+      
+      // Scroll para a linha editada após atualizar a lista
+      if (editingRowRef.current) {
+        setTimeout(() => {
+          const element = document.getElementById(`item-${editingRowRef.current}`)
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+          editingRowRef.current = null
+        }, 100)
+      }
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Erro ao cadastrar item' })
+      setToast({ message: error.message || 'Erro ao cadastrar item', type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -659,15 +679,12 @@ export const CadastroItem: React.FC = () => {
 
       if (error) throw error
 
-      setMessage({ type: 'success', text: 'Item excluído com sucesso!' })
+      setToast({ message: 'Item excluído com sucesso!', type: 'success' })
       await fetchItens()
       setShowDeleteModal(false)
       setItemToDelete(null)
-      
-      // Limpar mensagem após 3 segundos
-      setTimeout(() => setMessage(null), 3000)
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Erro ao excluir item' })
+      setToast({ message: error.message || 'Erro ao excluir item', type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -995,7 +1012,7 @@ export const CadastroItem: React.FC = () => {
                 </tr>
               ) : (
                 filteredItens.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
+                  <tr key={item.id} id={`item-${item.id}`} className="hover:bg-gray-50">
                     <td className="px-2 sm:px-3 py-4 text-sm text-gray-900" style={{ width: `${columnWidths.codigo}px` }}>
                       <div className="overflow-hidden text-ellipsis">{item.codigo}</div>
                     </td>
@@ -1066,7 +1083,7 @@ export const CadastroItem: React.FC = () => {
         /* Visualização em Cards */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
           {filteredItens.map((item) => (
-            <div key={item.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200">
+            <div key={item.id} id={`item-${item.id}`} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200">
               <div className="p-3 sm:p-4">
                 <div className="flex justify-between items-start mb-2 sm:mb-3">
                   <div className="flex-1 min-w-0 pr-2">
@@ -1655,6 +1672,15 @@ export const CadastroItem: React.FC = () => {
           item={itemParaTermo}
           isOpen={showTermoModal}
           onClose={handleCloseTermoModal}
+        />
+      )}
+
+      {/* Toast de Notificação */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
         />
       )}
     </div>

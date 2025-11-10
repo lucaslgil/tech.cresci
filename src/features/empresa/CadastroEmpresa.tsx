@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { supabase, isSupabaseConfigured } from '../../lib/supabase'
 import { Search, Edit, Trash2, Plus, Users, Building, Grid3X3, Mail, Phone, MapPin, FileText } from 'lucide-react'
+import { Toast } from '../../shared/components/Toast'
+
 
 interface Empresa {
   id: number
@@ -38,6 +40,12 @@ export const CadastroEmpresa: React.FC = () => {
   const [showModal, setShowModal] = useState(false)
   const [editingEmpresa, setEditingEmpresa] = useState<Empresa | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  
+  // Estados para notificações
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null)
+  
+  // Ref para manter a posição do scroll
+  const editingRowRef = useRef<string | null>(null)
   
   const [formData, setFormData] = useState({
     codigo: '',
@@ -234,9 +242,9 @@ export const CadastroEmpresa: React.FC = () => {
     setMessage(null)
 
     if (!isSupabaseConfigured) {
-      setMessage({ 
-        type: 'success', 
-        text: `Modo Demo: Empresa ${editingEmpresa ? 'atualizada' : 'cadastrada'} com sucesso!` 
+      setToast({ 
+        message: `Modo Demo: Empresa ${editingEmpresa ? 'atualizada' : 'cadastrada'} com sucesso!`,
+        type: 'success'
       })
       setLoading(false)
       closeModal()
@@ -245,26 +253,40 @@ export const CadastroEmpresa: React.FC = () => {
 
     try {
       if (editingEmpresa) {
+        // Salvar ID para scroll posterior
+        editingRowRef.current = String(editingEmpresa.id)
+        
         const { error } = await supabase
           .from('empresas')
           .update(formData)
           .eq('id', editingEmpresa.id)
 
         if (error) throw error
-        setMessage({ type: 'success', text: 'Empresa atualizada com sucesso!' })
+        setToast({ message: 'Empresa atualizada com sucesso!', type: 'success' })
       } else {
         const { error } = await supabase
           .from('empresas')
           .insert([formData])
 
         if (error) throw error
-        setMessage({ type: 'success', text: 'Empresa cadastrada com sucesso!' })
+        setToast({ message: 'Empresa cadastrada com sucesso!', type: 'success' })
       }
 
-      fetchEmpresas()
+      await fetchEmpresas()
       closeModal()
+      
+      // Scroll para a linha editada após atualizar a lista
+      if (editingRowRef.current) {
+        setTimeout(() => {
+          const element = document.getElementById(`empresa-${editingRowRef.current}`)
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+          editingRowRef.current = null
+        }, 100)
+      }
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Erro ao salvar empresa' })
+      setToast({ message: error.message || 'Erro ao salvar empresa', type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -274,7 +296,7 @@ export const CadastroEmpresa: React.FC = () => {
     if (!window.confirm(`Deseja realmente excluir a empresa ${empresa.razao_social}?`)) return
 
     if (!isSupabaseConfigured) {
-      setMessage({ type: 'success', text: 'Modo Demo: Empresa excluída com sucesso!' })
+      setToast({ message: 'Modo Demo: Empresa excluída com sucesso!', type: 'success' })
       return
     }
 
@@ -285,10 +307,10 @@ export const CadastroEmpresa: React.FC = () => {
         .eq('id', empresa.id)
 
       if (error) throw error
-      setMessage({ type: 'success', text: 'Empresa excluída com sucesso!' })
+      setToast({ message: 'Empresa excluída com sucesso!', type: 'success' })
       fetchEmpresas()
     } catch (error: any) {
-      setMessage({ type: 'error', text: 'Erro ao excluir empresa: ' + error.message })
+      setToast({ message: 'Erro ao excluir empresa: ' + error.message, type: 'error' })
     }
   }
 
@@ -377,7 +399,7 @@ export const CadastroEmpresa: React.FC = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredEmpresas.map((empresa) => (
-                  <tr key={empresa.id} className="hover:bg-gray-50">
+                  <tr key={empresa.id} id={`empresa-${empresa.id}`} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {empresa.codigo}
                     </td>
@@ -419,7 +441,7 @@ export const CadastroEmpresa: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredEmpresas.map((empresa) => (
-            <div key={empresa.id} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
+            <div key={empresa.id} id={`empresa-${empresa.id}`} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">{empresa.razao_social}</h3>
@@ -688,6 +710,15 @@ export const CadastroEmpresa: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Toast de Notificação */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   )
