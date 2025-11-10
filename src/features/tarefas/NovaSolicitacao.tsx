@@ -346,13 +346,14 @@ export const NovaSolicitacao: React.FC = () => {
         </div>
 
           {/* Girafa Lateral */}
-          <div className="hidden lg:flex items-center justify-center order-1 lg:order-2">
+          <div className="hidden lg:flex items-start justify-center order-1 lg:order-2 sticky top-8">
             <img 
               src={girafaImage} 
               alt="Girafa Cresci e Perdi" 
-              className="w-full max-w-md object-contain drop-shadow-2xl animate-float"
+              className="w-full h-auto object-contain drop-shadow-2xl animate-float"
               style={{
-                filter: 'drop-shadow(0 20px 60px rgba(0, 0, 0, 0.4))'
+                filter: 'drop-shadow(0 25px 80px rgba(0, 0, 0, 0.5))',
+                maxHeight: '800px'
               }}
             />
           </div>
