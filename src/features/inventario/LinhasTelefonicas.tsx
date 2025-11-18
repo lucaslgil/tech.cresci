@@ -895,120 +895,121 @@ export const LinhasTelefonicas: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+        <>
+          {/* Tabela para Desktop */}
+          <div className="hidden md:block bg-white shadow rounded-lg overflow-hidden">
+            <table className="w-full divide-y divide-gray-200">
               <thead className="bg-slate-50">
                 <tr>
                   <th 
-                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    className="px-2 md:px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
                     onClick={() => handleSort('numero_linha')}
                   >
                     <div className="flex items-center gap-1">
                       Número
                       {sortColumn === 'numero_linha' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
                       )}
-                      {sortColumn !== 'numero_linha' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                      {sortColumn !== 'numero_linha' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
                     </div>
                   </th>
                   <th 
-                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    className="hidden lg:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
                     onClick={() => handleSort('tipo')}
                   >
                     <div className="flex items-center gap-1">
                       Tipo
                       {sortColumn === 'tipo' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
                       )}
-                      {sortColumn !== 'tipo' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                      {sortColumn !== 'tipo' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
                     </div>
                   </th>
                   <th 
-                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    className="px-2 md:px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
                     onClick={() => handleSort('operadora')}
                   >
                     <div className="flex items-center gap-1">
                       Operadora
                       {sortColumn === 'operadora' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
                       )}
-                      {sortColumn !== 'operadora' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                      {sortColumn !== 'operadora' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
                     </div>
                   </th>
                   <th 
-                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    className="hidden xl:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
                     onClick={() => handleSort('usuario_setor')}
                   >
                     <div className="flex items-center gap-1">
                       Usuário/Setor
                       {sortColumn === 'usuario_setor' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
                       )}
-                      {sortColumn !== 'usuario_setor' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                      {sortColumn !== 'usuario_setor' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
                     </div>
                   </th>
                   <th 
-                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    className="px-2 md:px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
                     onClick={() => handleSort('responsavel_nome')}
                   >
                     <div className="flex items-center gap-1">
                       Responsável
                       {sortColumn === 'responsavel_nome' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
                       )}
-                      {sortColumn !== 'responsavel_nome' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                      {sortColumn !== 'responsavel_nome' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
                     </div>
                   </th>
                   <th 
-                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    className="hidden lg:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
                     onClick={() => handleSort('plano')}
                   >
                     <div className="flex items-center gap-1">
                       Plano
                       {sortColumn === 'plano' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
                       )}
-                      {sortColumn !== 'plano' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                      {sortColumn !== 'plano' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
                     </div>
                   </th>
                   <th 
-                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    className="px-2 md:px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
                     onClick={() => handleSort('valor_plano')}
                   >
                     <div className="flex items-center gap-1">
                       Valor
                       {sortColumn === 'valor_plano' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
                       )}
-                      {sortColumn !== 'valor_plano' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                      {sortColumn !== 'valor_plano' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
                     </div>
                   </th>
                   <th 
-                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    className="px-2 md:px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
                     onClick={() => handleSort('status')}
                   >
                     <div className="flex items-center gap-1">
                       Status
                       {sortColumn === 'status' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
                       )}
-                      {sortColumn !== 'status' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                      {sortColumn !== 'status' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
                     </div>
                   </th>
                   <th 
-                    className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    className="hidden xl:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
                     onClick={() => handleSort('aparelho_nome')}
                   >
                     <div className="flex items-center gap-1">
                       Aparelho
                       {sortColumn === 'aparelho_nome' && (
-                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                        sortDirection === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
                       )}
-                      {sortColumn !== 'aparelho_nome' && <ArrowUpDown className="w-3 h-3 opacity-30" />}
+                      {sortColumn !== 'aparelho_nome' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
                     </div>
                   </th>
-                  <th className="px-4 sm:px-6 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider">
+                  <th className="px-2 md:px-4 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider">
                     Ações
                   </th>
                 </tr>
@@ -1016,10 +1017,10 @@ export const LinhasTelefonicas: React.FC = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {linhasOrdenadas.map((linha) => (
                   <tr key={linha.id} id={`linha-${linha.id}`} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-2 md:px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                       {formatarNumero(linha.numero_linha)}
                     </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                    <td className="hidden lg:table-cell px-2 md:px-4 py-3 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         linha.tipo === 'eSIM' 
                           ? 'bg-purple-100 text-purple-800' 
@@ -1028,24 +1029,24 @@ export const LinhasTelefonicas: React.FC = () => {
                         {linha.tipo}
                       </span>
                     </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    <td className="px-2 md:px-4 py-3 whitespace-nowrap text-sm text-gray-700">
                       {linha.operadora}
                     </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    <td className="hidden xl:table-cell px-2 md:px-4 py-3 whitespace-nowrap text-sm text-gray-700">
                       {linha.usuario_setor || (
                         <span className="text-gray-400 italic">-</span>
                       )}
                     </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    <td className="px-2 md:px-4 py-3 whitespace-nowrap text-sm text-gray-700">
                       {linha.responsavel_nome || ''}
                     </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    <td className="hidden lg:table-cell px-2 md:px-4 py-3 whitespace-nowrap text-sm text-gray-700">
                       {linha.plano}
                     </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-2 md:px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
                       {formatarValor(linha.valor_plano)}
                     </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm">
+                    <td className="px-2 md:px-4 py-3 whitespace-nowrap text-sm">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         linha.status === 'Ativa' 
                           ? 'bg-green-100 text-green-800' 
@@ -1054,33 +1055,33 @@ export const LinhasTelefonicas: React.FC = () => {
                         {linha.status}
                       </span>
                     </td>
-                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-700 max-w-xs truncate" title={linha.aparelho_nome || ''}>
+                    <td className="hidden xl:table-cell px-2 md:px-4 py-3 text-sm text-gray-700 max-w-xs truncate" title={linha.aparelho_nome || ''}>
                       {linha.aparelho_nome || (
                         <span className="text-gray-400 italic">-</span>
                       )}
                     </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-3">
+                    <td className="px-2 md:px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end space-x-1">
                         <button
                           onClick={() => abrirHistorico(linha)}
-                          className="text-slate-600 hover:text-slate-900"
+                          className="text-slate-600 hover:text-slate-900 p-1"
                           title="Ver Histórico"
                         >
-                          <History className="w-4 h-4" />
+                          <History className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => openModal(linha)}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-blue-600 hover:text-blue-900 p-1"
                           title="Editar"
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => handleDelete(linha.id)}
-                          className="text-red-600 hover:text-red-900"
+                          className="text-red-600 hover:text-red-900 p-1"
                           title="Excluir"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       </div>
                     </td>
@@ -1089,7 +1090,90 @@ export const LinhasTelefonicas: React.FC = () => {
               </tbody>
             </table>
           </div>
-        </div>
+
+          {/* Cards para Mobile/Tablet */}
+          <div className="md:hidden space-y-4">
+            {linhasOrdenadas.map((linha) => (
+              <div key={linha.id} className="bg-white shadow rounded-lg p-4">
+                {/* Cabeçalho do Card */}
+                <div className="flex justify-between items-start mb-3 pb-3 border-b border-gray-200">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-gray-900">{formatarNumero(linha.numero_linha)}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        linha.tipo === 'eSIM' ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800'
+                      }`}>
+                        {linha.tipo}
+                      </span>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        linha.status === 'Ativa' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {linha.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => abrirHistorico(linha)}
+                      className="text-slate-600 hover:text-slate-900 p-1"
+                      title="Ver Histórico"
+                    >
+                      <History className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => openModal(linha)}
+                      className="text-blue-600 hover:text-blue-900 p-1"
+                      title="Editar"
+                    >
+                      <Edit className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(linha.id)}
+                      className="text-red-600 hover:text-red-900 p-1"
+                      title="Excluir"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Informações do Card */}
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Operadora:</span>
+                    <span className="font-medium text-gray-900">{linha.operadora}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Plano:</span>
+                    <span className="font-medium text-gray-900">{linha.plano}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Valor:</span>
+                    <span className="font-semibold text-gray-900">{formatarValor(linha.valor_plano)}</span>
+                  </div>
+                  {linha.usuario_setor && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Usuário/Setor:</span>
+                      <span className="font-medium text-gray-900">{linha.usuario_setor}</span>
+                    </div>
+                  )}
+                  {linha.responsavel_nome && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Responsável:</span>
+                      <span className="font-medium text-gray-900">{linha.responsavel_nome}</span>
+                    </div>
+                  )}
+                  {linha.aparelho_nome && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Aparelho:</span>
+                      <span className="font-medium text-gray-900 truncate ml-2">{linha.aparelho_nome}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Modal */}

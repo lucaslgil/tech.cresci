@@ -148,7 +148,7 @@ export const CadastroItem: React.FC = () => {
         .from('itens')
         .select(`
           *,
-          colaboradores (
+          colaboradores:responsavel_id (
             nome,
             cpf,
             email

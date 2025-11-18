@@ -80,6 +80,10 @@ export const CadastroColaborador: React.FC = () => {
 
   const [setores, setSetores] = useState<string[]>([])
   const [cargos, setCargos] = useState<string[]>([])
+  
+  // Estados para o dashboard
+  const [totalEquipamentos, setTotalEquipamentos] = useState(0)
+  const [loadingStats, setLoadingStats] = useState(true)
 
   // Função para buscar setores
   const fetchSetores = async () => {
@@ -282,7 +286,33 @@ export const CadastroColaborador: React.FC = () => {
     fetchColaboradores()
     fetchSetores()
     fetchCargos()
+    fetchEquipamentosStats()
   }, [])
+  
+  // Função para buscar estatísticas de equipamentos
+  const fetchEquipamentosStats = async () => {
+    if (!isSupabaseConfigured) {
+      setTotalEquipamentos(5) // Valor demo
+      setLoadingStats(false)
+      return
+    }
+
+    try {
+      const { count, error } = await supabase
+        .from('itens')
+        .select('*', { count: 'exact', head: true })
+        .not('responsavel_id', 'is', null)
+
+      if (error) throw error
+      
+      setTotalEquipamentos(count || 0)
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas:', error)
+      setTotalEquipamentos(0)
+    } finally {
+      setLoadingStats(false)
+    }
+  }
 
   // Funções não utilizadas no momento (campos convertidos para input livre)
   // @ts-ignore
@@ -748,6 +778,53 @@ export const CadastroColaborador: React.FC = () => {
 
   return (
     <div className="p-3 sm:p-4 md:p-6 max-w-full overflow-x-hidden">
+      {/* Dashboard de Estatísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        {/* Card: Colaboradores Ativos */}
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-100 text-sm font-medium mb-1">Colaboradores Ativos</p>
+              {loadingStats ? (
+                <div className="animate-pulse h-10 w-20 bg-blue-400 rounded"></div>
+              ) : (
+                <p className="text-4xl font-bold">
+                  {colaboradores.filter(c => c.status === 'Ativo').length}
+                </p>
+              )}
+              <p className="text-blue-100 text-xs mt-2">
+                Total de {colaboradores.length} cadastrados
+              </p>
+            </div>
+            <div className="bg-blue-400/30 p-4 rounded-full">
+              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Card: Equipamentos Vinculados */}
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-100 text-sm font-medium mb-1">Equipamentos Vinculados</p>
+              {loadingStats ? (
+                <div className="animate-pulse h-10 w-20 bg-purple-400 rounded"></div>
+              ) : (
+                <p className="text-4xl font-bold">{totalEquipamentos}</p>
+              )}
+              <p className="text-purple-100 text-xs mt-2">
+                Itens sob responsabilidade
+              </p>
+            </div>
+            <div className="bg-purple-400/30 p-4 rounded-full">
+              <Package className="w-12 h-12 text-white" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Cabeçalho com botões */}
       <div className="bg-white shadow rounded-lg mb-4 sm:mb-6">
         <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
