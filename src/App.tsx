@@ -6,6 +6,7 @@ import { Layout } from './shared/components/Layout'
 import { Dashboard } from './features/dashboard/Dashboard'
 import { CadastroEmpresa } from './features/empresa/CadastroEmpresa'
 import { CadastroColaborador } from './features/colaborador/CadastroColaborador'
+import { CadastroProdutos } from './features/produtos/CadastroProdutos'
 import { CadastroItem } from './features/inventario/CadastroItem'
 import { RelatorioItens } from './features/inventario/RelatorioItens'
 import { LinhasTelefonicas } from './features/inventario/LinhasTelefonicas'
@@ -37,6 +38,7 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="cadastro/empresa" element={<CadastroEmpresa />} />
             <Route path="cadastro/colaborador" element={<CadastroColaborador />} />
+            <Route path="cadastro/produtos" element={<CadastroProdutos />} />
             <Route path="inventario/cadastrar-item" element={<CadastroItem />} />
             <Route path="inventario/relatorio" element={<RelatorioItens />} />
             <Route path="inventario/linhas-telefonicas" element={<LinhasTelefonicas />} />

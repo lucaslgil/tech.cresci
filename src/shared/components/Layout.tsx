@@ -109,6 +109,16 @@ export const Layout: React.FC = () => {
                     </svg>
                     Colaborador
                   </Link>
+                  
+                  <Link
+                    to="/cadastro/produtos"
+                    className="w-full flex items-center px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded transition-colors duration-200 text-slate-500 hover:text-slate-300 hover:bg-slate-800"
+                  >
+                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    <span className="truncate">Produtos</span>
+                  </Link>
                 </div>
               )}
             </div>
