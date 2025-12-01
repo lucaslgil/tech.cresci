@@ -173,6 +173,8 @@ export const CadastroProdutos: React.FC = () => {
   }, [])
   
   // Validar formulário
+  const NCM_REGEX = /^\d{8}$/
+  
   const validateForm = (): boolean => {
     if (!formData.nome.trim()) {
       setToast({ message: 'Nome do produto é obrigatório', type: 'error' })
@@ -189,7 +191,7 @@ export const CadastroProdutos: React.FC = () => {
       return false
     }
     
-    if (formData.ncm.length !== 8 || !/^\d+$/.test(formData.ncm)) {
+    if (formData.ncm.length !== 8 || !NCM_REGEX.test(formData.ncm)) {
       setToast({ message: 'NCM deve conter exatamente 8 dígitos numéricos', type: 'error' })
       return false
     }
@@ -271,7 +273,7 @@ export const CadastroProdutos: React.FC = () => {
         controla_lote: formData.controla_lote,
         controla_serie: formData.controla_serie,
         controla_validade: formData.controla_validade,
-        dias_validade: formData.dias_validade ? parseInt(formData.dias_validade) : null,
+        dias_validade: formData.dias_validade ? parseInt(formData.dias_validade, 10) : null,
         status: formData.status,
         observacoes: formData.observacoes.trim() || null
       }
@@ -453,11 +455,15 @@ export const CadastroProdutos: React.FC = () => {
         let success = 0
         const errors: string[] = []
         
-        for (const row of jsonData as any[]) {
+        // Preparar dados para inserção em lote
+        const produtosToInsert: any[] = []
+        
+        for (let i = 0; i < (jsonData as any[]).length; i++) {
+          const row = (jsonData as any[])[i]
           try {
             // Validações básicas
             if (!row['Nome *'] || !row['Código Interno *'] || !row['NCM *']) {
-              errors.push(`Linha ${success + errors.length + 2}: Campos obrigatórios faltando`)
+              errors.push(`Linha ${i + 2}: Campos obrigatórios faltando`)
               continue
             }
             
@@ -468,7 +474,7 @@ export const CadastroProdutos: React.FC = () => {
               if (categoria) categoria_id = categoria.id
             }
             
-            const produtoData = {
+            produtosToInsert.push({
               nome: row['Nome *'],
               descricao: row['Descrição'] || null,
               codigo_interno: row['Código Interno *'],
@@ -479,7 +485,7 @@ export const CadastroProdutos: React.FC = () => {
               cest: row['CEST'] || null,
               cfop_entrada: row['CFOP Entrada'] || null,
               cfop_saida: row['CFOP Saída'] || null,
-              origem_mercadoria: parseInt(row['Origem'] || '0'),
+              origem_mercadoria: parseInt(row['Origem'] || '0', 10),
               cst_icms: row['CST ICMS'] || null,
               csosn_icms: row['CSOSN ICMS'] || null,
               aliquota_icms: parseFloat(row['Alíquota ICMS %'] || '0'),
@@ -489,20 +495,28 @@ export const CadastroProdutos: React.FC = () => {
               aliquota_cofins: parseFloat(row['Alíquota COFINS %'] || '0'),
               preco_custo: parseFloat(row['Preço Custo'] || '0'),
               preco_venda: parseFloat(row['Preço Venda'] || '0'),
-              estoque_atual: parseInt(row['Estoque Atual'] || '0'),
-              estoque_minimo: parseInt(row['Estoque Mínimo'] || '0'),
-              estoque_maximo: parseInt(row['Estoque Máximo'] || '0'),
+              estoque_atual: parseInt(row['Estoque Atual'] || '0', 10),
+              estoque_minimo: parseInt(row['Estoque Mínimo'] || '0', 10),
+              estoque_maximo: parseInt(row['Estoque Máximo'] || '0', 10),
               status: row['Status'] === 'Inativo' ? 'Inativo' : 'Ativo'
-            }
-            
-            const { error } = await supabase
+            })
+          } catch (error: any) {
+            errors.push(`Linha ${i + 2}: ${error.message}`)
+          }
+        }
+        
+        // Inserir em lote
+        if (produtosToInsert.length > 0) {
+          try {
+            const { data, error } = await supabase
               .from('produtos')
-              .insert(produtoData)
+              .insert(produtosToInsert)
+              .select()
             
             if (error) throw error
-            success++
+            success = data?.length || 0
           } catch (error: any) {
-            errors.push(`Linha ${success + errors.length + 2}: ${error.message}`)
+            errors.push(`Erro ao inserir produtos: ${error.message}`)
           }
         }
         
