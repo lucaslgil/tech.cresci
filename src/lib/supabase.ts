@@ -142,6 +142,197 @@ export interface Database {
           updated_at?: string
         }
       }
+      categorias_produtos: {
+        Row: {
+          id: string
+          nome: string
+          descricao: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nome: string
+          descricao?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          nome?: string
+          descricao?: string | null
+          updated_at?: string
+        }
+      }
+      unidades_medida: {
+        Row: {
+          id: string
+          sigla: string
+          descricao: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          sigla: string
+          descricao: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          sigla?: string
+          descricao?: string
+        }
+      }
+      produtos: {
+        Row: {
+          id: string
+          nome: string
+          descricao: string | null
+          codigo_interno: string
+          codigo_barras: string | null
+          categoria_id: string | null
+          unidade_medida: string
+          ncm: string
+          cest: string | null
+          cfop_entrada: string | null
+          cfop_saida: string | null
+          origem_mercadoria: number
+          cst_icms: string | null
+          csosn_icms: string | null
+          aliquota_icms: number
+          reducao_base_icms: number
+          cst_pis: string | null
+          aliquota_pis: number
+          cst_cofins: string | null
+          aliquota_cofins: number
+          cst_ipi: string | null
+          aliquota_ipi: number
+          codigo_enquadramento_ipi: string
+          tem_substituicao_tributaria: boolean
+          mva_st: number
+          aliquota_icms_st: number
+          reducao_base_icms_st: number
+          aliquota_aproximada_tributos: number
+          informacoes_adicionais_fiscais: string | null
+          preco_custo: number
+          preco_venda: number
+          margem_lucro: number
+          permite_desconto: boolean
+          desconto_maximo: number
+          estoque_atual: number
+          estoque_minimo: number
+          estoque_maximo: number
+          localizacao: string | null
+          controla_lote: boolean
+          controla_serie: boolean
+          controla_validade: boolean
+          dias_validade: number | null
+          status: string
+          observacoes: string | null
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          nome: string
+          descricao?: string | null
+          codigo_interno: string
+          codigo_barras?: string | null
+          categoria_id?: string | null
+          unidade_medida?: string
+          ncm: string
+          cest?: string | null
+          cfop_entrada?: string | null
+          cfop_saida?: string | null
+          origem_mercadoria?: number
+          cst_icms?: string | null
+          csosn_icms?: string | null
+          aliquota_icms?: number
+          reducao_base_icms?: number
+          cst_pis?: string | null
+          aliquota_pis?: number
+          cst_cofins?: string | null
+          aliquota_cofins?: number
+          cst_ipi?: string | null
+          aliquota_ipi?: number
+          codigo_enquadramento_ipi?: string
+          tem_substituicao_tributaria?: boolean
+          mva_st?: number
+          aliquota_icms_st?: number
+          reducao_base_icms_st?: number
+          aliquota_aproximada_tributos?: number
+          informacoes_adicionais_fiscais?: string | null
+          preco_custo?: number
+          preco_venda?: number
+          margem_lucro?: number
+          permite_desconto?: boolean
+          desconto_maximo?: number
+          estoque_atual?: number
+          estoque_minimo?: number
+          estoque_maximo?: number
+          localizacao?: string | null
+          controla_lote?: boolean
+          controla_serie?: boolean
+          controla_validade?: boolean
+          dias_validade?: number | null
+          status?: string
+          observacoes?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          nome?: string
+          descricao?: string | null
+          codigo_interno?: string
+          codigo_barras?: string | null
+          categoria_id?: string | null
+          unidade_medida?: string
+          ncm?: string
+          cest?: string | null
+          cfop_entrada?: string | null
+          cfop_saida?: string | null
+          origem_mercadoria?: number
+          cst_icms?: string | null
+          csosn_icms?: string | null
+          aliquota_icms?: number
+          reducao_base_icms?: number
+          cst_pis?: string | null
+          aliquota_pis?: number
+          cst_cofins?: string | null
+          aliquota_cofins?: number
+          cst_ipi?: string | null
+          aliquota_ipi?: number
+          codigo_enquadramento_ipi?: string
+          tem_substituicao_tributaria?: boolean
+          mva_st?: number
+          aliquota_icms_st?: number
+          reducao_base_icms_st?: number
+          aliquota_aproximada_tributos?: number
+          informacoes_adicionais_fiscais?: string | null
+          preco_custo?: number
+          preco_venda?: number
+          margem_lucro?: number
+          permite_desconto?: boolean
+          desconto_maximo?: number
+          estoque_atual?: number
+          estoque_minimo?: number
+          estoque_maximo?: number
+          localizacao?: string | null
+          controla_lote?: boolean
+          controla_serie?: boolean
+          controla_validade?: boolean
+          dias_validade?: number | null
+          status?: string
+          observacoes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+      }
     }
   }
 }
