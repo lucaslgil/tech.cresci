@@ -89,7 +89,7 @@ export function DadosPessoaFisica({ formData, onChange, erros, onConsultarCPF, c
           <DatePicker
             selected={formData.data_nascimento ? new Date(formData.data_nascimento) : null}
             onChange={(date) => onChange('data_nascimento', date ? date.toISOString().split('T')[0] : '')}
-            placeholderText="Selecione a data"
+            placeholder="Selecione a data"
             maxDate={new Date()}
             className={erros.data_nascimento ? 'border-red-500' : ''}
           />

@@ -45,12 +45,12 @@ export function GerenciadorContatos({ clienteId, contatos, onAtualizarContatos }
 
   function abrirFormularioNovo() {
     setFormData({
-      cliente_id: clienteId,
       tipo: TipoContato.TELEFONE,
       principal: contatos.length === 0,
-      usar_nfe: false,
-      usar_cobranca: false,
-      usar_marketing: false
+      recebe_nfe: false,
+      recebe_cobranca: false,
+      recebe_marketing: false,
+      valor: ''
     })
     setContatoEditando(null)
     setModoEdicao(true)
@@ -86,7 +86,7 @@ export function GerenciadorContatos({ clienteId, contatos, onAtualizarContatos }
     setSalvando(true)
     try {
       if (contatoEditando) {
-        await atualizarContato(contatoEditando.id, formData as Partial<ClienteContato>)
+        await atualizarContato(String(contatoEditando.id), formData as Partial<ClienteContato>)
       } else {
         await criarContato(formData as Partial<ClienteContato>)
       }
@@ -218,7 +218,7 @@ export function GerenciadorContatos({ clienteId, contatos, onAtualizarContatos }
                     <div className="flex gap-2">
                       {!contato.principal && (
                         <button
-                          onClick={() => handleDefinirPrincipal(contato.id)}
+                          onClick={() => handleDefinirPrincipal(String(contato.id))}
                           className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors"
                           title="Definir como principal"
                         >
@@ -232,7 +232,7 @@ export function GerenciadorContatos({ clienteId, contatos, onAtualizarContatos }
                         ✏️
                       </button>
                       <button
-                        onClick={() => handleExcluir(contato.id)}
+                        onClick={() => handleExcluir(String(contato.id))}
                         className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded transition-colors"
                       >
                         🗑️

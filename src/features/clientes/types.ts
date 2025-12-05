@@ -213,6 +213,8 @@ export interface ClienteFormData {
   rg?: string
   data_nascimento?: string
   genero?: string
+  sexo?: string
+  estado_civil?: string
   
   // Pessoa Jurídica
   razao_social?: string
