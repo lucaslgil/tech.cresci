@@ -10,11 +10,30 @@ interface Usuario {
   telefone: string
   foto_perfil: string | null
   permissoes: {
+    // Cadastros
     cadastro_empresa: boolean
     cadastro_colaborador: boolean
-    inventario_item: boolean
+    cadastro_produtos: boolean
+    cadastro_clientes: boolean
+    // Inventário
+    inventario_itens: boolean
     inventario_relatorio: boolean
     inventario_linhas: boolean
+    // Vendas
+    vendas_listagem: boolean
+    vendas_nova: boolean
+    vendas_relatorios: boolean
+    // Notas Fiscais
+    notas_fiscais_emitir: boolean
+    notas_fiscais_parametros: boolean
+    // Financeiro
+    financeiro_contas_pagar: boolean
+    financeiro_contas_receber: boolean
+    financeiro_parametros: boolean
+    // Outros
+    franquias: boolean
+    tarefas: boolean
+    documentacao: boolean
     configuracoes: boolean
   }
   ativo: boolean
@@ -35,11 +54,30 @@ export const GerenciarUsuarios: React.FC = () => {
     cargo: '',
     telefone: '',
     permissoes: {
+      // Cadastros
       cadastro_empresa: false,
       cadastro_colaborador: false,
-      inventario_item: false,
+      cadastro_produtos: false,
+      cadastro_clientes: false,
+      // Inventário
+      inventario_itens: false,
       inventario_relatorio: false,
       inventario_linhas: false,
+      // Vendas
+      vendas_listagem: false,
+      vendas_nova: false,
+      vendas_relatorios: false,
+      // Notas Fiscais
+      notas_fiscais_emitir: false,
+      notas_fiscais_parametros: false,
+      // Financeiro
+      financeiro_contas_pagar: false,
+      financeiro_contas_receber: false,
+      financeiro_parametros: false,
+      // Outros
+      franquias: false,
+      tarefas: false,
+      documentacao: false,
       configuracoes: false
     },
     ativo: true
@@ -94,11 +132,30 @@ export const GerenciarUsuarios: React.FC = () => {
       cargo: '',
       telefone: '',
       permissoes: {
+        // Cadastros
         cadastro_empresa: false,
         cadastro_colaborador: false,
-        inventario_item: false,
+        cadastro_produtos: false,
+        cadastro_clientes: false,
+        // Inventário
+        inventario_itens: false,
         inventario_relatorio: false,
         inventario_linhas: false,
+        // Vendas
+        vendas_listagem: false,
+        vendas_nova: false,
+        vendas_relatorios: false,
+        // Notas Fiscais
+        notas_fiscais_emitir: false,
+        notas_fiscais_parametros: false,
+        // Financeiro
+        financeiro_contas_pagar: false,
+        financeiro_contas_receber: false,
+        financeiro_parametros: false,
+        // Outros
+        franquias: false,
+        tarefas: false,
+        documentacao: false,
         configuracoes: false
       },
       ativo: true
@@ -147,18 +204,20 @@ export const GerenciarUsuarios: React.FC = () => {
         if (authError) throw authError
 
         if (authData.user) {
-          // Inserir dados adicionais na tabela usuarios
+          // Aguardar um pouco para o trigger criar o registro
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          
+          // Atualizar dados adicionais (o trigger já criou o registro básico)
           const { error: dbError } = await supabase
             .from('usuarios')
-            .insert([{
-              id: authData.user.id,
-              email: formData.email,
+            .update({
               nome: formData.nome,
               cargo: formData.cargo,
               telefone: formData.telefone,
               permissoes: formData.permissoes,
               ativo: formData.ativo
-            }])
+            })
+            .eq('id', authData.user.id)
 
           if (dbError) throw dbError
         }
@@ -206,12 +265,36 @@ export const GerenciarUsuarios: React.FC = () => {
   }
 
   const permissoesModulos = [
-    { key: 'cadastro_empresa' as const, label: 'Cadastro de Empresa' },
-    { key: 'cadastro_colaborador' as const, label: 'Cadastro de Colaborador' },
-    { key: 'inventario_item' as const, label: 'Inventário - Itens' },
-    { key: 'inventario_relatorio' as const, label: 'Inventário - Relatórios' },
-    { key: 'inventario_linhas' as const, label: 'Inventário - Linhas Telefônicas' },
-    { key: 'configuracoes' as const, label: 'Configurações do Sistema' }
+    // CADASTROS
+    { key: 'cadastro_empresa' as const, label: 'Cadastro de Empresa', grupo: 'Cadastros' },
+    { key: 'cadastro_colaborador' as const, label: 'Cadastro de Colaborador', grupo: 'Cadastros' },
+    { key: 'cadastro_produtos' as const, label: 'Cadastro de Produtos', grupo: 'Cadastros' },
+    { key: 'cadastro_clientes' as const, label: 'Cadastro de Clientes', grupo: 'Cadastros' },
+    
+    // INVENTÁRIO
+    { key: 'inventario_itens' as const, label: 'Inventário - Itens', grupo: 'Inventário' },
+    { key: 'inventario_relatorio' as const, label: 'Inventário - Relatórios', grupo: 'Inventário' },
+    { key: 'inventario_linhas' as const, label: 'Inventário - Linhas Telefônicas', grupo: 'Inventário' },
+    
+    // VENDAS
+    { key: 'vendas_listagem' as const, label: 'Vendas - Listagem', grupo: 'Vendas' },
+    { key: 'vendas_nova' as const, label: 'Vendas - Nova Venda', grupo: 'Vendas' },
+    { key: 'vendas_relatorios' as const, label: 'Vendas - Relatórios', grupo: 'Vendas' },
+    
+    // NOTAS FISCAIS
+    { key: 'notas_fiscais_emitir' as const, label: 'Emitir Nota Fiscal', grupo: 'Notas Fiscais' },
+    { key: 'notas_fiscais_parametros' as const, label: 'Parâmetros Fiscais', grupo: 'Notas Fiscais' },
+    
+    // FINANCEIRO
+    { key: 'financeiro_contas_pagar' as const, label: 'Contas a Pagar', grupo: 'Financeiro' },
+    { key: 'financeiro_contas_receber' as const, label: 'Contas a Receber', grupo: 'Financeiro' },
+    { key: 'financeiro_parametros' as const, label: 'Parâmetros Financeiros', grupo: 'Financeiro' },
+    
+    // OUTROS
+    { key: 'franquias' as const, label: 'Franquias', grupo: 'Outros' },
+    { key: 'tarefas' as const, label: 'Tarefas', grupo: 'Outros' },
+    { key: 'documentacao' as const, label: 'Documentação', grupo: 'Outros' },
+    { key: 'configuracoes' as const, label: 'Configurações do Sistema', grupo: 'Outros' }
   ]
 
   if (loading) {
@@ -449,18 +532,31 @@ export const GerenciarUsuarios: React.FC = () => {
                 <div>
                   <h4 className="text-sm font-medium text-gray-900 mb-4">Permissões de Acesso</h4>
                   <div className="bg-slate-50 rounded-lg p-4">
-                    <div className="space-y-3">
-                      {permissoesModulos.map((modulo) => (
-                        <label key={modulo.key} className="flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={formData.permissoes[modulo.key]}
-                            onChange={() => handleTogglePermissao(modulo.key)}
-                            className="w-4 h-4 text-slate-600 focus:ring-slate-500 border-gray-300 rounded"
-                          />
-                          <span className="ml-3 text-sm text-gray-700">{modulo.label}</span>
-                        </label>
-                      ))}
+                    <div className="space-y-4">
+                      {/* Agrupar permissões por categoria */}
+                      {['Cadastros', 'Inventário', 'Vendas', 'Notas Fiscais', 'Financeiro', 'Outros'].map((grupo) => {
+                        const permissoesDoGrupo = permissoesModulos.filter(m => m.grupo === grupo)
+                        return (
+                          <div key={grupo}>
+                            <h5 className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">
+                              {grupo}
+                            </h5>
+                            <div className="space-y-2 ml-1">
+                              {permissoesDoGrupo.map((modulo) => (
+                                <label key={modulo.key} className="flex items-center cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={formData.permissoes[modulo.key]}
+                                    onChange={() => handleTogglePermissao(modulo.key)}
+                                    className="w-4 h-4 text-slate-600 focus:ring-slate-500 border-gray-300 rounded"
+                                  />
+                                  <span className="ml-3 text-sm text-gray-700">{modulo.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                   <p className="text-xs text-gray-500 mt-2">

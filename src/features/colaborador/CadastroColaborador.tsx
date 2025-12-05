@@ -831,22 +831,23 @@ export const CadastroColaborador: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Gestão de Colaboradores</h1>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-xs text-gray-600 mt-1">
                 {filteredColaboradores.length} {filteredColaboradores.length === 1 ? 'colaborador cadastrado' : 'colaboradores cadastrados'}
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={handleDownloadTemplate}
-                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-slate-300 shadow-sm text-xs sm:text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
+                className="inline-flex items-center justify-center px-4 py-2.5 border shadow-sm text-sm font-semibold rounded-md text-white hover:opacity-90"
+                style={{backgroundColor: '#394353', borderColor: '#C9C4B5'}}
               >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <span className="sm:inline">Baixar Modelo</span>
               </button>
-              <label className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-slate-300 shadow-sm text-xs sm:text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 cursor-pointer">
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <label className="inline-flex items-center justify-center px-4 py-2.5 border shadow-sm text-sm font-semibold rounded-md text-white hover:opacity-90 cursor-pointer" style={{backgroundColor: '#394353', borderColor: '#C9C4B5'}}>
+                <svg className="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
                 </svg>
                 <span className="sm:inline">Importar Excel</span>
@@ -860,9 +861,10 @@ export const CadastroColaborador: React.FC = () => {
               </label>
               <button
                 onClick={() => openModal()}
-                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-medium rounded-md text-white bg-slate-700 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
+                className="inline-flex items-center justify-center px-4 py-2.5 border border-transparent shadow-sm text-sm font-semibold rounded-md text-white hover:opacity-90"
+                style={{backgroundColor: '#394353'}}
               >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 <span className="sm:inline">Adicionar Colaborador</span>
@@ -872,12 +874,12 @@ export const CadastroColaborador: React.FC = () => {
         </div>
 
         {/* Busca e Toggle de Visualização */}
-        <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="px-4 py-3" style={{borderBottom: '1px solid #C9C4B5'}}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             {/* Campo de Busca */}
             <div className="flex-1 relative min-w-0">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
@@ -886,19 +888,21 @@ export const CadastroColaborador: React.FC = () => {
                 placeholder="Buscar colaboradores..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-slate-500 focus:border-slate-500 text-sm"
+                className="block w-full pl-10 pr-3 py-2 border rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 text-sm"
+                style={{borderColor: '#C9C4B5'}}
               />
             </div>
             
             {/* Toggle de Visualização */}
-            <div className="flex items-center space-x-2 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={() => setViewMode('list')}
-                className={`inline-flex items-center px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-md ${
+                className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md ${
                   viewMode === 'list'
-                    ? 'bg-slate-100 text-slate-700'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'text-white'
+                    : 'text-gray-500 hover:text-gray-700 bg-white'
                 }`}
+                style={viewMode === 'list' ? {backgroundColor: '#394353'} : {border: '1px solid #C9C4B5'}}
               >
                 <svg className="w-4 h-4 sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -907,11 +911,12 @@ export const CadastroColaborador: React.FC = () => {
               </button>
               <button
                 onClick={() => setViewMode('cards')}
-                className={`inline-flex items-center px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-md ${
+                className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md ${
                   viewMode === 'cards'
-                    ? 'bg-slate-100 text-slate-700'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'text-white'
+                    : 'text-gray-500 hover:text-gray-700 bg-white'
                 }`}
+                style={viewMode === 'cards' ? {backgroundColor: '#394353'} : {border: '1px solid #C9C4B5'}}
               >
                 <svg className="w-4 h-4 sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -925,7 +930,7 @@ export const CadastroColaborador: React.FC = () => {
 
       {/* Mensagem de Feedback */}
       {message && (
-        <div className={`rounded-lg p-3 sm:p-4 mb-4 sm:mb-6 ${
+        <div className={`rounded-lg p-3 mb-4 ${
           message.type === 'success' 
             ? 'bg-green-50 border border-green-200 text-green-800' 
             : 'bg-red-50 border border-red-200 text-red-800'
@@ -933,17 +938,17 @@ export const CadastroColaborador: React.FC = () => {
           <div className="flex items-start">
             <div className="flex-shrink-0">
               {message.type === 'success' ? (
-                <svg className="h-4 w-4 sm:h-5 sm:w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="h-4 w-4 text-green-400" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
               ) : (
-                <svg className="h-4 w-4 sm:h-5 sm:w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="h-4 w-4 text-red-400" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
               )}
             </div>
-            <div className="ml-2 sm:ml-3 flex-1 min-w-0">
-              <p className="text-xs sm:text-sm font-medium break-words">{message.text}</p>
+            <div className="ml-2 flex-1 min-w-0">
+              <p className="text-xs font-medium break-words">{message.text}</p>
             </div>
           </div>
         </div>
@@ -953,22 +958,22 @@ export const CadastroColaborador: React.FC = () => {
       {viewMode === 'list' ? (
         <div className="bg-white rounded-lg shadow">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full">
+              <thead className="text-white" style={{backgroundColor: '#394353'}}>
                 <tr>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Email</th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Setor</th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden xl:table-cell">Cargo</th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden xl:table-cell">Empresa</th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider">Nome</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider hidden lg:table-cell">Email</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider hidden md:table-cell">Setor</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider hidden xl:table-cell">Cargo</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider hidden xl:table-cell">Empresa</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider">Ações</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white" style={{borderTop: '1px solid #C9C4B5'}}>
                 {filteredColaboradores.map((colaborador) => (
-                  <tr key={colaborador.id} id={`colaborador-${colaborador.id}`} className="hover:bg-gray-50">
-                    <td className="px-3 sm:px-6 py-4 text-sm font-medium text-gray-900">
+                  <tr key={colaborador.id} id={`colaborador-${colaborador.id}`} className="hover:bg-gray-50" style={{borderBottom: '1px solid #C9C4B5'}}>
+                    <td className="px-4 py-2.5 text-xs font-medium text-gray-900">
                       <div className="min-w-[120px]">
                         <div className="font-medium">{colaborador.nome}</div>
                         <div className="text-xs text-gray-500 lg:hidden">{colaborador.email}</div>
@@ -977,19 +982,19 @@ export const CadastroColaborador: React.FC = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 hidden lg:table-cell">
+                    <td className="px-4 py-2.5 text-xs text-gray-500 hidden lg:table-cell">
                       {colaborador.email}
                     </td>
-                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 hidden md:table-cell">
+                    <td className="px-4 py-2.5 text-xs text-gray-500 hidden md:table-cell">
                       {colaborador.setor}
                     </td>
-                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 hidden xl:table-cell">
+                    <td className="px-4 py-2.5 text-xs text-gray-500 hidden xl:table-cell">
                       {colaborador.cargo}
                     </td>
-                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 hidden xl:table-cell">
+                    <td className="px-4 py-2.5 text-xs text-gray-500 hidden xl:table-cell">
                       {colaborador.empresas?.razao_social || 'N/A'}
                     </td>
-                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-2.5 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         colaborador.status === 'Ativo' 
                           ? 'bg-green-100 text-green-800' 
@@ -1198,7 +1203,8 @@ export const CadastroColaborador: React.FC = () => {
                         value={formData.email}
                         onChange={handleChange}
                         placeholder="email@exemplo.com"
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none"
+                        style={{borderColor: '#C9C4B5'}}
                       />
                     </div>
 
@@ -1212,7 +1218,8 @@ export const CadastroColaborador: React.FC = () => {
                         value={formData.telefone}
                         onChange={handleChange}
                         placeholder="(00) 00000-0000"
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none"
+                        style={{borderColor: '#C9C4B5'}}
                       />
                     </div>
 
@@ -1226,7 +1233,8 @@ export const CadastroColaborador: React.FC = () => {
                     value={formData.setor}
                     onChange={handleChange}
                     placeholder="Digite o setor"
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none"
+                    style={{borderColor: '#C9C4B5'}}
                   />
                 </div>
 
@@ -1240,7 +1248,8 @@ export const CadastroColaborador: React.FC = () => {
                     value={formData.cargo}
                     onChange={handleChange}
                     placeholder="Digite o cargo"
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none"
+                    style={{borderColor: '#C9C4B5'}}
                   />
                 </div>
 
@@ -1252,7 +1261,8 @@ export const CadastroColaborador: React.FC = () => {
                         name="empresa_id"
                         value={formData.empresa_id}
                         onChange={handleChange}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none"
+                        style={{borderColor: '#C9C4B5'}}
                       >
                         <option value="">Selecione a empresa</option>
                         {empresas.map((empresa) => (
@@ -1271,7 +1281,8 @@ export const CadastroColaborador: React.FC = () => {
                         name="status"
                         value={formData.status}
                         onChange={handleChange}
-                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none"
+                        style={{borderColor: '#C9C4B5'}}
                       >
                         <option value="Ativo">Ativo</option>
                         <option value="Inativo">Inativo</option>
@@ -1281,18 +1292,20 @@ export const CadastroColaborador: React.FC = () => {
                 </div>
 
                 {/* Footer */}
-                <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 rounded-b-lg z-10">
+                <div className="sticky bottom-0 bg-gray-50 px-4 py-3 flex flex-col sm:flex-row justify-end gap-2 rounded-b-lg z-10" style={{borderTop: '1px solid #C9C4B5'}}>
                   <button
                     type="button"
                     onClick={closeModal}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors order-2 sm:order-1"
+                    className="px-4 py-2 text-sm font-semibold text-gray-700 bg-white border rounded-md hover:bg-gray-50 order-2 sm:order-1"
+                    style={{borderColor: '#C9C4B5'}}
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors order-1 sm:order-2"
+                    className="px-4 py-2 text-sm font-semibold text-white rounded-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2"
+                    style={{backgroundColor: '#394353'}}
                   >
                     {loading ? 'Salvando...' : (editingColaborador ? 'Atualizar' : 'Cadastrar')}
                   </button>

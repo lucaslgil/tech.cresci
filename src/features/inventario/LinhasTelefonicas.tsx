@@ -687,29 +687,30 @@ export const LinhasTelefonicas: React.FC = () => {
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 max-w-full overflow-x-hidden">
+    <div className="min-h-screen bg-gray-50 p-4">
       {/* Cabeçalho com botões */}
-      <div className="bg-white shadow rounded-lg mb-4 sm:mb-6">
-        <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="bg-white shadow rounded-lg mb-4">
+        <div className="px-4 py-3" style={{borderBottom: '1px solid #C9C4B5'}}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Linhas Telefônicas</h1>
-              <p className="text-sm text-gray-600 mt-1">
+              <h1 className="text-base font-semibold text-gray-900">Linhas Telefônicas</h1>
+              <p className="text-xs text-gray-600 mt-1">
                 {linhas.length} {linhas.length === 1 ? 'linha cadastrada' : 'linhas cadastradas'}
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={handleDownloadTemplate}
-                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-slate-300 shadow-sm text-xs sm:text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
+                className="inline-flex items-center justify-center px-4 py-2.5 border shadow-sm text-sm font-semibold rounded-md text-white hover:opacity-90"
+                style={{backgroundColor: '#394353', borderColor: '#C9C4B5'}}
               >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <span className="sm:inline">Baixar Modelo</span>
               </button>
-              <label className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-slate-300 shadow-sm text-xs sm:text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 cursor-pointer">
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <label className="inline-flex items-center justify-center px-4 py-2.5 border shadow-sm text-sm font-semibold rounded-md text-white hover:opacity-90 cursor-pointer" style={{backgroundColor: '#394353', borderColor: '#C9C4B5'}}>
+                <svg className="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
                 </svg>
                 <span className="sm:inline">Importar Excel</span>
@@ -723,9 +724,10 @@ export const LinhasTelefonicas: React.FC = () => {
               </label>
               <button
                 onClick={() => openModal()}
-                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-medium rounded-md text-white bg-slate-700 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
+                className="inline-flex items-center justify-center px-4 py-2.5 border border-transparent shadow-sm text-sm font-semibold rounded-md text-white hover:opacity-90"
+                style={{backgroundColor: '#394353'}}
               >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 <span className="sm:inline">Adicionar Linha</span>
@@ -736,55 +738,55 @@ export const LinhasTelefonicas: React.FC = () => {
       </div>
 
       {/* Dashboard Minimalista */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 sm:mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         {/* Total de Linhas */}
-        <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+        <div className="bg-white shadow rounded-lg p-3">
           <div className="flex items-center">
-            <div className="flex-shrink-0 bg-slate-100 rounded-md p-3">
-              <Phone className="h-6 w-6 text-slate-600" />
+            <div className="flex-shrink-0 rounded-md p-2" style={{backgroundColor: 'rgba(57, 67, 83, 0.1)'}}>
+              <Phone className="h-5 w-5" style={{color: '#394353'}} />
             </div>
-            <div className="ml-4">
+            <div className="ml-3">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total de Linhas</p>
-              <p className="text-2xl font-bold text-gray-900">{totalLinhas}</p>
+              <p className="text-xl font-bold text-gray-900">{totalLinhas}</p>
             </div>
           </div>
         </div>
 
         {/* Linhas Ativas */}
-        <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+        <div className="bg-white shadow rounded-lg p-3">
           <div className="flex items-center">
-            <div className="flex-shrink-0 bg-green-100 rounded-md p-3">
-              <CheckCircle className="h-6 w-6 text-green-600" />
+            <div className="flex-shrink-0 bg-green-100 rounded-md p-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
             </div>
-            <div className="ml-4">
+            <div className="ml-3">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Linhas Ativas</p>
-              <p className="text-2xl font-bold text-green-600">{linhasAtivas}</p>
+              <p className="text-xl font-bold text-green-600">{linhasAtivas}</p>
             </div>
           </div>
         </div>
 
         {/* Linhas Inativas */}
-        <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+        <div className="bg-white shadow rounded-lg p-3">
           <div className="flex items-center">
-            <div className="flex-shrink-0 bg-red-100 rounded-md p-3">
-              <XCircle className="h-6 w-6 text-red-600" />
+            <div className="flex-shrink-0 bg-red-100 rounded-md p-2">
+              <XCircle className="h-5 w-5 text-red-600" />
             </div>
-            <div className="ml-4">
+            <div className="ml-3">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Linhas Inativas</p>
-              <p className="text-2xl font-bold text-red-600">{linhasInativas}</p>
+              <p className="text-xl font-bold text-red-600">{linhasInativas}</p>
             </div>
           </div>
         </div>
 
         {/* Valor Total Mensal */}
-        <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+        <div className="bg-white shadow rounded-lg p-3">
           <div className="flex items-center">
-            <div className="flex-shrink-0 bg-blue-100 rounded-md p-3">
-              <DollarSign className="h-6 w-6 text-blue-600" />
+            <div className="flex-shrink-0 bg-blue-100 rounded-md p-2">
+              <DollarSign className="h-5 w-5 text-blue-600" />
             </div>
-            <div className="ml-4">
+            <div className="ml-3">
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Valor Total</p>
-              <p className="text-2xl font-bold text-blue-600">
+              <p className="text-xl font-bold text-blue-600">
                 {valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </p>
             </div>
@@ -793,11 +795,11 @@ export const LinhasTelefonicas: React.FC = () => {
       </div>
 
       {/* Filtros e Busca */}
-      <div className="bg-white shadow rounded-lg mb-4 sm:mb-6 p-4 sm:p-6">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="bg-white shadow rounded-lg mb-4 p-3">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           {/* Campo de Busca */}
           <div className="md:col-span-2">
-            <label className="block text-xs font-medium text-gray-700 mb-2">
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
               Buscar
             </label>
             <input
@@ -898,11 +900,11 @@ export const LinhasTelefonicas: React.FC = () => {
         <>
           {/* Tabela para Desktop */}
           <div className="hidden md:block bg-white shadow rounded-lg overflow-hidden">
-            <table className="w-full divide-y divide-gray-200">
-              <thead className="bg-slate-50">
+            <table className="w-full">
+              <thead className="text-white" style={{backgroundColor: '#394353'}}>
                 <tr>
                   <th 
-                    className="px-2 md:px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer hover:opacity-90"
                     onClick={() => handleSort('numero_linha')}
                   >
                     <div className="flex items-center gap-1">
@@ -914,7 +916,7 @@ export const LinhasTelefonicas: React.FC = () => {
                     </div>
                   </th>
                   <th 
-                    className="hidden lg:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    className="hidden lg:table-cell px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer hover:opacity-90"
                     onClick={() => handleSort('tipo')}
                   >
                     <div className="flex items-center gap-1">
@@ -926,7 +928,7 @@ export const LinhasTelefonicas: React.FC = () => {
                     </div>
                   </th>
                   <th 
-                    className="px-2 md:px-4 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer hover:opacity-90"
                     onClick={() => handleSort('operadora')}
                   >
                     <div className="flex items-center gap-1">
@@ -938,7 +940,7 @@ export const LinhasTelefonicas: React.FC = () => {
                     </div>
                   </th>
                   <th 
-                    className="hidden xl:table-cell px-4 sm:px-6 py-3 text-left text-xs font-medium text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    className="hidden xl:table-cell px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer hover:opacity-90"
                     onClick={() => handleSort('usuario_setor')}
                   >
                     <div className="flex items-center gap-1">
@@ -1009,15 +1011,15 @@ export const LinhasTelefonicas: React.FC = () => {
                       {sortColumn !== 'aparelho_nome' && <ArrowUpDown className="w-4 h-4 opacity-30" />}
                     </div>
                   </th>
-                  <th className="px-2 md:px-4 py-3 text-right text-xs font-medium text-slate-600 uppercase tracking-wider">
+                  <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wider">
                     Ações
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white" style={{borderTop: '1px solid #C9C4B5'}}>
                 {linhasOrdenadas.map((linha) => (
-                  <tr key={linha.id} id={`linha-${linha.id}`} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-2 md:px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <tr key={linha.id} id={`linha-${linha.id}`} className="hover:bg-gray-50" style={{borderBottom: '1px solid #C9C4B5'}}>
+                    <td className="px-4 py-2.5 whitespace-nowrap text-xs font-medium text-gray-900">
                       {formatarNumero(linha.numero_linha)}
                     </td>
                     <td className="hidden lg:table-cell px-2 md:px-4 py-3 whitespace-nowrap">

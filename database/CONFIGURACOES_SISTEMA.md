@@ -52,47 +52,34 @@ Controle granular de acesso aos módulos do sistema:
 
 ### 2. **Aba: Tema do Sistema**
 
-Sistema de personalização visual completo com temas pré-definidos e customização avançada.
+Sistema de personalização visual com tema padrão e opção de criar temas customizados.
 
 #### Funcionalidades:
 
-##### ✅ **Temas Pré-definidos**
-6 temas prontos para uso:
+##### ✅ **Tema Padrão do Sistema**
+O sistema possui um tema padrão profissional:
 
-1. **Slate (Padrão)** - Cinza profissional
-2. **Azul Profissional** - Blue corporativo
-3. **Verde Corporativo** - Emerald clean
-4. **Roxo Moderno** - Violet vibrante
-5. **Laranja Energético** - Orange dinâmico
-6. **Modo Escuro** - Dark mode completo
+- **TEMA PRO2** - Tema corporativo com fundo #2c3940 e texto claro
 
-##### ✅ **Personalização de Cores**
-Editor completo com 6 categorias de cores:
+##### ✅ **Criar Temas Personalizados**
+Editor completo para criar seus próprios temas:
 
-- **Cor Primária**: Botões principais, headers
-- **Cor Secundária**: Hover states, emphasis
-- **Cor de Destaque**: Links, ações importantes
-- **Cor de Fundo**: Background principal
-- **Cor do Texto**: Texto padrão
-- **Cor da Borda**: Bordas e separadores
+- **Cor de Fundo do Menu**: Personaliza a cor de fundo do menu lateral
+- **Cor do Texto do Menu**: Define a cor dos textos e ícones do menu
 
-Cada cor pode ser ajustada através de:
-- Color picker visual
-- Input de código hexadecimal manual
+Recursos do editor:
+- Color picker visual para seleção fácil de cores
+- Input manual de código hexadecimal
+- Preview em tempo real das cores escolhidas
+- Salvar temas com nome personalizado
+- Aplicar tema com reload automático da página
 
-##### ✅ **Preview em Tempo Real**
-- Visualização instantânea das cores escolhidas
-- Botões de exemplo (Primário, Secundário, Destaque)
-- Exemplo de texto e bordas
-
-##### ✅ **Exportar/Importar Tema**
-- **Exportar**: Baixa arquivo JSON com configurações
-- **Importar**: Carrega tema de arquivo JSON
-- **Persistência**: Salva no localStorage do navegador
-
-##### ✅ **Restaurar Padrão**
-- Botão para voltar ao tema Slate original
-- Confirmação antes de restaurar
+##### ✅ **Gerenciar Temas Customizados**
+- Visualização em grid com preview de cada tema
+- Aplicar qualquer tema salvo com um clique
+- Excluir temas personalizados (tema padrão não pode ser excluído)
+- Indicador visual do tema atualmente ativo
+- Armazenamento local no navegador (localStorage)
 
 ---
 

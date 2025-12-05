@@ -731,7 +731,8 @@ export const CadastroItem: React.FC = () => {
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
                 onClick={() => setShowImportModal(true)}
-                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-slate-300 shadow-sm text-xs sm:text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
+                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 shadow-sm text-xs sm:text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                style={{ border: '1px solid #C9C4B5' }}
               >
                 <svg className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
@@ -740,7 +741,8 @@ export const CadastroItem: React.FC = () => {
               </button>
               <button
                 onClick={() => setShowModal(true)}
-                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-medium rounded-md text-white bg-slate-700 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
+                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-semibold rounded-md text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                style={{ backgroundColor: '#394353' }}
               >
                 <svg className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -888,14 +890,14 @@ export const CadastroItem: React.FC = () => {
 
       {/* Conteúdo baseado no modo de visualização */}
       {viewMode === 'list' ? (
-        /* Visualização em Lista */
+        // Visualização em Lista
       <div className="bg-white rounded-lg shadow">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y" style={{ borderColor: '#C9C4B5' }}>
+            <thead style={{ backgroundColor: '#394353' }}>
               <tr>
                 <th 
-                  className="px-2 sm:px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hover:bg-gray-100 select-none relative" 
+                  className="px-4 py-2.5 text-left text-xs font-semibold text-white uppercase tracking-wider hover:opacity-90 select-none relative" 
                   style={{ width: `${columnWidths.codigo}px`, minWidth: '80px' }}
                 >
                   <div className="flex items-center gap-1 cursor-pointer" onClick={() => handleSort('codigo')}>
@@ -923,7 +925,7 @@ export const CadastroItem: React.FC = () => {
                   </div>
                 </th>
                 <th 
-                  className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hover:bg-gray-100 select-none relative"
+                  className="px-4 py-2.5 text-left text-xs font-semibold text-white uppercase tracking-wider hover:opacity-90 select-none relative"
                   style={{ width: `${columnWidths.item}px`, minWidth: '120px' }}
                 >
                   <div className="flex items-center gap-1 cursor-pointer" onClick={() => handleSort('item')}>
@@ -951,7 +953,7 @@ export const CadastroItem: React.FC = () => {
                   </div>
                 </th>
                 <th 
-                  className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none hidden md:table-cell"
+                  className="px-4 py-2.5 text-left text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:opacity-90 select-none hidden md:table-cell"
                   onClick={() => handleSort('categoria')}
                 >
                   <div className="flex items-center gap-1">
@@ -962,7 +964,7 @@ export const CadastroItem: React.FC = () => {
                   </div>
                 </th>
                 <th 
-                  className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none hidden lg:table-cell"
+                  className="px-4 py-2.5 text-left text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:opacity-90 select-none hidden lg:table-cell"
                   onClick={() => handleSort('setor')}
                 >
                   <div className="flex items-center gap-1">
@@ -973,7 +975,7 @@ export const CadastroItem: React.FC = () => {
                   </div>
                 </th>
                 <th 
-                  className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none hidden xl:table-cell"
+                  className="px-4 py-2.5 text-left text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:opacity-90 select-none hidden xl:table-cell"
                   onClick={() => handleSort('responsavel')}
                 >
                   <div className="flex items-center gap-1">
@@ -984,7 +986,7 @@ export const CadastroItem: React.FC = () => {
                   </div>
                 </th>
                 <th 
-                  className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
+                  className="px-4 py-2.5 text-left text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:opacity-90 select-none"
                   onClick={() => handleSort('status')}
                 >
                   <div className="flex items-center gap-1">
@@ -1080,7 +1082,7 @@ export const CadastroItem: React.FC = () => {
         </div>
       </div>
       ) : (
-        /* Visualização em Cards */
+        // Visualização em Cards
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
           {filteredItens.map((item) => (
             <div key={item.id} id={`item-${item.id}`} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200">

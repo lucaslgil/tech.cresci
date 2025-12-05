@@ -2,6 +2,193 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =====================================================
+   ESTILOS CUSTOMIZADOS - DATE PICKER
+   Tema minimalista seguindo padrão do sistema
+   Data: 02/12/2025
+   ===================================================== */
+
+/* Container principal do calendário */
+.react-datepicker {
+  @apply border border-gray-300 rounded-lg shadow-lg;
+  font-family: inherit;
+}
+
+/* Header do calendário */
+.react-datepicker__header {
+  @apply bg-gray-50 border-b border-gray-200 rounded-t-lg;
+  padding: 12px 0 8px;
+}
+
+/* Navegação de mês/ano */
+.react-datepicker__current-month {
+  @apply text-sm font-medium text-gray-900;
+  margin-bottom: 8px;
+}
+
+/* Botões de navegação */
+.react-datepicker__navigation {
+  top: 14px;
+}
+
+.react-datepicker__navigation-icon::before {
+  @apply border-gray-600;
+  border-width: 2px 2px 0 0;
+  height: 7px;
+  width: 7px;
+}
+
+.react-datepicker__navigation:hover .react-datepicker__navigation-icon::before {
+  @apply border-gray-900;
+}
+
+/* Dias da semana */
+.react-datepicker__day-names {
+  @apply mt-2;
+}
+
+.react-datepicker__day-name {
+  @apply text-xs font-medium text-gray-600;
+  width: 2rem;
+  line-height: 2rem;
+  margin: 2px;
+}
+
+/* Container dos dias */
+.react-datepicker__month {
+  @apply m-0 p-2;
+}
+
+.react-datepicker__week {
+  @apply flex justify-around;
+}
+
+/* Dias individuais */
+.react-datepicker__day {
+  @apply text-xs text-gray-700 rounded-md hover:bg-gray-100 transition-colors;
+  width: 2rem;
+  line-height: 2rem;
+  margin: 2px;
+}
+
+/* Dia atual */
+.react-datepicker__day--today {
+  @apply bg-blue-50 text-blue-700 font-medium;
+}
+
+/* Dia selecionado */
+.react-datepicker__day--selected,
+.react-datepicker__day--keyboard-selected {
+  @apply bg-gray-800 text-white hover:bg-gray-900;
+}
+
+/* Dias fora do mês */
+.react-datepicker__day--outside-month {
+  @apply text-gray-400;
+}
+
+/* Dias desabilitados */
+.react-datepicker__day--disabled {
+  @apply text-gray-300 cursor-not-allowed hover:bg-transparent;
+}
+
+/* Time picker */
+.react-datepicker__time-container {
+  @apply border-l border-gray-200;
+}
+
+.react-datepicker__time-container .react-datepicker__time {
+  @apply bg-white;
+}
+
+.react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box {
+  @apply w-full;
+}
+
+.react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list {
+  @apply px-0;
+}
+
+.react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item {
+  @apply text-xs py-1 hover:bg-gray-100;
+}
+
+.react-datepicker__time-container .react-datepicker__time .react-datepicker__time-box ul.react-datepicker__time-list li.react-datepicker__time-list-item--selected {
+  @apply bg-gray-800 text-white hover:bg-gray-900;
+}
+
+/* Popper */
+.react-datepicker-popper {
+  z-index: 9999;
+}
+
+/* Animações suaves */
+.react-datepicker__day,
+.react-datepicker__time-list-item {
+  transition: all 0.15s ease;
+}
+
+/* Hover states melhorados */
+.react-datepicker__day:hover:not(.react-datepicker__day--disabled):not(.react-datepicker__day--selected) {
+  @apply bg-gray-100;
+}
+
+/* Range selection (para futuro) */
+.react-datepicker__day--in-range {
+  @apply bg-gray-200;
+}
+
+.react-datepicker__day--in-selecting-range {
+  @apply bg-gray-100;
+}
+
+/* Variáveis CSS para temas dinâmicos */
+:root {
+  --cor-primaria: #334155;
+  --cor-secundaria: #1e293b;
+  --cor-destaque: #0ea5e9;
+  --cor-fundo: #f8fafc;
+  --cor-texto: #1e293b;
+  --cor-borda: #cbd5e1;
+}
+
+/* Classes utilitárias para usar as cores do tema */
+.bg-tema-primaria {
+  background-color: var(--cor-primaria) !important;
+}
+
+.bg-tema-secundaria {
+  background-color: var(--cor-secundaria) !important;
+}
+
+.bg-tema-destaque {
+  background-color: var(--cor-destaque) !important;
+}
+
+.bg-tema-fundo {
+  background-color: var(--cor-fundo) !important;
+}
+
+.text-tema-primaria {
+  color: var(--cor-primaria) !important;
+}
+
+.text-tema-texto {
+  color: var(--cor-texto) !important;
+}
+
+.border-tema-borda {
+  border-color: var(--cor-borda) !important;
+}
+
+.hover\:bg-tema-primaria:hover {
+  background-color: var(--cor-primaria) !important;
+}
+
+.hover\:bg-tema-secundaria:hover {
+  background-color: var(--cor-secundaria) !important;
+}
+
 /* Prevenir scroll horizontal global */
 html, body {
   overflow-x: hidden;
