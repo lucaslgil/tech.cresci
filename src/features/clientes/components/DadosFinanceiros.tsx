@@ -15,7 +15,6 @@ interface Props {
 export function DadosFinanceiros({ 
   formData, 
   onChange, 
-  erros, 
   condicoesPagamento, 
   tabelasPreco 
 }: Props) {

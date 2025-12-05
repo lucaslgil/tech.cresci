@@ -226,7 +226,10 @@ export interface ClienteFormData {
   regime_tributario?: RegimeTributario
   contribuinte_icms?: ContribuinteICMS
   codigo_suframa?: string
+  inscricao_suframa?: string
   consumidor_final?: boolean
+  simples_nacional?: boolean
+  observacoes_fiscais?: string
   
   // Dados Financeiros
   condicao_pagamento_id?: number

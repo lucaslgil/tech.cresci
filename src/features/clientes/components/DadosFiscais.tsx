@@ -3,8 +3,6 @@
  */
 
 import {
-  RegimeTributario,
-  ContribuinteICMS,
   RegimeTributarioLabels,
   ContribuinteICMSLabels,
   type ClienteFormData
@@ -16,7 +14,7 @@ interface Props {
   erros: Record<string, string>
 }
 
-export function DadosFiscais({ formData, onChange, erros }: Props) {
+export function DadosFiscais({ formData, onChange }: Props) {
   return (
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
