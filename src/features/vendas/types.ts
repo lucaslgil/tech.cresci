@@ -131,6 +131,9 @@ export interface Venda {
   bloqueado_em?: string
   motivo_bloqueio?: string
   
+  // Itens da venda
+  itens?: VendaItem[]
+  
   // Metadados
   created_at?: string
   updated_at?: string
@@ -199,7 +202,10 @@ export interface VendaParcela {
 
 export interface VendaFormData {
   tipo_venda: TipoVenda
+  status?: StatusVenda
   cliente_id?: number | string
+  cliente_nome?: string
+  cliente_cpf_cnpj?: string
   data_venda: string
   data_validade?: string
   
@@ -307,6 +313,7 @@ export interface ResultadoVenda {
   mensagem: string
   venda?: Venda
   numero?: number
+  dados?: Venda
 }
 
 /**

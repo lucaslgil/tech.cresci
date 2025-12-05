@@ -9,7 +9,7 @@ export const Layout: React.FC = () => {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const tabs = useTabOpener()
-  const { hasPermission, hasAnyPermission, loading: loadingPermissions } = usePermissions()
+  const { hasPermission, hasAnyPermission } = usePermissions()
   const [cadastroOpen, setCadastroOpen] = useState(false)
   const [inventarioOpen, setInventarioOpen] = useState(false)
   const [notasFiscaisOpen, setNotasFiscaisOpen] = useState(false)

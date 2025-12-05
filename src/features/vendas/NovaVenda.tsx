@@ -15,7 +15,7 @@ import {
 } from './types'
 import { Toast } from '../../shared/components/Toast'
 import { DatePicker } from '../../shared/components/DatePicker'
-import { Search, Plus, FileText, Trash2, Lock, Unlock } from 'lucide-react'
+import { Search, Plus, FileText, Trash2 } from 'lucide-react'
 import { listarClientes } from '../clientes/services'
 import { buscarProdutos } from '../produtos/produtosService'
 import type { Cliente } from '../clientes/types'
@@ -829,7 +829,6 @@ export default function NovaVenda() {
                 <select
                   value={formData.numero_parcelas || 1}
                   onChange={(e) => {
-                    const parcelamentoSelecionado = parcelamentos.find(p => p.numeroParcelas === parseInt(e.target.value))
                     setFormData({ 
                       ...formData, 
                       numero_parcelas: parseInt(e.target.value),
@@ -853,8 +852,8 @@ export default function NovaVenda() {
                   Data de Vencimento
                 </label>
                 <DatePicker
-                  selectedDate={formData.data_validade ? new Date(formData.data_validade) : null}
-                  onDateChange={(date) => setFormData({ ...formData, data_validade: date ? date.toISOString().split('T')[0] : undefined })}
+                  selected={formData.data_validade ? new Date(formData.data_validade) : null}
+                  onChange={(date: Date | null) => setFormData({ ...formData, data_validade: date ? date.toISOString().split('T')[0] : undefined })}
                   placeholder="Selecione a data de vencimento"
                 />
               </div>
@@ -904,7 +903,7 @@ export default function NovaVenda() {
                   className="w-20 px-2 py-1 text-xs text-right border border-gray-300 rounded"
                   step="0.01"
                   min="0"
-                  disabled={id && statusVenda !== 'ORCAMENTO'}
+                  disabled={!!(id && statusVenda !== 'ORCAMENTO')}
                 />
               </div>
 
@@ -917,7 +916,7 @@ export default function NovaVenda() {
                   className="w-20 px-2 py-1 text-xs text-right border border-gray-300 rounded"
                   step="0.01"
                   min="0"
-                  disabled={id && statusVenda !== 'ORCAMENTO'}
+                  disabled={!!(id && statusVenda !== 'ORCAMENTO')}
                 />
               </div>
 
