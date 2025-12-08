@@ -4,56 +4,63 @@
  */
 
 // =====================================================
-// ENUMS
+// TIPOS CONSTANTES (substituindo enums para compatibilidade)
 // =====================================================
 
-export enum TipoPessoa {
-  FISICA = 'FISICA',
-  JURIDICA = 'JURIDICA'
-}
+export const TipoPessoa = {
+  FISICA: 'FISICA',
+  JURIDICA: 'JURIDICA'
+} as const
+export type TipoPessoa = typeof TipoPessoa[keyof typeof TipoPessoa]
 
-export enum TipoEndereco {
-  COMERCIAL = 'COMERCIAL',
-  RESIDENCIAL = 'RESIDENCIAL',
-  COBRANCA = 'COBRANCA',
-  ENTREGA = 'ENTREGA'
-}
+export const TipoEndereco = {
+  COMERCIAL: 'COMERCIAL',
+  RESIDENCIAL: 'RESIDENCIAL',
+  COBRANCA: 'COBRANCA',
+  ENTREGA: 'ENTREGA'
+} as const
+export type TipoEndereco = typeof TipoEndereco[keyof typeof TipoEndereco]
 
-export enum TipoContato {
-  TELEFONE = 'TELEFONE',
-  CELULAR = 'CELULAR',
-  EMAIL = 'EMAIL',
-  WHATSAPP = 'WHATSAPP',
-  SKYPE = 'SKYPE',
-  OUTROS = 'OUTROS'
-}
+export const TipoContato = {
+  TELEFONE: 'TELEFONE',
+  CELULAR: 'CELULAR',
+  EMAIL: 'EMAIL',
+  WHATSAPP: 'WHATSAPP',
+  SKYPE: 'SKYPE',
+  OUTROS: 'OUTROS'
+} as const
+export type TipoContato = typeof TipoContato[keyof typeof TipoContato]
 
-export enum RegimeTributario {
-  SIMPLES_NACIONAL = 'SIMPLES_NACIONAL',
-  LUCRO_PRESUMIDO = 'LUCRO_PRESUMIDO',
-  LUCRO_REAL = 'LUCRO_REAL',
-  MEI = 'MEI',
-  ISENTO = 'ISENTO'
-}
+export const RegimeTributario = {
+  SIMPLES_NACIONAL: 'SIMPLES_NACIONAL',
+  LUCRO_PRESUMIDO: 'LUCRO_PRESUMIDO',
+  LUCRO_REAL: 'LUCRO_REAL',
+  MEI: 'MEI',
+  ISENTO: 'ISENTO'
+} as const
+export type RegimeTributario = typeof RegimeTributario[keyof typeof RegimeTributario]
 
-export enum ContribuinteICMS {
-  CONTRIBUINTE = 'CONTRIBUINTE',
-  ISENTO = 'ISENTO',
-  NAO_CONTRIBUINTE = 'NAO_CONTRIBUINTE'
-}
+export const ContribuinteICMS = {
+  CONTRIBUINTE: 'CONTRIBUINTE',
+  ISENTO: 'ISENTO',
+  NAO_CONTRIBUINTE: 'NAO_CONTRIBUINTE'
+} as const
+export type ContribuinteICMS = typeof ContribuinteICMS[keyof typeof ContribuinteICMS]
 
-export enum StatusCliente {
-  ATIVO = 'ATIVO',
-  INATIVO = 'INATIVO',
-  BLOQUEADO = 'BLOQUEADO',
-  SUSPENSO = 'SUSPENSO'
-}
+export const StatusCliente = {
+  ATIVO: 'ATIVO',
+  INATIVO: 'INATIVO',
+  BLOQUEADO: 'BLOQUEADO',
+  SUSPENSO: 'SUSPENSO'
+} as const
+export type StatusCliente = typeof StatusCliente[keyof typeof StatusCliente]
 
-export enum TipoBloqueio {
-  COMERCIAL = 'COMERCIAL',
-  FINANCEIRO = 'FINANCEIRO',
-  COMPLETO = 'COMPLETO'
-}
+export const TipoBloqueio = {
+  COMERCIAL: 'COMERCIAL',
+  FINANCEIRO: 'FINANCEIRO',
+  COMPLETO: 'COMPLETO'
+} as const
+export type TipoBloqueio = typeof TipoBloqueio[keyof typeof TipoBloqueio]
 
 // =====================================================
 // INTERFACES PRINCIPAIS
@@ -158,6 +165,7 @@ export interface ClienteContato {
 export interface ClienteHistorico {
   id: number
   cliente_id: number
+  tipo?: string
   acao: string
   campo_alterado?: string
   valor_anterior?: string
