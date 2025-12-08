@@ -203,13 +203,13 @@ export function GerenciadorContatos({ clienteId, contatos, onAtualizarContatos }
                       )}
 
                       <div className="flex gap-3 text-xs">
-                        {contato.usar_nfe && (
+                        {contato.recebe_nfe && (
                           <span className="text-green-600">✓ NFe</span>
                         )}
-                        {contato.usar_cobranca && (
+                        {contato.recebe_cobranca && (
                           <span className="text-orange-600">✓ Cobrança</span>
                         )}
-                        {contato.usar_marketing && (
+                        {contato.recebe_marketing && (
                           <span className="text-purple-600">✓ Marketing</span>
                         )}
                       </div>
@@ -336,8 +336,8 @@ export function GerenciadorContatos({ clienteId, contatos, onAtualizarContatos }
                 <label className="flex items-center">
                   <input
                     type="checkbox"
-                    checked={formData.usar_nfe || false}
-                    onChange={(e) => setFormData(prev => ({ ...prev, usar_nfe: e.target.checked }))}
+                    checked={formData.recebe_nfe || false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, recebe_nfe: e.target.checked }))}
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded"
                   />
                   <span className="ml-2 text-sm text-gray-700">
@@ -348,8 +348,8 @@ export function GerenciadorContatos({ clienteId, contatos, onAtualizarContatos }
                 <label className="flex items-center">
                   <input
                     type="checkbox"
-                    checked={formData.usar_cobranca || false}
-                    onChange={(e) => setFormData(prev => ({ ...prev, usar_cobranca: e.target.checked }))}
+                    checked={formData.recebe_cobranca || false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, recebe_cobranca: e.target.checked }))}
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded"
                   />
                   <span className="ml-2 text-sm text-gray-700">
@@ -360,8 +360,8 @@ export function GerenciadorContatos({ clienteId, contatos, onAtualizarContatos }
                 <label className="flex items-center">
                   <input
                     type="checkbox"
-                    checked={formData.usar_marketing || false}
-                    onChange={(e) => setFormData(prev => ({ ...prev, usar_marketing: e.target.checked }))}
+                    checked={formData.recebe_marketing || false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, recebe_marketing: e.target.checked }))}
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded"
                   />
                   <span className="ml-2 text-sm text-gray-700">

@@ -93,7 +93,7 @@ export function HistoricoCliente({ clienteId }: Props) {
           <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
 
           <div className="space-y-6">
-            {historico.map((item, index) => (
+            {historico.map((item) => (
               <div key={item.id} className="relative pl-12">
                 {/* Ícone na linha do tempo */}
                 <div className="absolute left-0 flex items-center justify-center w-8 h-8 bg-white border-2 border-gray-200 rounded-full">

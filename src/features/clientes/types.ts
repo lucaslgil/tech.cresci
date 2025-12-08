@@ -23,7 +23,9 @@ export enum TipoContato {
   TELEFONE = 'TELEFONE',
   CELULAR = 'CELULAR',
   EMAIL = 'EMAIL',
-  WHATSAPP = 'WHATSAPP'
+  WHATSAPP = 'WHATSAPP',
+  SKYPE = 'SKYPE',
+  OUTROS = 'OUTROS'
 }
 
 export enum RegimeTributario {

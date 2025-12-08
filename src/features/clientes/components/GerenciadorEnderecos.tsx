@@ -2,7 +2,7 @@
  * GERENCIADOR DE ENDEREÇOS - COMPONENTE
  */
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import {
   TipoEndereco,
   TipoEnderecoLabels,
@@ -48,9 +48,9 @@ export function GerenciadorEnderecos({ clienteId, enderecos, onAtualizarEndereco
 
   function abrirFormularioNovo() {
     setFormData({
-      cliente_id: clienteId,
       tipo: TipoEndereco.COMERCIAL,
-      principal: enderecos.length === 0
+      principal: enderecos.length === 0,
+      pais: 'Brasil'
     })
     setEnderecoEditando(null)
     setModoEdicao(true)
@@ -111,7 +111,7 @@ export function GerenciadorEnderecos({ clienteId, enderecos, onAtualizarEndereco
     setSalvando(true)
     try {
       if (enderecoEditando) {
-        await atualizarEndereco(enderecoEditando.id, formData as Partial<ClienteEndereco>)
+        await atualizarEndereco(String(enderecoEditando.id), formData as Partial<ClienteEndereco>)
       } else {
         await criarEndereco(formData as Partial<ClienteEndereco>)
       }
@@ -213,7 +213,7 @@ export function GerenciadorEnderecos({ clienteId, enderecos, onAtualizarEndereco
                     <div className="flex gap-2">
                       {!endereco.principal && (
                         <button
-                          onClick={() => handleDefinirPrincipal(endereco.id)}
+                          onClick={() => handleDefinirPrincipal(String(endereco.id))}
                           className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors"
                           title="Definir como principal"
                         >
@@ -227,7 +227,7 @@ export function GerenciadorEnderecos({ clienteId, enderecos, onAtualizarEndereco
                         ✏️
                       </button>
                       <button
-                        onClick={() => handleExcluir(endereco.id)}
+                        onClick={() => handleExcluir(String(endereco.id))}
                         className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded transition-colors"
                       >
                         🗑️
