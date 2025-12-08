@@ -60,7 +60,7 @@ export const useTabOpener = () => {
     
     linhasTelefonicas: () => openTab({
       title: 'Linhas Telefônicas',
-      path: '/inventario/linhas',
+      path: '/inventario/linhas-telefonicas',
       icon: <Phone className="w-3.5 h-3.5" />
     }),
 
