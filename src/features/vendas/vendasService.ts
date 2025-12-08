@@ -287,7 +287,7 @@ export const vendasService = {
   /**
    * Atualiza venda existente
    */
-  async atualizar(id: number | string, dados: Partial<Venda>): Promise<ResultadoVenda> {
+  async atualizar(id: number | string, dados: Partial<VendaFormData>): Promise<ResultadoVenda> {
     try {
       const { data, error } = await supabase
         .from('vendas')

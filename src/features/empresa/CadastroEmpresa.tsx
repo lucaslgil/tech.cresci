@@ -362,8 +362,8 @@ export const CadastroEmpresa: React.FC = () => {
               placeholder="Buscar por razão social, nome fantasia, CNPJ ou código..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 w-full border rounded-md focus:ring-2 focus:border-transparent text-sm"
-              style={{ borderColor: '#C9C4B5', focusRingColor: '#394353' }}
+              className="pl-10 pr-4 py-2 w-full border rounded-md focus:ring-2 focus:ring-[#394353] focus:border-transparent text-sm"
+              style={{ borderColor: '#C9C4B5' }}
             />
           </div>
           

@@ -15,7 +15,7 @@ import {
 } from './types'
 import { Toast } from '../../shared/components/Toast'
 import { DatePicker } from '../../shared/components/DatePicker'
-import { Search, Plus, FileText, Trash2 } from 'lucide-react'
+import { Search, Plus } from 'lucide-react'
 import { listarClientes } from '../clientes/services'
 import { buscarProdutos } from '../produtos/produtosService'
 import type { Cliente } from '../clientes/types'
@@ -370,7 +370,7 @@ export default function NovaVenda() {
           cliente_nome: formData.cliente_nome,
           cliente_cpf_cnpj: formData.cliente_cpf_cnpj,
           total: subtotal,
-          itens: itens,
+          itens: formData.itens,
           data_venda: formData.data_venda
         } 
       } 

@@ -383,7 +383,9 @@ export const TipoContatoLabels: Record<TipoContato, string> = {
   [TipoContato.TELEFONE]: 'Telefone',
   [TipoContato.CELULAR]: 'Celular',
   [TipoContato.EMAIL]: 'E-mail',
-  [TipoContato.WHATSAPP]: 'WhatsApp'
+  [TipoContato.WHATSAPP]: 'WhatsApp',
+  [TipoContato.SKYPE]: 'Skype',
+  [TipoContato.OUTROS]: 'Outros'
 }
 
 export const RegimeTributarioLabels: Record<RegimeTributario, string> = {

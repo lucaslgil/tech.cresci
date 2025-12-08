@@ -97,15 +97,15 @@ export function HistoricoCliente({ clienteId }: Props) {
               <div key={item.id} className="relative pl-12">
                 {/* Ícone na linha do tempo */}
                 <div className="absolute left-0 flex items-center justify-center w-8 h-8 bg-white border-2 border-gray-200 rounded-full">
-                  <span className="text-sm">{getIconeTipo(item.tipo)}</span>
+                  <span className="text-sm">{getIconeTipo(item.tipo || 'OBSERVACAO')}</span>
                 </div>
 
                 {/* Conteúdo */}
                 <div className="bg-white border border-gray-200 rounded-lg p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${getCorTipo(item.tipo)}`}>
-                        {item.tipo}
+                      <span className={`px-2 py-1 text-xs font-medium rounded ${getCorTipo(item.tipo || 'OBSERVACAO')}`}>
+                        {item.tipo || 'OBSERVAÇÃO'}
                       </span>
                       <span className="text-xs text-gray-500">
                         {formatarDataHora(item.created_at)}
