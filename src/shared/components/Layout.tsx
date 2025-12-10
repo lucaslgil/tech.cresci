@@ -47,6 +47,22 @@ export const Layout: React.FC = () => {
     setMenuMobileOpen(false)
   }
 
+  // Função para fechar todos os menus
+  const closeAllMenus = () => {
+    setCadastroOpen(false)
+    setInventarioOpen(false)
+    setNotasFiscaisOpen(false)
+    setVendasOpen(false)
+    setFranquiasOpen(false)
+    setFinanceiroOpen(false)
+  }
+
+  // Toggle de menu: fecha todos os outros antes de abrir
+  const toggleMenu = (menuSetter: React.Dispatch<React.SetStateAction<boolean>>, currentState: boolean) => {
+    closeAllMenus()
+    menuSetter(!currentState)
+  }
+
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Overlay para mobile */}
@@ -144,26 +160,26 @@ export const Layout: React.FC = () => {
 
           {/* Navigation */}
           <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-            {/* Dashboard */}
+            {/* 1. HOME (sempre primeiro) */}
             <Link
               to="/dashboard"
               onClick={closeMobileMenu}
               className="menu-item w-full flex items-center px-4 py-3 text-sm font-medium text-gray-300 hover:text-white rounded-md"
             >
               <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
-              <span>Dashboard</span>
+              <span>Home</span>
               <svg className="w-4 h-4 ml-auto text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </Link>
 
-            {/* Cadastro - Menu com submenu */}
+            {/* 2. CADASTROS (ordem alfabética) */}
             {hasAnyPermission(['cadastro_empresa', 'cadastro_colaborador', 'cadastro_produtos', 'cadastro_clientes']) && (
             <div>
               <button
-                onClick={() => setCadastroOpen(!cadastroOpen)}
+                onClick={() => toggleMenu(setCadastroOpen, cadastroOpen)}
                 className="menu-item w-full flex items-center px-4 py-3 text-sm font-medium text-gray-300 hover:text-white rounded-md"
               >
                 <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,15 +196,14 @@ export const Layout: React.FC = () => {
                 </svg>
               </button>
               
-              {/* Submenu CADASTRO */}
               {cadastroOpen && (
                 <div className="mt-1 space-y-0.5 bg-black bg-opacity-20">
-                  {hasPermission('cadastro_empresa') && (
+                  {hasPermission('cadastro_clientes') && (
                   <button
-                    onClick={() => { tabs.cadastroEmpresa(); closeMobileMenu(); }}
+                    onClick={() => { tabs.cadastroClientes(); closeMobileMenu(); }}
                     className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
                   >
-                    Empresa
+                    Clientes
                   </button>
                   )}
 
@@ -201,6 +216,15 @@ export const Layout: React.FC = () => {
                   </button>
                   )}
 
+                  {hasPermission('cadastro_empresa') && (
+                  <button
+                    onClick={() => { tabs.cadastroEmpresa(); closeMobileMenu(); }}
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                  >
+                    Empresa
+                  </button>
+                  )}
+
                   {hasPermission('cadastro_produtos') && (
                   <button
                     onClick={() => { tabs.cadastroProdutos(); closeMobileMenu(); }}
@@ -209,203 +233,16 @@ export const Layout: React.FC = () => {
                     Produtos
                   </button>
                   )}
-
-                  {hasPermission('cadastro_clientes') && (
-                  <button
-                    onClick={() => { tabs.cadastroClientes(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
-                  >
-                    Clientes
-                  </button>
-                  )}
                 </div>
               )}
             </div>
             )}
 
-            {/* Vendas - Menu com submenu */}
-            {hasAnyPermission(['vendas_listagem', 'vendas_nova', 'vendas_relatorios']) && (
-            <div>
-              <button
-                onClick={() => setVendasOpen(!vendasOpen)}
-                className="menu-item w-full flex items-center px-4 py-3 text-sm font-medium text-gray-300 hover:text-white rounded-md"
-              >
-                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                <span>Vendas</span>
-                <svg 
-                  className={`w-4 h-4 ml-auto transition-transform ${vendasOpen ? 'rotate-90' : ''}`}
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-              
-              {vendasOpen && (
-                <div className="mt-1 space-y-0.5 bg-black bg-opacity-20">
-                  {(hasPermission('vendas_listagem') || hasPermission('vendas_nova')) && (
-                  <button
-                    onClick={() => { tabs.listagemVendas(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
-                  >
-                    Listar Vendas
-                  </button>
-                  )}
-                  
-                  {hasPermission('vendas_relatorios') && (
-                  <button
-                    onClick={() => { tabs.relatoriosVendas(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
-                  >
-                    Relatórios
-                  </button>
-                  )}
-                </div>
-              )}
-            </div>
-            )}
-
-            {/* Inventário - Menu com submenu */}
-            {hasAnyPermission(['inventario_itens', 'inventario_relatorio', 'inventario_linhas']) && (
-            <div>
-              <button
-                onClick={() => setInventarioOpen(!inventarioOpen)}
-                className="menu-item w-full flex items-center px-4 py-3 text-sm font-medium text-gray-300 hover:text-white rounded-md"
-              >
-                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-                <span>Inventário</span>
-                <svg 
-                  className={`w-4 h-4 ml-auto transition-transform ${inventarioOpen ? 'rotate-90' : ''}`}
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-              
-              {inventarioOpen && (
-                <div className="mt-1 space-y-0.5 bg-black bg-opacity-20">
-                  {hasPermission('inventario_itens') && (
-                  <button
-                    onClick={() => { tabs.cadastroItem(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
-                  >
-                    Cadastrar Item
-                  </button>
-                  )}
-
-                  {hasPermission('inventario_linhas') && (
-                  <button
-                    onClick={() => { tabs.linhasTelefonicas(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
-                  >
-                    Linhas Telefônicas
-                  </button>
-                  )}
-
-                  {hasPermission('inventario_relatorio') && (
-                  <button
-                    onClick={() => { tabs.relatorioItens(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
-                  >
-                    Relatório
-                  </button>
-                  )}
-                </div>
-              )}
-            </div>
-            )}
-
-            {/* Notas Fiscais - Menu com submenu */}
-            {hasAnyPermission(['notas_fiscais_emitir', 'notas_fiscais_parametros']) && (
-            <div>
-              <button
-                onClick={() => setNotasFiscaisOpen(!notasFiscaisOpen)}
-                className="menu-item w-full flex items-center px-4 py-3 text-sm font-medium text-gray-300 hover:text-white rounded-md"
-              >
-                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span>Notas Fiscais</span>
-                <svg 
-                  className={`w-4 h-4 ml-auto transition-transform ${notasFiscaisOpen ? 'rotate-90' : ''}`}
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-              
-              {notasFiscaisOpen && (
-                <div className="mt-1 space-y-0.5 bg-black bg-opacity-20">
-                  {hasPermission('notas_fiscais_emitir') && (
-                  <button
-                    onClick={() => { tabs.emitirNotaFiscal(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
-                  >
-                    Emitir Nota Fiscal
-                  </button>
-                  )}
-
-                  {hasPermission('notas_fiscais_parametros') && (
-                  <button
-                    onClick={() => { tabs.parametrosFiscais(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
-                  >
-                    Parâmetros Fiscais
-                  </button>
-                  )}
-                </div>
-              )}
-            </div>
-            )}
-
-            {/* Franquias - Menu com submenu */}
-            {hasPermission('franquias') && (
-            <div>
-              <button
-                onClick={() => setFranquiasOpen(!franquiasOpen)}
-                className="menu-item w-full flex items-center px-4 py-3 text-sm font-medium text-gray-300 hover:text-white rounded-md"
-              >
-                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-                <span>Franquias</span>
-                <svg 
-                  className={`w-4 h-4 ml-auto transition-transform ${franquiasOpen ? 'rotate-90' : ''}`}
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-              
-              {franquiasOpen && (
-                <div className="mt-1 space-y-0.5 bg-black bg-opacity-20">
-                  <button
-                    onClick={() => { tabs.franquias(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
-                  >
-                    Gerenciador
-                  </button>
-                </div>
-              )}
-            </div>
-            )}
-
-            {/* Financeiro - Menu com submenu */}
+            {/* 3. FINANCEIRO */}
             {hasAnyPermission(['financeiro_contas_pagar', 'financeiro_contas_receber', 'financeiro_parametros']) && (
             <div>
               <button
-                onClick={() => setFinanceiroOpen(!financeiroOpen)}
+                onClick={() => toggleMenu(setFinanceiroOpen, financeiroOpen)}
                 className="menu-item w-full flex items-center px-4 py-3 text-sm font-medium text-gray-300 hover:text-white rounded-md"
               >
                 <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -455,7 +292,140 @@ export const Layout: React.FC = () => {
             </div>
             )}
 
-            {/* Tarefas */}
+            {/* 4. FRANQUIAS */}
+            {hasPermission('franquias') && (
+            <div>
+              <button
+                onClick={() => toggleMenu(setFranquiasOpen, franquiasOpen)}
+                className="menu-item w-full flex items-center px-4 py-3 text-sm font-medium text-gray-300 hover:text-white rounded-md"
+              >
+                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <span>Franquias</span>
+                <svg 
+                  className={`w-4 h-4 ml-auto transition-transform ${franquiasOpen ? 'rotate-90' : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              
+              {franquiasOpen && (
+                <div className="mt-1 space-y-0.5 bg-black bg-opacity-20">
+                  <button
+                    onClick={() => { tabs.franquias(); closeMobileMenu(); }}
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                  >
+                    Gerenciador
+                  </button>
+                </div>
+              )}
+            </div>
+            )}
+
+            {/* 5. INVENTÁRIO */}
+            {hasAnyPermission(['inventario_itens', 'inventario_relatorio', 'inventario_linhas']) && (
+            <div>
+              <button
+                onClick={() => toggleMenu(setInventarioOpen, inventarioOpen)}
+                className="menu-item w-full flex items-center px-4 py-3 text-sm font-medium text-gray-300 hover:text-white rounded-md"
+              >
+                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                <span>Inventário</span>
+                <svg 
+                  className={`w-4 h-4 ml-auto transition-transform ${inventarioOpen ? 'rotate-90' : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              
+              {inventarioOpen && (
+                <div className="mt-1 space-y-0.5 bg-black bg-opacity-20">
+                  {hasPermission('inventario_itens') && (
+                  <button
+                    onClick={() => { tabs.cadastroItem(); closeMobileMenu(); }}
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                  >
+                    Cadastrar Item
+                  </button>
+                  )}
+
+                  {hasPermission('inventario_linhas') && (
+                  <button
+                    onClick={() => { tabs.linhasTelefonicas(); closeMobileMenu(); }}
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                  >
+                    Linhas Telefônicas
+                  </button>
+                  )}
+
+                  {hasPermission('inventario_relatorio') && (
+                  <button
+                    onClick={() => { tabs.relatorioItens(); closeMobileMenu(); }}
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                  >
+                    Relatório
+                  </button>
+                  )}
+                </div>
+              )}
+            </div>
+            )}
+
+            {/* 6. NOTAS FISCAIS */}
+            {hasAnyPermission(['notas_fiscais_emitir', 'notas_fiscais_parametros']) && (
+            <div>
+              <button
+                onClick={() => toggleMenu(setNotasFiscaisOpen, notasFiscaisOpen)}
+                className="menu-item w-full flex items-center px-4 py-3 text-sm font-medium text-gray-300 hover:text-white rounded-md"
+              >
+                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>Notas Fiscais</span>
+                <svg 
+                  className={`w-4 h-4 ml-auto transition-transform ${notasFiscaisOpen ? 'rotate-90' : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              
+              {notasFiscaisOpen && (
+                <div className="mt-1 space-y-0.5 bg-black bg-opacity-20">
+                  {hasPermission('notas_fiscais_emitir') && (
+                  <button
+                    onClick={() => { tabs.emitirNotaFiscal(); closeMobileMenu(); }}
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                  >
+                    Emitir Nota Fiscal
+                  </button>
+                  )}
+
+                  {hasPermission('notas_fiscais_parametros') && (
+                  <button
+                    onClick={() => { tabs.parametrosFiscais(); closeMobileMenu(); }}
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                  >
+                    Parâmetros Fiscais
+                  </button>
+                  )}
+                </div>
+              )}
+            </div>
+            )}
+
+            {/* 7. TAREFAS */}
             {hasPermission('tarefas') && (
             <button
               onClick={() => { tabs.tarefas(); closeMobileMenu(); }}
@@ -471,7 +441,52 @@ export const Layout: React.FC = () => {
             </button>
             )}
 
-            {/* Configurações */}
+            {/* 8. VENDAS */}
+            {hasAnyPermission(['vendas_listagem', 'vendas_nova', 'vendas_relatorios']) && (
+            <div>
+              <button
+                onClick={() => toggleMenu(setVendasOpen, vendasOpen)}
+                className="menu-item w-full flex items-center px-4 py-3 text-sm font-medium text-gray-300 hover:text-white rounded-md"
+              >
+                <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <span>Vendas</span>
+                <svg 
+                  className={`w-4 h-4 ml-auto transition-transform ${vendasOpen ? 'rotate-90' : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              
+              {vendasOpen && (
+                <div className="mt-1 space-y-0.5 bg-black bg-opacity-20">
+                  {(hasPermission('vendas_listagem') || hasPermission('vendas_nova')) && (
+                  <button
+                    onClick={() => { tabs.listagemVendas(); closeMobileMenu(); }}
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                  >
+                    Listar Vendas
+                  </button>
+                  )}
+                  
+                  {hasPermission('vendas_relatorios') && (
+                  <button
+                    onClick={() => { tabs.relatoriosVendas(); closeMobileMenu(); }}
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                  >
+                    Relatórios
+                  </button>
+                  )}
+                </div>
+              )}
+            </div>
+            )}
+
+            {/* 9. CONFIGURAÇÕES (penúltimo) */}
             {hasPermission('configuracoes') && (
             <button
               onClick={() => { tabs.configuracoes(); closeMobileMenu(); }}
@@ -488,7 +503,7 @@ export const Layout: React.FC = () => {
             </button>
             )}
 
-            {/* Documentação */}
+            {/* 10. DOCUMENTAÇÃO (último) */}
             {hasPermission('documentacao') && (
             <button
               onClick={() => { tabs.documentacao(); closeMobileMenu(); }}

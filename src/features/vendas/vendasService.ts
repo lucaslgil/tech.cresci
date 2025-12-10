@@ -14,6 +14,7 @@ import type {
   ResultadoVenda
 } from './types'
 import { calcularSubtotalVenda, calcularTotalVenda } from './types'
+import { criarContasParceladas } from '../financeiro/contasReceberService'
 
 /**
  * CRUD DE VENDAS
@@ -268,6 +269,59 @@ export const vendasService = {
         if (parcelasError) throw parcelasError
       }
 
+      // INTEGRAÇÃO FINANCEIRA: Criar contas a receber automaticamente
+      // Apenas criar contas se o status for diferente de ORCAMENTO
+      console.log('🔍 Verificando criação de contas a receber...')
+      console.log('Status:', formData.status)
+      console.log('Cliente ID:', formData.cliente_id)
+      
+      if (formData.status !== 'ORCAMENTO' && formData.cliente_id) {
+        try {
+          const numeroParcelas = (formData.condicao_pagamento === 'PARCELADO' && formData.numero_parcelas)
+            ? formData.numero_parcelas
+            : 1
+
+          // Data de vencimento: se à vista, 0 dias, senão 30 dias da primeira parcela
+          const dataBase = new Date(formData.data_venda)
+          const diasAteVencimento = formData.condicao_pagamento === 'A_VISTA' ? 0 : 30
+          dataBase.setDate(dataBase.getDate() + diasAteVencimento)
+
+          console.log('💰 Criando contas a receber:', {
+            venda_id: venda.id,
+            numero_venda: numero,
+            cliente_id: formData.cliente_id,
+            cliente_nome: clienteNome,
+            valor_total: total,
+            numero_parcelas: numeroParcelas
+          })
+
+          const resultado = await criarContasParceladas({
+            venda_id: venda.id,
+            numero_venda: numero,
+            cliente_id: typeof formData.cliente_id === 'string' ? parseInt(formData.cliente_id) : formData.cliente_id,
+            cliente_nome: clienteNome,
+            cliente_cpf_cnpj: clienteCpfCnpj,
+            valor_total: total,
+            numero_parcelas: numeroParcelas,
+            data_vencimento_primeira: dataBase.toISOString().split('T')[0],
+            dias_entre_parcelas: 30
+          })
+
+          if (resultado.error) {
+            console.error('❌ Erro ao criar contas a receber:', resultado.error)
+          } else {
+            console.log('✅ Contas a receber criadas com sucesso!', resultado.data)
+          }
+        } catch (error) {
+          console.error('❌ Exceção ao criar contas a receber:', error)
+        }
+      } else {
+        console.log('⚠️ Contas a receber NÃO criadas. Motivo:', {
+          isOrcamento: formData.status === 'ORCAMENTO',
+          temCliente: !!formData.cliente_id
+        })
+      }
+
       return {
         sucesso: true,
         mensagem: `Venda #${numero} criada com sucesso!`,
@@ -289,19 +343,127 @@ export const vendasService = {
    */
   async atualizar(id: number | string, dados: Partial<VendaFormData>): Promise<ResultadoVenda> {
     try {
-      const { data, error } = await supabase
+      // Se está atualizando apenas o status, fazer update simples
+      const keys = Object.keys(dados)
+      if (keys.length === 1 && keys[0] === 'status') {
+        const { data, error } = await supabase
+          .from('vendas')
+          .update({ status: dados.status })
+          .eq('id', id)
+          .select()
+          .single()
+
+        if (error) throw error
+
+        return {
+          sucesso: true,
+          mensagem: 'Status atualizado com sucesso!',
+          venda: data
+        }
+      }
+
+      // Atualização completa: calcular totais
+      const subtotal = dados.itens ? calcularSubtotalVenda(dados.itens) : 0
+      const total = dados.itens ? calcularTotalVenda(dados) : 0
+
+      // Buscar dados do cliente se informado
+      let clienteNome = dados.cliente_nome || ''
+      let clienteCpfCnpj = dados.cliente_cpf_cnpj || ''
+
+      if (dados.cliente_id && !clienteNome) {
+        const { data: cliente } = await supabase
+          .from('clientes')
+          .select('nome_completo, razao_social, cpf, cnpj')
+          .eq('id', dados.cliente_id)
+          .single()
+
+        if (cliente) {
+          clienteNome = cliente.nome_completo || cliente.razao_social || ''
+          const cpfCnpj = cliente.cpf || cliente.cnpj || ''
+          clienteCpfCnpj = cpfCnpj.replace(/\D/g, '')
+        }
+      }
+
+      // Atualizar venda
+      const { data: venda, error: vendaError } = await supabase
         .from('vendas')
-        .update(dados)
+        .update({
+          tipo_venda: dados.tipo_venda,
+          status: dados.status,
+          cliente_id: dados.cliente_id,
+          cliente_nome: clienteNome,
+          cliente_cpf_cnpj: clienteCpfCnpj,
+          data_venda: dados.data_venda,
+          data_validade: dados.data_validade,
+          subtotal,
+          desconto: dados.desconto || 0,
+          acrescimo: dados.acrescimo || 0,
+          frete: dados.frete || 0,
+          outras_despesas: dados.outras_despesas || 0,
+          total,
+          forma_pagamento: dados.forma_pagamento,
+          condicao_pagamento: dados.condicao_pagamento,
+          numero_parcelas: dados.numero_parcelas || 1,
+          vendedor: dados.vendedor,
+          observacoes: dados.observacoes,
+          observacoes_internas: dados.observacoes_internas
+        })
         .eq('id', id)
         .select()
         .single()
 
-      if (error) throw error
+      if (vendaError) throw vendaError
+
+      // Atualizar itens: deletar todos e recriar
+      if (dados.itens) {
+        // Deletar itens antigos
+        await supabase
+          .from('vendas_itens')
+          .delete()
+          .eq('venda_id', id)
+
+        // Inserir novos itens
+        const itensParaInserir = dados.itens.map((item, index) => {
+          const valorTotal = item.quantidade * item.valor_unitario
+          const descontoValor = item.desconto_valor || (valorTotal * (item.desconto_percentual || 0) / 100)
+          const acrescimoValor = item.acrescimo_valor || (valorTotal * (item.acrescimo_percentual || 0) / 100)
+          const valorFinal = valorTotal - descontoValor + acrescimoValor
+
+          const stringOrNull = (value: any, maxLength: number) => {
+            if (!value) return null
+            const str = String(value).trim()
+            return str.length > 0 ? str.substring(0, maxLength) : null
+          }
+
+          return {
+            venda_id: id,
+            numero_item: index + 1,
+            produto_id: item.produto_id || null,
+            produto_codigo: stringOrNull(item.produto_codigo, 14),
+            produto_nome: stringOrNull(item.produto_nome, 200) || 'Produto sem nome',
+            quantidade: item.quantidade,
+            valor_unitario: item.valor_unitario,
+            valor_total: valorTotal,
+            desconto_percentual: item.desconto_percentual || 0,
+            desconto_valor: descontoValor,
+            acrescimo_percentual: item.acrescimo_percentual || 0,
+            acrescimo_valor: acrescimoValor,
+            valor_final: valorFinal,
+            observacoes: stringOrNull(item.observacoes, 500)
+          }
+        })
+
+        const { error: itensError } = await supabase
+          .from('vendas_itens')
+          .insert(itensParaInserir)
+
+        if (itensError) throw itensError
+      }
 
       return {
         sucesso: true,
         mensagem: 'Venda atualizada com sucesso!',
-        venda: data
+        venda
       }
     } catch (error) {
       return {
@@ -323,10 +485,10 @@ export const vendasService = {
         .eq('id', id)
         .single()
 
-      if (venda && venda.status !== 'ORCAMENTO' && venda.status !== 'CANCELADO') {
+      if (venda && venda.status !== 'ORCAMENTO' && venda.status !== 'CANCELADO' && venda.status !== 'PEDIDO_ABERTO') {
         return {
           sucesso: false,
-          mensagem: 'Apenas orçamentos e vendas canceladas podem ser excluídos'
+          mensagem: 'Apenas orçamentos, pedidos em aberto e vendas canceladas podem ser excluídos'
         }
       }
 

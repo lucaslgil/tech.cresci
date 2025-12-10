@@ -3,7 +3,6 @@ import { useAuth } from '../../shared/context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { isSupabaseConfigured } from '../../lib/supabase'
 import girafaImage from '../../assets/images/girafa-crescieperdi.png'
-import moonImage from '../../assets/images/moon.png'
 
 export const LoginForm: React.FC = () => {
   const [email, setEmail] = useState('')
@@ -30,197 +29,148 @@ export const LoginForm: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen py-16 px-4 relative overflow-hidden bg-black">
-      {/* Fundo preto do universo com estrelas */}
+    <div className="min-h-screen py-16 px-4 relative overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
+      {/* Grid tecnológico animado */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Estrelas do universo */}
-        {[...Array(200)].map((_, i) => (
+        {/* Linhas de grade horizontal */}
+        {[...Array(20)].map((_, i) => (
           <div
-            key={`star-${i}`}
-            className="absolute bg-white rounded-full"
+            key={`h-line-${i}`}
+            className="absolute w-full h-px bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent"
             style={{
-              width: `${0.5 + Math.random() * 2.5}px`,
-              height: `${0.5 + Math.random() * 2.5}px`,
+              top: `${i * 5}%`,
+              animation: `pulseGrid ${3 + (i % 3)}s ease-in-out infinite`,
+              animationDelay: `${i * 0.2}s`
+            }}
+          ></div>
+        ))}
+        
+        {/* Linhas de grade vertical */}
+        {[...Array(20)].map((_, i) => (
+          <div
+            key={`v-line-${i}`}
+            className="absolute h-full w-px bg-gradient-to-b from-transparent via-blue-500/20 to-transparent"
+            style={{
+              left: `${i * 5}%`,
+              animation: `pulseGrid ${3 + (i % 3)}s ease-in-out infinite`,
+              animationDelay: `${i * 0.2}s`
+            }}
+          ></div>
+        ))}
+
+        {/* Partículas flutuantes */}
+        {[...Array(30)].map((_, i) => (
+          <div
+            key={`particle-${i}`}
+            className="absolute rounded-full"
+            style={{
+              width: `${2 + Math.random() * 4}px`,
+              height: `${2 + Math.random() * 4}px`,
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
-              opacity: 0.2 + Math.random() * 0.8,
-              animation: `twinkle ${3 + Math.random() * 4}s ease-in-out infinite`,
+              background: i % 3 === 0 ? 'rgba(34, 211, 238, 0.6)' : i % 3 === 1 ? 'rgba(59, 130, 246, 0.6)' : 'rgba(168, 85, 247, 0.6)',
+              boxShadow: `0 0 ${8 + Math.random() * 12}px ${i % 3 === 0 ? 'rgba(34, 211, 238, 0.4)' : i % 3 === 1 ? 'rgba(59, 130, 246, 0.4)' : 'rgba(168, 85, 247, 0.4)'}`,
+              animation: `float ${5 + Math.random() * 10}s ease-in-out infinite`,
               animationDelay: `${Math.random() * 5}s`
             }}
           ></div>
         ))}
 
-        {/* Lua Branca - destaque único */}
-        <div 
-          className="absolute"
-          style={{
-            width: '180px',
-            height: '180px',
-            right: '10%',
-            top: '20%',
-          }}
-        >
-          {/* Brilho suave ao redor da Lua */}
-          <div 
-            className="absolute inset-0 rounded-full"
+        {/* Círculos concêntricos pulsantes */}
+        {[...Array(4)].map((_, i) => (
+          <div
+            key={`circle-${i}`}
+            className="absolute rounded-full border border-cyan-500/20"
             style={{
-              background: 'radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.15) 40%, transparent 70%)',
-              filter: 'blur(20px)',
-              transform: 'scale(1.4)',
-              animation: 'pulseMoon 8s ease-in-out infinite'
+              width: `${200 + i * 150}px`,
+              height: `${200 + i * 150}px`,
+              left: '10%',
+              top: '30%',
+              animation: `expandCircle ${8 + i * 2}s ease-in-out infinite`,
+              animationDelay: `${i * 2}s`
             }}
           ></div>
-          
-          {/* Lua */}
-          <img 
-            src={moonImage}
-            alt="Lua"
-            className="absolute inset-0 w-full h-full object-contain"
-            style={{
-              opacity: 0.95,
-              filter: 'drop-shadow(0 0 60px rgba(255, 255, 255, 0.5)) drop-shadow(0 0 100px rgba(203, 213, 225, 0.3)) brightness(1.4) contrast(1.15)',
-            }}
-          />
-          
-          {/* Reflexo de luz solar */}
-          <div 
-            className="absolute rounded-full pointer-events-none"
-            style={{
-              top: '15%',
-              left: '15%',
-              width: '45%',
-              height: '45%',
-              background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.08) 40%, transparent 60%)',
-            }}
-          ></div>
-        </div>
+        ))}
 
-        {/* Cometas/Asteroides melhorados */}
-        {[...Array(5)].map((_, i) => {
-          const size = 2 + Math.random() * 3;
-          const speed = 6 + i * 3;
-          const delay = i * 6;
-          const startY = 10 + i * 18;
-          
+        {/* Ondas digitais */}
+        {[...Array(5)].map((_, i) => (
+          <div
+            key={`wave-${i}`}
+            className="absolute w-full h-1 bg-gradient-to-r from-transparent via-purple-500/30 to-transparent"
+            style={{
+              top: `${20 + i * 15}%`,
+              animation: `wave ${6 + i}s ease-in-out infinite`,
+              animationDelay: `${i * 1.5}s`,
+              transform: 'skewY(-2deg)'
+            }}
+          ></div>
+        ))}
+
+        {/* Hexágonos tecnológicos */}
+        {[...Array(8)].map((_, i) => {
+          const size = 40 + Math.random() * 60;
           return (
             <div
-              key={`comet-${i}`}
-              className="absolute"
+              key={`hex-${i}`}
+              className="absolute border-2 border-blue-500/10"
               style={{
-                left: '-150px',
-                top: `${startY}%`,
-                animation: `comet ${speed}s linear infinite`,
-                animationDelay: `${delay}s`
+                width: `${size}px`,
+                height: `${size}px`,
+                left: `${10 + i * 12}%`,
+                top: `${10 + (i % 3) * 25}%`,
+                clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                animation: `rotateHex ${10 + i * 2}s linear infinite`,
+                animationDelay: `${i * 0.5}s`
               }}
-            >
-              {/* Cabeça do cometa com brilho */}
-              <div 
-                className="relative"
-                style={{
-                  width: `${size * 4}px`,
-                  height: `${size * 4}px`,
-                }}
-              >
-                {/* Núcleo brilhante */}
-                <div 
-                  className="absolute inset-0 rounded-full"
-                  style={{
-                    background: 'radial-gradient(circle, rgba(255, 255, 255, 1) 0%, rgba(34, 211, 238, 0.8) 40%, transparent 70%)',
-                    boxShadow: `0 0 ${size * 8}px rgba(34, 211, 238, 0.8), 0 0 ${size * 15}px rgba(34, 211, 238, 0.4)`,
-                  }}
-                ></div>
-                
-                {/* Ponto central */}
-                <div 
-                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-full"
-                  style={{
-                    width: `${size}px`,
-                    height: `${size}px`,
-                  }}
-                ></div>
-              </div>
-              
-              {/* Cauda do cometa - múltiplas camadas */}
-              <div className="absolute top-1/2 -translate-y-1/2" style={{ right: `${size * 2}px` }}>
-                {/* Cauda principal */}
-                <div 
-                  className="h-1 bg-gradient-to-r from-cyan-300 via-cyan-500/50 to-transparent"
-                  style={{
-                    width: `${120 + i * 30}px`,
-                    filter: 'blur(1px)',
-                    boxShadow: '0 0 10px rgba(34, 211, 238, 0.5)'
-                  }}
-                ></div>
-                
-                {/* Cauda secundária (mais larga e difusa) */}
-                <div 
-                  className="absolute top-1/2 -translate-y-1/2 h-2 bg-gradient-to-r from-cyan-200/40 via-blue-400/20 to-transparent"
-                  style={{
-                    width: `${100 + i * 25}px`,
-                    filter: 'blur(3px)',
-                  }}
-                ></div>
-                
-                {/* Cauda terciária (efeito de dispersão) */}
-                <div 
-                  className="absolute top-1/2 -translate-y-1/2 h-3 bg-gradient-to-r from-white/10 via-cyan-300/10 to-transparent"
-                  style={{
-                    width: `${80 + i * 20}px`,
-                    filter: 'blur(5px)',
-                  }}
-                ></div>
-              </div>
-              
-              {/* Partículas dispersas atrás */}
-              {[...Array(3)].map((_, j) => (
-                <div
-                  key={`particle-${i}-${j}`}
-                  className="absolute bg-cyan-300 rounded-full"
-                  style={{
-                    width: '1px',
-                    height: '1px',
-                    right: `${30 + j * 25}px`,
-                    top: `${-3 + j * 3}px`,
-                    opacity: 0.4 - j * 0.1,
-                    boxShadow: '0 0 3px rgba(34, 211, 238, 0.6)'
-                  }}
-                ></div>
-              ))}
-            </div>
+            ></div>
           );
         })}
+
+        {/* Feixes de luz diagonal */}
+        {[...Array(6)].map((_, i) => (
+          <div
+            key={`beam-${i}`}
+            className="absolute h-full w-1 bg-gradient-to-b from-cyan-500/10 via-blue-500/5 to-transparent"
+            style={{
+              left: `${15 + i * 15}%`,
+              transform: 'rotate(15deg)',
+              animation: `slideBeam ${8 + i * 2}s linear infinite`,
+              animationDelay: `${i * 1.5}s`,
+              filter: 'blur(2px)'
+            }}
+          ></div>
+        ))}
       </div>
 
       {/* Estilos de animação */}
       <style dangerouslySetInnerHTML={{__html: `
-        @keyframes twinkle {
-          0%, 100% { opacity: 0.2; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.3); }
-        }
-        @keyframes pulseMoon {
-          0%, 100% { opacity: 0.5; transform: scale(1.4); }
-          50% { opacity: 0.8; transform: scale(1.5); }
-        }
-        @keyframes comet {
-          0% { 
-            transform: translate(0, 0) rotate(35deg) scale(0.5);
-            opacity: 0;
-          }
-          5% {
-            opacity: 1;
-            transform: translate(50px, 50px) rotate(35deg) scale(1);
-          }
-          85% {
-            opacity: 1;
-          }
-          100% { 
-            transform: translate(calc(100vw + 300px), calc(100vh + 300px)) rotate(35deg) scale(1.2);
-            opacity: 0;
-          }
+        @keyframes pulseGrid {
+          0%, 100% { opacity: 0.1; }
+          50% { opacity: 0.3; }
         }
         @keyframes float {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-30px); }
+        }
+        @keyframes expandCircle {
+          0% { transform: scale(0.8); opacity: 0.3; }
+          50% { transform: scale(1.2); opacity: 0.1; }
+          100% { transform: scale(0.8); opacity: 0.3; }
+        }
+        @keyframes wave {
+          0% { transform: translateX(-100%) skewY(-2deg); opacity: 0; }
+          50% { opacity: 0.5; }
+          100% { transform: translateX(100%) skewY(-2deg); opacity: 0; }
+        }
+        @keyframes rotateHex {
+          0% { transform: rotate(0deg); opacity: 0.2; }
+          50% { opacity: 0.4; }
+          100% { transform: rotate(360deg); opacity: 0.2; }
+        }
+        @keyframes slideBeam {
+          0% { transform: translateY(-100%) rotate(15deg); opacity: 0; }
+          50% { opacity: 1; }
+          100% { transform: translateY(100vh) rotate(15deg); opacity: 0; }
         }
         @keyframes floatGirafa {
           0%, 100% { transform: translateY(0px) rotate(-2deg); }

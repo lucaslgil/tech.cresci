@@ -43,10 +43,10 @@ export const TabBar: React.FC = () => {
   useEffect(() => {
     if (loading) return
 
+    // Verificar apenas uma vez quando as permissões carregarem
     tabs.forEach(tab => {
       const permission = routePermissions[tab.path]
       if (permission && !hasPermission(permission as any)) {
-        console.warn(`Fechando aba não autorizada: ${tab.title}`)
         closeTab(tab.id)
         // Se era a aba ativa, redirecionar para dashboard
         if (tab.id === activeTabId) {
@@ -54,7 +54,7 @@ export const TabBar: React.FC = () => {
         }
       }
     })
-  }, [loading, tabs, hasPermission, closeTab, activeTabId, navigate])
+  }, [loading]) // Removido dependências desnecessárias que causavam loop
 
   if (tabs.length === 0) return null
 

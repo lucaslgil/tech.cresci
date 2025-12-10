@@ -35,13 +35,13 @@ export const useTabOpener = () => {
     
     cadastroClientes: () => openTab({
       title: 'Cadastro de Clientes',
-      path: '/clientes/cadastro',
+      path: '/cadastro/clientes',
       icon: <Users className="w-3.5 h-3.5" />
     }),
 
     listagemClientes: () => openTab({
       title: 'Listagem de Clientes',
-      path: '/clientes',
+      path: '/cadastro/clientes',
       icon: <Users className="w-3.5 h-3.5" />
     }),
 

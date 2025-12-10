@@ -367,53 +367,53 @@ export interface ValidationResult {
 // LABELS E HELPERS
 // =====================================================
 
-export const TipoPessoaLabels: Record<TipoPessoa, string> = {
-  [TipoPessoa.FISICA]: 'Pessoa Física',
-  [TipoPessoa.JURIDICA]: 'Pessoa Jurídica'
-}
+export const TipoPessoaLabels = {
+  'FISICA': 'Pessoa Física',
+  'JURIDICA': 'Pessoa Jurídica'
+} as const
 
-export const TipoEnderecoLabels: Record<TipoEndereco, string> = {
-  [TipoEndereco.COMERCIAL]: 'Comercial',
-  [TipoEndereco.RESIDENCIAL]: 'Residencial',
-  [TipoEndereco.COBRANCA]: 'Cobrança',
-  [TipoEndereco.ENTREGA]: 'Entrega'
-}
+export const TipoEnderecoLabels = {
+  'COMERCIAL': 'Comercial',
+  'RESIDENCIAL': 'Residencial',
+  'COBRANCA': 'Cobrança',
+  'ENTREGA': 'Entrega'
+} as const
 
-export const TipoContatoLabels: Record<TipoContato, string> = {
-  [TipoContato.TELEFONE]: 'Telefone',
-  [TipoContato.CELULAR]: 'Celular',
-  [TipoContato.EMAIL]: 'E-mail',
-  [TipoContato.WHATSAPP]: 'WhatsApp',
-  [TipoContato.SKYPE]: 'Skype',
-  [TipoContato.OUTROS]: 'Outros'
-}
+export const TipoContatoLabels = {
+  'TELEFONE': 'Telefone',
+  'CELULAR': 'Celular',
+  'EMAIL': 'E-mail',
+  'WHATSAPP': 'WhatsApp',
+  'SKYPE': 'Skype',
+  'OUTROS': 'Outros'
+} as const
 
-export const RegimeTributarioLabels: Record<RegimeTributario, string> = {
-  [RegimeTributario.SIMPLES_NACIONAL]: 'Simples Nacional',
-  [RegimeTributario.LUCRO_PRESUMIDO]: 'Lucro Presumido',
-  [RegimeTributario.LUCRO_REAL]: 'Lucro Real',
-  [RegimeTributario.MEI]: 'MEI',
-  [RegimeTributario.ISENTO]: 'Isento'
-}
+export const RegimeTributarioLabels = {
+  'SIMPLES_NACIONAL': 'Simples Nacional',
+  'LUCRO_PRESUMIDO': 'Lucro Presumido',
+  'LUCRO_REAL': 'Lucro Real',
+  'MEI': 'MEI',
+  'ISENTO': 'Isento'
+} as const
 
-export const ContribuinteICMSLabels: Record<ContribuinteICMS, string> = {
-  [ContribuinteICMS.CONTRIBUINTE]: 'Contribuinte',
-  [ContribuinteICMS.ISENTO]: 'Isento',
-  [ContribuinteICMS.NAO_CONTRIBUINTE]: 'Não Contribuinte'
-}
+export const ContribuinteICMSLabels = {
+  'CONTRIBUINTE': 'Contribuinte',
+  'ISENTO': 'Isento',
+  'NAO_CONTRIBUINTE': 'Não Contribuinte'
+} as const
 
-export const StatusClienteLabels: Record<StatusCliente, string> = {
-  [StatusCliente.ATIVO]: 'Ativo',
-  [StatusCliente.INATIVO]: 'Inativo',
-  [StatusCliente.BLOQUEADO]: 'Bloqueado',
-  [StatusCliente.SUSPENSO]: 'Suspenso'
-}
+export const StatusClienteLabels = {
+  'ATIVO': 'Ativo',
+  'INATIVO': 'Inativo',
+  'BLOQUEADO': 'Bloqueado',
+  'SUSPENSO': 'Suspenso'
+} as const
 
-export const TipoBloqueioLabels: Record<TipoBloqueio, string> = {
-  [TipoBloqueio.COMERCIAL]: 'Comercial',
-  [TipoBloqueio.FINANCEIRO]: 'Financeiro',
-  [TipoBloqueio.COMPLETO]: 'Completo'
-}
+export const TipoBloqueioLabels = {
+  'COMERCIAL': 'Comercial',
+  'FINANCEIRO': 'Financeiro',
+  'COMPLETO': 'Completo'
+} as const
 
 // =====================================================
 // ESTADOS BRASILEIROS

@@ -15,14 +15,16 @@ import {
 } from './types'
 import { Toast } from '../../shared/components/Toast'
 import { DatePicker } from '../../shared/components/DatePicker'
-import { Search, Plus } from 'lucide-react'
+import { Search, Plus, Trash2 } from 'lucide-react'
 import { listarClientes } from '../clientes/services'
 import { buscarProdutos } from '../produtos/produtosService'
 import type { Cliente } from '../clientes/types'
 import type { Produto } from '../produtos/types'
+import type { ContaReceber } from '../financeiro/types'
+import { buscarContasPorVenda, criarContaReceber, excluirConta } from '../financeiro/contasReceberService'
 import { BotoesAcaoVenda } from './components/BotoesAcaoVenda'
+import { ImpressaoPedido } from './components/ImpressaoPedido'
 import { useParametrosFinanceiros } from './hooks/useParametrosFinanceiros'
-import { criarContaReceber } from '../financeiro/contasReceberService'
 
 export default function NovaVenda() {
   const navigate = useNavigate()
@@ -32,6 +34,7 @@ export default function NovaVenda() {
   const [statusVenda, setStatusVenda] = useState<string>('ORCAMENTO')
   const [numeroVenda, setNumeroVenda] = useState<number | null>(null)
   const [vendaBloqueada, setVendaBloqueada] = useState(false)
+  const [mostrarImpressao, setMostrarImpressao] = useState(false)
 
   // Hook para buscar parâmetros financeiros
   const { formasPagamento, parcelamentos, carregando: carregandoParametros } = useParametrosFinanceiros()
@@ -69,18 +72,37 @@ export default function NovaVenda() {
     valor_unitario: 0
   })
 
-  // Estados para múltiplas formas de pagamento
-  interface PagamentoVenda {
-    forma_pagamento: string
+  // Estado para contas a receber vinculadas à venda
+  const [contasReceber, setContasReceber] = useState<ContaReceber[]>([])
+
+  // Estado para pagamentos pendentes (antes de salvar venda)
+  const [pagamentosPendentes, setPagamentosPendentes] = useState<Array<{
     valor: number
-    data_vencimento?: string
-  }
-  
-  const [pagamentos, setPagamentos] = useState<PagamentoVenda[]>([])
-  const [pagamentoAtual, setPagamentoAtual] = useState<PagamentoVenda>({
-    forma_pagamento: 'DINHEIRO',
-    valor: 0
+    data_vencimento: string
+    observacao: string
+  }>>([])
+
+  // Estado para novo pagamento (com valor sugerido do total da venda)
+  const [novoPagamento, setNovoPagamento] = useState({
+    valor: 0,
+    data_vencimento: new Date().toISOString().split('T')[0],
+    observacao: ''
   })
+
+  // Atualizar valor sugerido quando o total da venda mudar
+  useEffect(() => {
+    const totalVenda = calcularTotalVenda(formData)
+    const totalPagamentos = id 
+      ? contasReceber.reduce((acc, c) => acc + c.valor_total, 0)
+      : pagamentosPendentes.reduce((acc, p) => acc + p.valor, 0)
+    
+    const saldoRestante = totalVenda - totalPagamentos
+    
+    // Sugerir o saldo restante (ou total se não houver pagamentos)
+    if (saldoRestante > 0) {
+      setNovoPagamento(prev => ({ ...prev, valor: saldoRestante }))
+    }
+  }, [formData.itens, formData.desconto, formData.acrescimo, formData.frete, formData.outras_despesas, contasReceber, pagamentosPendentes, id])
 
   // Buscar clientes conforme digitação
   useEffect(() => {
@@ -187,6 +209,12 @@ export default function NovaVenda() {
           setClientesSugeridos([])
           setMostrarSugestoesClientes(false)
         }
+
+        // Buscar contas a receber vinculadas à venda
+        const { data: contas } = await buscarContasPorVenda(Number(id))
+        if (contas) {
+          setContasReceber(contas)
+        }
       }
     } catch (error) {
       setToast({ tipo: 'error', mensagem: 'Erro ao carregar venda' })
@@ -249,56 +277,131 @@ export default function NovaVenda() {
     }))
   }
 
-  // Funções para gerenciar pagamentos
-  const handleAdicionarPagamento = () => {
-    if (!pagamentoAtual.forma_pagamento || pagamentoAtual.valor <= 0) {
-      setToast({ tipo: 'error', mensagem: 'Informe a forma de pagamento e o valor' })
+  // ============================================
+  // FUNÇÕES DE GERENCIAMENTO DE PAGAMENTOS
+  // ============================================
+
+  const recarregarContasReceber = async () => {
+    if (!id) return
+    const { data: contas } = await buscarContasPorVenda(Number(id))
+    if (contas) {
+      setContasReceber(contas)
+    }
+  }
+
+  const adicionarPagamento = async () => {
+    if (novoPagamento.valor <= 0) {
+      setToast({ tipo: 'error', mensagem: 'O valor deve ser maior que zero' })
       return
     }
 
-    setPagamentos([...pagamentos, pagamentoAtual])
-    
-    // Resetar o pagamento atual
-    const subtotal = calcularTotalVenda(formData)
-    const totalPago = [...pagamentos, pagamentoAtual].reduce((sum, p) => sum + p.valor, 0)
-    const saldoRestante = subtotal - totalPago
-    
-    setPagamentoAtual({
-      forma_pagamento: 'DINHEIRO',
-      valor: saldoRestante > 0 ? saldoRestante : 0
-    })
-  }
+    // Se a venda ainda não foi salva, adicionar aos pagamentos pendentes
+    if (!id) {
+      setPagamentosPendentes(prev => [...prev, { ...novoPagamento }])
+      
+      // Resetar formulário
+      setNovoPagamento({
+        valor: 0,
+        data_vencimento: new Date().toISOString().split('T')[0],
+        observacao: ''
+      })
+      
+      setToast({ tipo: 'success', mensagem: 'Pagamento adicionado! Será salvo junto com a venda.' })
+      return
+    }
 
-  const handleRemoverPagamento = (index: number) => {
-    const novosPagamentos = pagamentos.filter((_, i) => i !== index)
-    setPagamentos(novosPagamentos)
-    
-    // Atualizar valor sugerido
-    const subtotal = calcularTotalVenda(formData)
-    const totalPago = novosPagamentos.reduce((sum, p) => sum + p.valor, 0)
-    const saldoRestante = subtotal - totalPago
-    
-    if (saldoRestante > 0) {
-      setPagamentoAtual({ ...pagamentoAtual, valor: saldoRestante })
+    // Se a venda já foi salva, criar diretamente no banco
+    if (!formData.cliente_id) {
+      setToast({ tipo: 'error', mensagem: 'Selecione um cliente antes de adicionar pagamentos' })
+      return
+    }
+
+    setCarregando(true)
+    try {
+      // Buscar dados do cliente
+      const { data: clientesData } = await listarClientes()
+      const cliente = clientesData?.find(c => c.id === formData.cliente_id)
+
+      if (!cliente) {
+        setToast({ tipo: 'error', mensagem: 'Cliente não encontrado' })
+        return
+      }
+
+      const clienteNome = cliente.nome_completo || cliente.razao_social || ''
+      const clienteCpfCnpj = (cliente.cpf || cliente.cnpj || '').replace(/\D/g, '')
+
+      // Calcular número da próxima parcela
+      const proximaParcela = contasReceber.length + 1
+      const totalParcelas = contasReceber.length + 1
+
+      const { data, error } = await criarContaReceber({
+        venda_id: Number(id),
+        numero_venda: numeroVenda || Number(id),
+        cliente_id: Number(formData.cliente_id),
+        cliente_nome: clienteNome,
+        cliente_cpf_cnpj: clienteCpfCnpj,
+        descricao: `Venda #${numeroVenda || id} - Parcela ${proximaParcela}/${totalParcelas}`,
+        numero_documento: `${numeroVenda || id}/${proximaParcela}`,
+        numero_parcela: proximaParcela,
+        total_parcelas: totalParcelas,
+        valor_original: novoPagamento.valor,
+        valor_total: novoPagamento.valor,
+        data_emissao: new Date().toISOString().split('T')[0],
+        data_vencimento: novoPagamento.data_vencimento,
+        status: 'ABERTO',
+        observacoes: novoPagamento.observacao
+      })
+
+      if (error) {
+        setToast({ tipo: 'error', mensagem: 'Erro ao adicionar pagamento' })
+      } else {
+        setToast({ tipo: 'success', mensagem: 'Pagamento adicionado com sucesso!' })
+        
+        // Resetar formulário
+        setNovoPagamento({
+          valor: 0,
+          data_vencimento: new Date().toISOString().split('T')[0],
+          observacao: ''
+        })
+
+        // Recarregar contas
+        await recarregarContasReceber()
+      }
+    } catch (error) {
+      setToast({ tipo: 'error', mensagem: 'Erro ao adicionar pagamento' })
+    } finally {
+      setCarregando(false)
     }
   }
 
-  // Atualizar valor sugerido quando o total da venda mudar
-  useEffect(() => {
-    if (pagamentos.length === 0 && formData.itens.length > 0) {
-      const subtotal = calcularTotalVenda(formData)
-      setPagamentoAtual(prev => ({ ...prev, valor: subtotal }))
+  const removerPagamento = async (contaId: number) => {
+    if (!confirm('Deseja realmente excluir este pagamento?')) return
+
+    setCarregando(true)
+    try {
+      const { error } = await excluirConta(contaId)
+      
+      if (error) {
+        setToast({ tipo: 'error', mensagem: 'Erro ao excluir pagamento' })
+      } else {
+        setToast({ tipo: 'success', mensagem: 'Pagamento excluído com sucesso!' })
+        await recarregarContasReceber()
+      }
+    } catch (error) {
+      setToast({ tipo: 'error', mensagem: 'Erro ao excluir pagamento' })
+    } finally {
+      setCarregando(false)
     }
-  }, [formData.itens, formData.desconto, formData.frete, formData.acrescimo, formData.outras_despesas, pagamentos.length])
+  }
+
+  const removerPagamentoPendente = (index: number) => {
+    setPagamentosPendentes(prev => prev.filter((_, i) => i !== index))
+    setToast({ tipo: 'success', mensagem: 'Pagamento removido' })
+  }
 
   const handleSubmit = async () => {
     if (formData.itens.length === 0) {
       setToast({ tipo: 'error', mensagem: 'Adicione pelo menos um item' })
-      return
-    }
-
-    if (!formData.cliente_id) {
-      setToast({ tipo: 'error', mensagem: 'Selecione um cliente' })
       return
     }
 
@@ -311,30 +414,7 @@ export default function NovaVenda() {
         const statusAtual = statusVenda || 'PEDIDO_ABERTO'
         const resultado = await vendasService.atualizar(id, { ...formData, status: statusAtual as any })
         if (resultado.sucesso) {
-          // Se houver pagamentos, criar contas a receber
-          if (pagamentos.length > 0 && clienteSelecionado) {
-            for (const pagamento of pagamentos) {
-              await criarContaReceber({
-                venda_id: parseInt(id),
-                numero_venda: numeroVenda || undefined,
-                cliente_id: Number(formData.cliente_id),
-                cliente_nome: clienteSelecionado.tipo_pessoa === 'FISICA' 
-                  ? (clienteSelecionado.nome_completo || '') 
-                  : (clienteSelecionado.razao_social || clienteSelecionado.nome_fantasia || ''),
-                cliente_cpf_cnpj: clienteSelecionado.tipo_pessoa === 'FISICA'
-                  ? clienteSelecionado.cpf
-                  : clienteSelecionado.cnpj,
-                descricao: `Venda #${numeroVenda || id} - ${pagamento.forma_pagamento}`,
-                valor_original: pagamento.valor,
-                data_emissao: formData.data_venda,
-                data_vencimento: pagamento.data_vencimento || formData.data_venda,
-                forma_pagamento: pagamento.forma_pagamento
-              })
-            }
-            setToast({ tipo: 'success', mensagem: 'Pedido e formas de pagamento atualizados!' })
-          } else {
-            setToast({ tipo: 'success', mensagem: 'Pedido atualizado com sucesso!' })
-          }
+          setToast({ tipo: 'success', mensagem: 'Pedido atualizado com sucesso!' })
           // Recarregar dados
           carregarVenda()
         } else {
@@ -344,37 +424,10 @@ export default function NovaVenda() {
         // Criar nova venda com status PEDIDO_ABERTO
         const resultado = await vendasService.criar({ ...formData, status: 'PEDIDO_ABERTO' as any })
         if (resultado.sucesso && resultado.dados) {
-          const vendaId = resultado.dados.id
-          
-          // Se houver pagamentos, criar contas a receber
-          if (pagamentos.length > 0 && clienteSelecionado) {
-            for (const pagamento of pagamentos) {
-              await criarContaReceber({
-                venda_id: Number(vendaId),
-                numero_venda: resultado.dados.numero,
-                cliente_id: Number(formData.cliente_id),
-                cliente_nome: clienteSelecionado.tipo_pessoa === 'FISICA' 
-                  ? (clienteSelecionado.nome_completo || '') 
-                  : (clienteSelecionado.razao_social || clienteSelecionado.nome_fantasia || ''),
-                cliente_cpf_cnpj: clienteSelecionado.tipo_pessoa === 'FISICA'
-                  ? clienteSelecionado.cpf
-                  : clienteSelecionado.cnpj,
-                descricao: `Venda #${resultado.dados.numero || vendaId} - ${pagamento.forma_pagamento}`,
-                valor_original: pagamento.valor,
-                data_emissao: formData.data_venda,
-                data_vencimento: pagamento.data_vencimento || formData.data_venda,
-                forma_pagamento: pagamento.forma_pagamento
-              })
-            }
-            setToast({ tipo: 'success', mensagem: 'Pedido criado com formas de pagamento!' })
-          } else {
-            setToast({ tipo: 'success', mensagem: 'Pedido criado com status: Pedido em Aberto' })
-          }
-          
-          // Limpar pagamentos após salvar
-          setPagamentos([])
+          setToast({ tipo: 'success', mensagem: 'Pedido criado com status: Pedido em Aberto' })
           
           // Atualizar URL para modo de edição e carregar dados
+          const vendaId = resultado.dados.id
           navigate(`/vendas/${vendaId}`, { replace: true })
           
           // Aguardar um momento para a URL ser atualizada e então carregar os dados
@@ -406,6 +459,51 @@ export default function NovaVenda() {
                 if (vendaCarregada.cliente_nome) {
                   clienteSelecionadoRef.current = true
                   setBuscaCliente(vendaCarregada.cliente_nome)
+                }
+
+                // Buscar contas a receber
+                const { data: contas } = await buscarContasPorVenda(vendaId)
+                if (contas) {
+                  setContasReceber(contas)
+                }
+
+                // Salvar pagamentos pendentes
+                if (pagamentosPendentes.length > 0 && formData.cliente_id) {
+                  const { data: clientesData } = await listarClientes()
+                  const cliente = clientesData?.find(c => c.id === formData.cliente_id)
+
+                  if (cliente) {
+                    const clienteNome = cliente.nome_completo || cliente.razao_social || ''
+                    const clienteCpfCnpj = (cliente.cpf || cliente.cnpj || '').replace(/\D/g, '')
+
+                    for (let i = 0; i < pagamentosPendentes.length; i++) {
+                      const pagamento = pagamentosPendentes[i]
+                      await criarContaReceber({
+                        venda_id: vendaId,
+                        numero_venda: vendaCarregada.numero || vendaId,
+                        cliente_id: Number(formData.cliente_id),
+                        cliente_nome: clienteNome,
+                        cliente_cpf_cnpj: clienteCpfCnpj,
+                        descricao: `Venda #${vendaCarregada.numero || vendaId} - Parcela ${i + 1}/${pagamentosPendentes.length}`,
+                        numero_documento: `${vendaCarregada.numero || vendaId}/${i + 1}`,
+                        numero_parcela: i + 1,
+                        total_parcelas: pagamentosPendentes.length,
+                        valor_original: pagamento.valor,
+                        valor_total: pagamento.valor,
+                        data_emissao: new Date().toISOString().split('T')[0],
+                        data_vencimento: pagamento.data_vencimento,
+                        status: 'ABERTO',
+                        observacoes: pagamento.observacao
+                      })
+                    }
+
+                    // Limpar pagamentos pendentes e recarregar
+                    setPagamentosPendentes([])
+                    const { data: contasAtualizadas } = await buscarContasPorVenda(vendaId)
+                    if (contasAtualizadas) {
+                      setContasReceber(contasAtualizadas)
+                    }
+                  }
                 }
               }
             } catch (error) {
@@ -488,6 +586,14 @@ export default function NovaVenda() {
     })
   }
 
+  const handleImprimirPedido = () => {
+    if (!id) {
+      setToast({ tipo: 'error', mensagem: 'Salve o pedido antes de imprimir' })
+      return
+    }
+    setMostrarImpressao(true)
+  }
+
   const handleBloquear = async () => {
     if (!id) return
 
@@ -549,12 +655,6 @@ export default function NovaVenda() {
 
   const handleConfirmarPedido = async () => {
     if (!id) return
-    
-    // Validar se há pelo menos uma forma de pagamento antes de confirmar
-    if (pagamentos.length === 0) {
-      setToast({ tipo: 'error', mensagem: 'Não é possível confirmar o pedido sem informar ao menos uma forma de pagamento!' })
-      return
-    }
     
     setCarregando(true)
     try {
@@ -830,7 +930,7 @@ export default function NovaVenda() {
                     value={itemAtual.quantidade}
                     onChange={(e) => setItemAtual({ ...itemAtual, quantidade: parseFloat(e.target.value) })}
                     className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-                    step="1"
+                    step="0.01"
                     min="0"
                   />
                 </div>
@@ -839,18 +939,14 @@ export default function NovaVenda() {
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Valor Unit. *
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">R$</span>
-                    <input
-                      type="number"
-                      value={itemAtual.valor_unitario}
-                      onChange={(e) => setItemAtual({ ...itemAtual, valor_unitario: parseFloat(e.target.value) })}
-                      className="w-full pl-8 pr-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-                      step="0.01"
-                      min="0"
-                      placeholder="0,00"
-                    />
-                  </div>
+                  <input
+                    type="number"
+                    value={itemAtual.valor_unitario}
+                    onChange={(e) => setItemAtual({ ...itemAtual, valor_unitario: parseFloat(e.target.value) })}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                    step="0.01"
+                    min="0"
+                  />
                 </div>
               </div>
 
@@ -906,120 +1002,206 @@ export default function NovaVenda() {
             )}
           </div>
 
-          {/* Card: Pagamento */}
+          {/* Card: Formas de Pagamento */}
           <div className="bg-white rounded-lg shadow p-4">
-            <h2 className="text-base font-medium text-gray-900 mb-3">Pagamento</h2>
-
-            {/* Lista de pagamentos adicionados */}
-            {pagamentos.length > 0 && (
-              <div className="mb-4 space-y-2">
-                <p className="text-xs font-semibold text-gray-700 mb-2">Formas de Pagamento Adicionadas:</p>
-                {pagamentos.map((pag, index) => (
-                  <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded text-xs border border-gray-200">
-                    <div>
-                      <span className="font-medium text-gray-900">{pag.forma_pagamento}</span>
-                      <span className="text-gray-600 ml-2">R$ {pag.valor.toFixed(2)}</span>
-                      {pag.data_vencimento && (
-                        <span className="text-gray-500 ml-2 text-xs">
-                          (Venc: {new Date(pag.data_vencimento).toLocaleDateString('pt-BR')})
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoverPagamento(index)}
-                      className="text-red-600 hover:text-red-800 font-bold text-lg"
-                      title="Remover pagamento"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-                <div className="flex justify-between pt-2 border-t border-gray-300">
-                  <span className="text-xs font-semibold text-gray-900">Total Pago:</span>
-                  <span className="text-xs font-semibold text-gray-900">
-                    R$ {pagamentos.reduce((sum, p) => sum + p.valor, 0).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-gray-600">Saldo Restante:</span>
-                  <span className="text-xs font-medium text-blue-600">
-                    R$ {Math.max(0, subtotal - pagamentos.reduce((sum, p) => sum + p.valor, 0)).toFixed(2)}
-                  </span>
-                </div>
+            <h2 className="text-base font-medium text-gray-900 mb-3">Formas de Pagamento</h2>
+            
+            {!id && (
+              <div className="mb-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                💡 Os pagamentos serão salvos automaticamente quando você salvar a venda
               </div>
             )}
+            
+            {/* Formulário de Adicionar Pagamento */}
+            <div className="bg-gray-50 p-3 rounded-md border border-gray-200 mb-3">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Adicionar Pagamento</h3>
+                
+                <div className="grid grid-cols-3 gap-2 mb-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Valor *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={novoPagamento.valor || ''}
+                      onChange={(e) => setNovoPagamento({ ...novoPagamento, valor: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                      placeholder="0,00"
+                    />
+                  </div>
 
-            {/* Formulário para adicionar pagamento */}
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Forma de Pagamento
-                </label>
-                <select
-                  value={pagamentoAtual.forma_pagamento}
-                  onChange={(e) => setPagamentoAtual({ ...pagamentoAtual, forma_pagamento: e.target.value })}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-                  disabled={carregandoParametros}
-                >
-                  {formasPagamento.length === 0 ? (
-                    <option>Carregando...</option>
-                  ) : (
-                    formasPagamento.map(f => (
-                      <option key={f.id} value={f.nome}>{f.nome}</option>
-                    ))
-                  )}
-                </select>
-              </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Vencimento *
+                    </label>
+                    <input
+                      type="date"
+                      value={novoPagamento.data_vencimento}
+                      onChange={(e) => setNovoPagamento({ ...novoPagamento, data_vencimento: e.target.value })}
+                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Valor
-                </label>
-                <div className="relative">
-                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">R$</span>
-                  <input
-                    type="number"
-                    value={pagamentoAtual.valor}
-                    onChange={(e) => setPagamentoAtual({ ...pagamentoAtual, valor: parseFloat(e.target.value) || 0 })}
-                    className="w-full pl-8 pr-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-                    step="0.01"
-                    min="0"
-                    placeholder="0,00"
-                  />
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Observação
+                    </label>
+                    <input
+                      type="text"
+                      value={novoPagamento.observacao}
+                      onChange={(e) => setNovoPagamento({ ...novoPagamento, observacao: e.target.value })}
+                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                      placeholder="Opcional"
+                    />
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={adicionarPagamento}
+                  className="mt-2 px-3 py-1.5 text-sm bg-gray-800 text-white rounded-md hover:bg-gray-900"
+                  disabled={carregando}
+                >
+                  + Adicionar Pagamento
+                </button>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Data de Vencimento
-                </label>
-                <DatePicker
-                  selected={pagamentoAtual.data_vencimento ? new Date(pagamentoAtual.data_vencimento) : null}
-                  onChange={(date: Date | null) => setPagamentoAtual({ ...pagamentoAtual, data_vencimento: date ? date.toISOString().split('T')[0] : undefined })}
-                  placeholder="Selecione a data de vencimento"
-                />
-              </div>
+              {/* Lista de Pagamentos */}
+              {(id ? contasReceber.length > 0 : pagamentosPendentes.length > 0) ? (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">
+                    {id ? 'Pagamentos Cadastrados' : 'Pagamentos Pendentes'}
+                  </h3>
+                  <table className="w-full text-xs border-collapse border border-[#C9C4B5]">
+                    <thead>
+                      <tr style={{ backgroundColor: '#394353' }}>
+                        <th className="text-left text-white font-semibold p-2 border border-[#C9C4B5]">
+                          {id ? 'Parcela' : '#'}
+                        </th>
+                        <th className="text-left text-white font-semibold p-2 border border-[#C9C4B5]">Vencimento</th>
+                        <th className="text-right text-white font-semibold p-2 border border-[#C9C4B5]">Valor</th>
+                        {id && <th className="text-center text-white font-semibold p-2 border border-[#C9C4B5]">Status</th>}
+                        <th className="text-center text-white font-semibold p-2 border border-[#C9C4B5] w-16">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {id ? (
+                        contasReceber.map((conta) => (
+                          <tr key={conta.id} className="border-b border-[#C9C4B5]">
+                            <td className="p-2 border border-[#C9C4B5]">
+                              {conta.numero_parcela}/{conta.total_parcelas}
+                            </td>
+                            <td className="p-2 border border-[#C9C4B5]">
+                              {new Date(conta.data_vencimento).toLocaleDateString('pt-BR')}
+                            </td>
+                            <td className="p-2 text-right border border-[#C9C4B5] font-semibold">
+                              R$ {conta.valor_total.toFixed(2)}
+                            </td>
+                            <td className="p-2 text-center border border-[#C9C4B5]">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                conta.status === 'PAGO' ? 'bg-green-100 text-green-700' :
+                                conta.status === 'ABERTO' ? 'bg-yellow-100 text-yellow-700' :
+                                conta.status === 'VENCIDO' ? 'bg-red-100 text-red-700' :
+                                'bg-gray-100 text-gray-700'
+                              }`}>
+                                {conta.status}
+                              </span>
+                            </td>
+                            <td className="p-2 text-center border border-[#C9C4B5]">
+                              {conta.status === 'ABERTO' && (
+                                <button
+                                  type="button"
+                                  onClick={() => removerPagamento(Number(conta.id))}
+                                  className="text-red-600 hover:text-red-800 transition-colors"
+                                  title="Excluir pagamento"
+                                  disabled={carregando}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        pagamentosPendentes.map((pagamento, index) => (
+                          <tr key={index} className="border-b border-[#C9C4B5]">
+                            <td className="p-2 border border-[#C9C4B5]">{index + 1}</td>
+                            <td className="p-2 border border-[#C9C4B5]">
+                              {new Date(pagamento.data_vencimento).toLocaleDateString('pt-BR')}
+                            </td>
+                            <td className="p-2 text-right border border-[#C9C4B5] font-semibold">
+                              R$ {pagamento.valor.toFixed(2)}
+                            </td>
+                            <td className="p-2 text-center border border-[#C9C4B5]">
+                              <button
+                                type="button"
+                                onClick={() => removerPagamentoPendente(index)}
+                                className="text-red-600 hover:text-red-800 transition-colors"
+                                title="Remover pagamento"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                    <tfoot>
+                      <tr style={{ backgroundColor: '#f3f4f6' }}>
+                        <td colSpan={id ? 2 : 2} className="p-2 font-semibold border border-[#C9C4B5]">TOTAL:</td>
+                        <td className="p-2 text-right font-bold border border-[#C9C4B5]">
+                          R$ {(id 
+                            ? contasReceber.reduce((acc, c) => acc + c.valor_total, 0)
+                            : pagamentosPendentes.reduce((acc, p) => acc + p.valor, 0)
+                          ).toFixed(2)}
+                        </td>
+                        <td colSpan={id ? 2 : 1} className="p-2 border border-[#C9C4B5]"></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+
+                  {id && (
+                    <div className="mt-2 text-xs text-gray-500 text-center">
+                      Gerencie os pagamentos também em <strong>Financeiro → Contas a Receber</strong>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-center text-sm text-gray-500 py-4">
+                  Nenhum pagamento adicionado. Use o formulário acima.
+                </p>
+              )}
             </div>
+          </div>
+          
+          {/* Card: Observações */}
+          <div className="bg-white rounded-lg shadow p-4">
+            <h2 className="text-base font-medium text-gray-900 mb-3">Observações</h2>
 
-            <button
-              type="button"
-              onClick={handleAdicionarPagamento}
-              className="mt-2 px-3 py-1.5 text-sm bg-gray-800 text-white rounded-md hover:bg-gray-900"
-            >
-              + Adicionar Pagamento
-            </button>
-
-            <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="mb-3">
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                Observações
+                Observações do Cliente
               </label>
               <textarea
                 value={formData.observacoes || ''}
                 onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
                 className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
                 rows={2}
-                placeholder="Observações sobre o pagamento"
+                placeholder="Informações visíveis para o cliente"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Observações Internas
+              </label>
+              <textarea
+                value={formData.observacoes_internas || ''}
+                onChange={(e) => setFormData({ ...formData, observacoes_internas: e.target.value })}
+                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                rows={2}
+                placeholder="Informações internas (não aparece para o cliente)"
               />
             </div>
           </div>
@@ -1055,7 +1237,7 @@ export default function NovaVenda() {
                   className="w-20 px-2 py-1 text-xs text-right border border-gray-300 rounded"
                   step="0.01"
                   min="0"
-                  disabled={!!(id && statusVenda === 'PEDIDO_FECHADO')}
+                  disabled={!!(id && statusVenda !== 'ORCAMENTO')}
                 />
               </div>
 
@@ -1068,7 +1250,7 @@ export default function NovaVenda() {
                   className="w-20 px-2 py-1 text-xs text-right border border-gray-300 rounded"
                   step="0.01"
                   min="0"
-                  disabled={!!(id && statusVenda === 'PEDIDO_FECHADO')}
+                  disabled={!!(id && statusVenda !== 'ORCAMENTO')}
                 />
               </div>
 
@@ -1105,6 +1287,7 @@ export default function NovaVenda() {
               onReabrir={handleReabrirPedido}
               onConfirmar={handleConfirmarPedido}
               onEmitirNota={handleEmitirNota}
+              onImprimirPedido={handleImprimirPedido}
             />
           </div>
         </div>
@@ -1115,6 +1298,13 @@ export default function NovaVenda() {
           type={toast.tipo}
           message={toast.mensagem}
           onClose={() => setToast(null)}
+        />
+      )}
+
+      {mostrarImpressao && id && (
+        <ImpressaoPedido
+          vendaId={id}
+          onClose={() => setMostrarImpressao(false)}
         />
       )}
     </div>

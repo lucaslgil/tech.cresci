@@ -81,10 +81,10 @@ export const usePermissions = () => {
         }
 
         if (data?.permissoes) {
-          console.log('Permissões carregadas do banco:', data.permissoes)
+          // Permissões carregadas com sucesso
           setPermissoes({ ...permissoesDefault, ...data.permissoes })
         } else {
-          console.warn('Usuário sem permissões configuradas - usando padrão (sem acesso)')
+          // Usuário sem permissões configuradas - usando padrão
           setPermissoes(permissoesDefault)
         }
       } catch (error) {
