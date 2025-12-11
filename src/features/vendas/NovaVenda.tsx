@@ -22,7 +22,7 @@ import type { Cliente } from '../clientes/types'
 import type { Produto } from '../produtos/types'
 import { BotoesAcaoVenda } from './components/BotoesAcaoVenda'
 import { useParametrosFinanceiros } from './hooks/useParametrosFinanceiros'
-import { criarContaReceber } from '../financeiro/contasReceberService'
+import { criarContaReceber, buscarContasPorVenda } from '../financeiro/contasReceberService'
 
 export default function NovaVenda() {
   const navigate = useNavigate()
@@ -180,15 +180,48 @@ export default function NovaVenda() {
           itens: venda.itens || []
         })
 
-        // Carregar nome do cliente se houver
-        if (venda.cliente_nome) {
-          clienteSelecionadoRef.current = true
-          setBuscaCliente(venda.cliente_nome)
+        // Carregar cliente completo se houver
+        if (venda.cliente_id) {
+          try {
+            const { data: clienteData } = await listarClientes({ busca: venda.cliente_id.toString() })
+            if (clienteData && clienteData.length > 0) {
+              const cliente = clienteData[0]
+              setClienteSelecionado(cliente)
+              clienteSelecionadoRef.current = true
+              setBuscaCliente(cliente.nome_completo || cliente.razao_social || venda.cliente_nome || '')
+            } else if (venda.cliente_nome) {
+              // Fallback: se não encontrar o cliente pelo ID, pelo menos exibe o nome
+              clienteSelecionadoRef.current = true
+              setBuscaCliente(venda.cliente_nome)
+            }
+          } catch (error) {
+            console.error('Erro ao buscar cliente:', error)
+            if (venda.cliente_nome) {
+              setBuscaCliente(venda.cliente_nome)
+            }
+          }
           setClientesSugeridos([])
           setMostrarSugestoesClientes(false)
         }
+
+        // Carregar pagamentos existentes do contas_receber
+        const { data: contasReceber, error: erroContas } = await buscarContasPorVenda(Number(id))
+        console.log('Contas a receber carregadas:', contasReceber, 'Erro:', erroContas)
+        if (contasReceber && contasReceber.length > 0) {
+          const pagamentosCarregados = contasReceber.map(conta => ({
+            forma_pagamento: conta.forma_pagamento || 'DINHEIRO',
+            valor: conta.valor_original,
+            data_vencimento: conta.data_vencimento
+          }))
+          console.log('Pagamentos carregados:', pagamentosCarregados)
+          setPagamentos(pagamentosCarregados)
+        } else {
+          // Limpar pagamentos se não houver nenhum
+          setPagamentos([])
+        }
       }
     } catch (error) {
+      console.error('Erro ao carregar venda:', error)
       setToast({ tipo: 'error', mensagem: 'Erro ao carregar venda' })
     } finally {
       setCarregando(false)
@@ -311,9 +344,15 @@ export default function NovaVenda() {
         const statusAtual = statusVenda || 'PEDIDO_ABERTO'
         const resultado = await vendasService.atualizar(id, { ...formData, status: statusAtual as any })
         if (resultado.sucesso) {
-          // Se houver pagamentos, criar contas a receber
-          if (pagamentos.length > 0 && clienteSelecionado) {
-            for (const pagamento of pagamentos) {
+          // Verificar pagamentos existentes antes de criar novos
+          const { data: contasExistentes } = await buscarContasPorVenda(Number(id))
+          const pagamentosExistentes = contasExistentes || []
+          
+          // Se houver pagamentos novos (não existentes no banco), criar contas a receber
+          if (pagamentos.length > 0 && clienteSelecionado && pagamentos.length > pagamentosExistentes.length) {
+            // Criar apenas os pagamentos que excedem os existentes
+            const novoPagamentos = pagamentos.slice(pagamentosExistentes.length)
+            for (const pagamento of novoPagamentos) {
               await criarContaReceber({
                 venda_id: parseInt(id),
                 numero_venda: numeroVenda || undefined,
