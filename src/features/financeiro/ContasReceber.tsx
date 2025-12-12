@@ -177,6 +177,16 @@ export const ContasReceber: React.FC = () => {
 
       if (error) {
         console.error('Erro retornado:', error)
+        // Verificar se é erro de venda bloqueada
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        if (errorMessage.includes('Pedido Fechado')) {
+          setToast({ message: errorMessage, type: 'error' })
+          setShowModal(false)
+          setModoEdicao(false)
+          setContaEditando(null)
+          resetForm()
+          return
+        }
         throw error
       }
 
@@ -194,7 +204,8 @@ export const ContasReceber: React.FC = () => {
       await carregarDados()
     } catch (error) {
       console.error('Erro ao excluir conta:', error)
-      setToast({ message: `Erro ao excluir conta: ${error}`, type: 'error' })
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      setToast({ message: `Erro ao excluir conta: ${errorMessage}`, type: 'error' })
     } finally {
       setSalvando(false)
     }

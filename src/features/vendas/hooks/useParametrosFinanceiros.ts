@@ -5,6 +5,11 @@ interface FormaPagamento {
   nome: string
   ativo: boolean
   diasPrazo: number
+  tipoRecebimento?: 'DINHEIRO' | 'TRANSFERENCIA' | 'CARTAO_CREDITO' | 'CARTAO_DEBITO' | 'BOLETO' | 'PIX' | 'CHEQUE' | 'OUTROS'
+  permiteParcelamento?: boolean
+  taxaJuros?: number
+  descontoAVista?: number
+  geraFinanceiro?: boolean
 }
 
 interface Parcelamento {
@@ -13,6 +18,8 @@ interface Parcelamento {
   numeroParcelas: number
   intervaloEntreParcelas: number
   ativo: boolean
+  taxaJuros?: number
+  primeiroVencimento?: number
 }
 
 interface ContaBancaria {
@@ -22,6 +29,9 @@ interface ContaBancaria {
   conta: string
   descricao: string
   ativo: boolean
+  codigoBanco?: string
+  tipoConta?: 'CORRENTE' | 'POUPANCA' | 'PAGAMENTO'
+  saldoInicial?: number
 }
 
 export const useParametrosFinanceiros = () => {
@@ -45,11 +55,11 @@ export const useParametrosFinanceiros = () => {
     } else {
       // Dados padrão caso não existam
       setFormasPagamento([
-        { id: '1', nome: 'Dinheiro', ativo: true, diasPrazo: 0 },
-        { id: '2', nome: 'PIX', ativo: true, diasPrazo: 0 },
-        { id: '3', nome: 'Cartão de Crédito', ativo: true, diasPrazo: 30 },
-        { id: '4', nome: 'Cartão de Débito', ativo: true, diasPrazo: 0 },
-        { id: '5', nome: 'Boleto Bancário', ativo: true, diasPrazo: 30 },
+        { id: '1', nome: 'Dinheiro', ativo: true, diasPrazo: 0, tipoRecebimento: 'DINHEIRO', permiteParcelamento: false, geraFinanceiro: true },
+        { id: '2', nome: 'PIX', ativo: true, diasPrazo: 0, tipoRecebimento: 'PIX', permiteParcelamento: false, geraFinanceiro: true },
+        { id: '3', nome: 'Cartão de Crédito', ativo: true, diasPrazo: 0, tipoRecebimento: 'CARTAO_CREDITO', permiteParcelamento: true, geraFinanceiro: true },
+        { id: '4', nome: 'Cartão de Débito', ativo: true, diasPrazo: 0, tipoRecebimento: 'CARTAO_DEBITO', permiteParcelamento: false, geraFinanceiro: true },
+        { id: '5', nome: 'Boleto Bancário', ativo: true, diasPrazo: 30, tipoRecebimento: 'BOLETO', permiteParcelamento: false, geraFinanceiro: true },
       ])
     }
 

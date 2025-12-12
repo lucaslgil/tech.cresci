@@ -112,26 +112,38 @@ export const criarContaReceber = async (
   dados: ContaReceberFormData
 ): Promise<{ data: ContaReceber | null; error: any }> => {
   try {
+    console.log('🔵 criarContaReceber chamada com dados:', dados)
+    
     const valorTotal = calcularValorTotal(
       dados.valor_original,
       dados.valor_juros,
       dados.valor_desconto
     )
 
+    const dadosParaInserir = {
+      ...dados,
+      valor_total: valorTotal,
+      valor_saldo: valorTotal,
+      valor_pago: 0,
+      numero_parcela: dados.numero_parcela || 1,
+      total_parcelas: dados.total_parcelas || 1,
+      valor_juros: dados.valor_juros || 0,
+      valor_desconto: dados.valor_desconto || 0
+    }
+    
+    console.log('🔵 Inserindo no banco:', dadosParaInserir)
+
     const { data, error } = await supabase
       .from('contas_receber')
-      .insert({
-        ...dados,
-        valor_total: valorTotal,
-        valor_saldo: valorTotal,
-        valor_pago: 0,
-        numero_parcela: dados.numero_parcela || 1,
-        total_parcelas: dados.total_parcelas || 1,
-        valor_juros: dados.valor_juros || 0,
-        valor_desconto: dados.valor_desconto || 0
-      })
+      .insert(dadosParaInserir)
       .select()
       .single()
+
+    if (error) {
+      console.error('🔴 Erro ao inserir:', error)
+    } else {
+      console.log('🟢 Conta criada com sucesso:', data)
+    }
 
     return { data, error }
   } catch (error) {
@@ -281,7 +293,38 @@ export const excluirConta = async (
   try {
     console.log('Iniciando exclusão da conta ID:', id)
     
-    // Primeiro, deletar todos os pagamentos relacionados
+    // Primeiro, verificar se a conta está vinculada a uma venda
+    const { data: conta, error: contaError } = await supabase
+      .from('contas_receber')
+      .select('venda_id')
+      .eq('id', id)
+      .single()
+
+    if (contaError) {
+      console.error('Erro ao buscar conta:', contaError)
+      throw contaError
+    }
+
+    // Se tiver venda_id, verificar o status da venda
+    if (conta && conta.venda_id) {
+      const { data: venda, error: vendaError } = await supabase
+        .from('vendas')
+        .select('status')
+        .eq('id', conta.venda_id)
+        .single()
+
+      if (vendaError) {
+        console.error('Erro ao buscar venda:', vendaError)
+        throw vendaError
+      }
+
+      // Bloquear exclusão se a venda estiver fechada
+      if (venda && venda.status === 'PEDIDO_FECHADO') {
+        throw new Error('Não é possível excluir contas a receber de vendas com status "Pedido Fechado". Reabra o pedido primeiro.')
+      }
+    }
+    
+    // Deletar todos os pagamentos relacionados
     console.log('Deletando pagamentos relacionados...')
     const { error: pagamentosError } = await supabase
       .from('pagamentos_receber')

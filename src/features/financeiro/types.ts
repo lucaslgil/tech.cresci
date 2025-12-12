@@ -6,6 +6,7 @@
 
 export const STATUS_CONTA = {
   ABERTO: 'ABERTO',
+  QUITADA: 'QUITADA',
   PAGO: 'PAGO',
   PARCIAL: 'PARCIAL',
   VENCIDO: 'VENCIDO',
@@ -16,6 +17,7 @@ export type StatusConta = typeof STATUS_CONTA[keyof typeof STATUS_CONTA]
 
 export const STATUS_LABELS = [
   { value: 'ABERTO', label: 'Aberto', color: 'bg-blue-100 text-blue-800' },
+  { value: 'QUITADA', label: 'Quitada', color: 'bg-green-100 text-green-800' },
   { value: 'PAGO', label: 'Pago', color: 'bg-green-100 text-green-800' },
   { value: 'PARCIAL', label: 'Parcial', color: 'bg-yellow-100 text-yellow-800' },
   { value: 'VENCIDO', label: 'Vencido', color: 'bg-red-100 text-red-800' },
@@ -78,6 +80,7 @@ export interface ContaReceberFormData {
   data_vencimento: string
   forma_pagamento?: string
   observacoes?: string
+  status?: StatusConta
 }
 
 export interface PagamentoFormData {

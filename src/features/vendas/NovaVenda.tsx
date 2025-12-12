@@ -78,7 +78,7 @@ export default function NovaVenda() {
   
   const [pagamentos, setPagamentos] = useState<PagamentoVenda[]>([])
   const [pagamentoAtual, setPagamentoAtual] = useState<PagamentoVenda>({
-    forma_pagamento: 'DINHEIRO',
+    forma_pagamento: '',
     valor: 0
   })
 
@@ -208,12 +208,26 @@ export default function NovaVenda() {
         const { data: contasReceber, error: erroContas } = await buscarContasPorVenda(Number(id))
         console.log('Contas a receber carregadas:', contasReceber, 'Erro:', erroContas)
         if (contasReceber && contasReceber.length > 0) {
-          const pagamentosCarregados = contasReceber.map(conta => ({
-            forma_pagamento: conta.forma_pagamento || 'DINHEIRO',
+          // Remover duplicatas baseado em forma_pagamento, valor e vencimento
+          const pagamentosUnicos: typeof contasReceber = []
+          const chaves = new Set<string>()
+          
+          for (const conta of contasReceber) {
+            const chave = `${conta.forma_pagamento}-${conta.valor_original}-${conta.data_vencimento}`
+            if (!chaves.has(chave)) {
+              chaves.add(chave)
+              pagamentosUnicos.push(conta)
+            } else {
+              console.warn('Duplicata detectada e ignorada:', conta)
+            }
+          }
+          
+          const pagamentosCarregados = pagamentosUnicos.map(conta => ({
+            forma_pagamento: conta.forma_pagamento || '',
             valor: conta.valor_original,
             data_vencimento: conta.data_vencimento
           }))
-          console.log('Pagamentos carregados:', pagamentosCarregados)
+          console.log('Pagamentos carregados (sem duplicatas):', pagamentosCarregados)
           setPagamentos(pagamentosCarregados)
         } else {
           // Limpar pagamentos se não houver nenhum
@@ -282,6 +296,23 @@ export default function NovaVenda() {
     }))
   }
 
+  // Função para calcular data de vencimento baseado na forma de pagamento
+  const calcularDataVencimento = (formaPagamento: string, dataBase?: string): string => {
+    const forma = formasPagamento.find(f => f.nome === formaPagamento)
+    const diasPrazo = forma?.diasPrazo || 0
+    
+    const dataReferencia = dataBase ? new Date(dataBase + 'T00:00:00') : new Date()
+    dataReferencia.setDate(dataReferencia.getDate() + diasPrazo)
+    
+    return dataReferencia.toISOString().split('T')[0]
+  }
+
+  // Função para determinar status da conta baseado na forma de pagamento
+  const determinarStatusConta = (formaPagamento: string): 'QUITADA' | 'ABERTO' => {
+    const formasQuitadas = ['Dinheiro', 'PIX', 'Cartão de Crédito', 'Cartão de Débito']
+    return formasQuitadas.includes(formaPagamento) ? 'QUITADA' : 'ABERTO'
+  }
+
   // Funções para gerenciar pagamentos
   const handleAdicionarPagamento = () => {
     if (!pagamentoAtual.forma_pagamento || pagamentoAtual.valor <= 0) {
@@ -289,6 +320,7 @@ export default function NovaVenda() {
       return
     }
 
+    console.log('Adicionando pagamento:', pagamentoAtual)
     setPagamentos([...pagamentos, pagamentoAtual])
     
     // Resetar o pagamento atual
@@ -297,12 +329,18 @@ export default function NovaVenda() {
     const saldoRestante = subtotal - totalPago
     
     setPagamentoAtual({
-      forma_pagamento: 'DINHEIRO',
+      forma_pagamento: formasPagamento.length > 0 ? formasPagamento[0].nome : '',
       valor: saldoRestante > 0 ? saldoRestante : 0
     })
   }
 
   const handleRemoverPagamento = (index: number) => {
+    // Bloquear remoção se o pedido estiver fechado
+    if (statusVenda === 'PEDIDO_FECHADO') {
+      setToast({ tipo: 'error', mensagem: 'Não é possível remover pagamentos de vendas com status "Pedido Fechado"' })
+      return
+    }
+    
     const novosPagamentos = pagamentos.filter((_, i) => i !== index)
     setPagamentos(novosPagamentos)
     
@@ -324,6 +362,13 @@ export default function NovaVenda() {
     }
   }, [formData.itens, formData.desconto, formData.frete, formData.acrescimo, formData.outras_despesas, pagamentos.length])
 
+  // Definir primeira forma de pagamento quando as formas são carregadas
+  useEffect(() => {
+    if (formasPagamento.length > 0 && !pagamentoAtual.forma_pagamento) {
+      setPagamentoAtual(prev => ({ ...prev, forma_pagamento: formasPagamento[0].nome }))
+    }
+  }, [formasPagamento])
+
   const handleSubmit = async () => {
     if (formData.itens.length === 0) {
       setToast({ tipo: 'error', mensagem: 'Adicione pelo menos um item' })
@@ -335,6 +380,15 @@ export default function NovaVenda() {
       return
     }
 
+    // Prevenir múltiplos cliques
+    if (carregando) {
+      console.warn('Já está salvando, aguarde...')
+      return
+    }
+
+    console.log('=== INICIANDO SALVAMENTO ===')
+    console.log('Venda ID:', id)
+    console.log('Pagamentos no estado:', pagamentos)
     console.log('FormData antes de enviar:', JSON.stringify(formData, null, 2))
 
     setCarregando(true)
@@ -348,11 +402,37 @@ export default function NovaVenda() {
           const { data: contasExistentes } = await buscarContasPorVenda(Number(id))
           const pagamentosExistentes = contasExistentes || []
           
-          // Se houver pagamentos novos (não existentes no banco), criar contas a receber
-          if (pagamentos.length > 0 && clienteSelecionado && pagamentos.length > pagamentosExistentes.length) {
-            // Criar apenas os pagamentos que excedem os existentes
-            const novoPagamentos = pagamentos.slice(pagamentosExistentes.length)
+          console.log('Pagamentos no estado:', pagamentos)
+          console.log('Pagamentos existentes no banco:', pagamentosExistentes)
+          
+          // Comparar pagamentos para identificar novos (que não existem no banco)
+          const novoPagamentos = pagamentos.filter(pagamento => {
+            // Verifica se este pagamento já existe no banco comparando forma_pagamento e valor
+            return !pagamentosExistentes.some(existente => 
+              existente.forma_pagamento === pagamento.forma_pagamento &&
+              Math.abs(existente.valor_original - pagamento.valor) < 0.01 &&
+              existente.data_vencimento === pagamento.data_vencimento
+            )
+          })
+          
+          console.log('Novos pagamentos a serem criados:', novoPagamentos)
+          
+          // Se houver pagamentos novos, criar contas a receber
+          if (novoPagamentos.length > 0 && clienteSelecionado) {
             for (const pagamento of novoPagamentos) {
+              // VALIDAÇÃO: Não criar conta sem forma de pagamento
+              if (!pagamento.forma_pagamento || pagamento.forma_pagamento.trim() === '') {
+                console.error('❌ ERRO: Tentativa de criar pagamento sem forma_pagamento:', pagamento)
+                continue
+              }
+              
+              if (pagamento.valor <= 0) {
+                console.error('❌ ERRO: Tentativa de criar pagamento com valor zero:', pagamento)
+                continue
+              }
+              
+              console.log('Criando conta a receber:', pagamento)
+              const statusConta = determinarStatusConta(pagamento.forma_pagamento)
               await criarContaReceber({
                 venda_id: parseInt(id),
                 numero_venda: numeroVenda || undefined,
@@ -366,8 +446,9 @@ export default function NovaVenda() {
                 descricao: `Venda #${numeroVenda || id} - ${pagamento.forma_pagamento}`,
                 valor_original: pagamento.valor,
                 data_emissao: formData.data_venda,
-                data_vencimento: pagamento.data_vencimento || formData.data_venda,
-                forma_pagamento: pagamento.forma_pagamento
+                data_vencimento: pagamento.data_vencimento || calcularDataVencimento(pagamento.forma_pagamento, formData.data_venda),
+                forma_pagamento: pagamento.forma_pagamento,
+                status: statusConta
               })
             }
             setToast({ tipo: 'success', mensagem: 'Pedido e formas de pagamento atualizados!' })
@@ -381,14 +462,35 @@ export default function NovaVenda() {
         }
       } else {
         // Criar nova venda com status PEDIDO_ABERTO
+        console.log('=== CRIANDO NOVA VENDA ===')
         const resultado = await vendasService.criar({ ...formData, status: 'PEDIDO_ABERTO' as any })
         if (resultado.sucesso && resultado.dados) {
           const vendaId = resultado.dados.id
+          console.log('Venda criada com ID:', vendaId)
           
           // Se houver pagamentos, criar contas a receber
           if (pagamentos.length > 0 && clienteSelecionado) {
+            console.log('=== CRIANDO CONTAS A RECEBER ===')
+            console.log('Total de pagamentos a criar:', pagamentos.length)
+            let contadorCriadas = 0
             for (const pagamento of pagamentos) {
-              await criarContaReceber({
+              // VALIDAÇÃO: Não criar conta sem forma de pagamento
+              if (!pagamento.forma_pagamento || pagamento.forma_pagamento.trim() === '') {
+                console.error('❌ ERRO: Tentativa de criar pagamento sem forma_pagamento:', pagamento)
+                setToast({ tipo: 'error', mensagem: 'Erro: Forma de pagamento não pode estar vazia!' })
+                continue // Pular este pagamento
+              }
+              
+              if (pagamento.valor <= 0) {
+                console.error('❌ ERRO: Tentativa de criar pagamento com valor zero ou negativo:', pagamento)
+                setToast({ tipo: 'error', mensagem: 'Erro: Valor do pagamento deve ser maior que zero!' })
+                continue // Pular este pagamento
+              }
+              
+              contadorCriadas++
+              console.log(`>>> Criando pagamento ${contadorCriadas}/${pagamentos.length}:`, pagamento)
+              const statusConta = determinarStatusConta(pagamento.forma_pagamento)
+              const dadosConta = {
                 venda_id: Number(vendaId),
                 numero_venda: resultado.dados.numero,
                 cliente_id: Number(formData.cliente_id),
@@ -401,17 +503,19 @@ export default function NovaVenda() {
                 descricao: `Venda #${resultado.dados.numero || vendaId} - ${pagamento.forma_pagamento}`,
                 valor_original: pagamento.valor,
                 data_emissao: formData.data_venda,
-                data_vencimento: pagamento.data_vencimento || formData.data_venda,
-                forma_pagamento: pagamento.forma_pagamento
-              })
+                data_vencimento: pagamento.data_vencimento || calcularDataVencimento(pagamento.forma_pagamento, formData.data_venda),
+                forma_pagamento: pagamento.forma_pagamento,
+                status: statusConta
+              }
+              console.log('Dados sendo enviados:', dadosConta)
+              await criarContaReceber(dadosConta)
+              console.log(`✓ Conta ${contadorCriadas} criada com sucesso`)
             }
+            console.log('=== TODAS AS CONTAS CRIADAS ===')
             setToast({ tipo: 'success', mensagem: 'Pedido criado com formas de pagamento!' })
           } else {
             setToast({ tipo: 'success', mensagem: 'Pedido criado com status: Pedido em Aberto' })
           }
-          
-          // Limpar pagamentos após salvar
-          setPagamentos([])
           
           // Atualizar URL para modo de edição e carregar dados
           navigate(`/vendas/${vendaId}`, { replace: true })
@@ -597,6 +701,72 @@ export default function NovaVenda() {
     
     setCarregando(true)
     try {
+      // Primeiro, salvar os pagamentos se ainda não foram salvos
+      const { data: contasExistentes } = await buscarContasPorVenda(Number(id))
+      const pagamentosExistentes = contasExistentes || []
+      
+      console.log('Confirmar - Pagamentos no estado:', pagamentos)
+      console.log('Confirmar - Pagamentos existentes no banco:', pagamentosExistentes)
+      
+      // Comparar pagamentos para identificar novos (que não existem no banco)
+      const novosPagamentos = pagamentos.filter(pagamento => {
+        return !pagamentosExistentes.some(existente => 
+          existente.forma_pagamento === pagamento.forma_pagamento &&
+          Math.abs(existente.valor_original - pagamento.valor) < 0.01 &&
+          existente.data_vencimento === pagamento.data_vencimento
+        )
+      })
+      
+      console.log('Confirmar - Novos pagamentos a serem criados:', novosPagamentos)
+      
+      // Se houver pagamentos novos, criar contas a receber
+      if (novosPagamentos.length > 0) {
+        // Buscar informações do cliente se necessário
+        let cliente = clienteSelecionado
+        if (!cliente && formData.cliente_id) {
+          const clientes = await listarClientes()
+          cliente = clientes.find(c => c.id === formData.cliente_id) || null
+        }
+        
+        if (!cliente) {
+          setToast({ tipo: 'error', mensagem: 'Cliente não encontrado para criar contas a receber' })
+          return
+        }
+        
+        for (const pagamento of novosPagamentos) {
+          // VALIDAÇÃO: Não criar conta sem forma de pagamento
+          if (!pagamento.forma_pagamento || pagamento.forma_pagamento.trim() === '') {
+            console.error('❌ ERRO: Tentativa de criar pagamento sem forma_pagamento:', pagamento)
+            continue
+          }
+          
+          if (pagamento.valor <= 0) {
+            console.error('❌ ERRO: Tentativa de criar pagamento com valor zero:', pagamento)
+            continue
+          }
+          
+          const statusConta = determinarStatusConta(pagamento.forma_pagamento)
+          await criarContaReceber({
+            venda_id: parseInt(id),
+            numero_venda: numeroVenda || undefined,
+            cliente_id: Number(formData.cliente_id),
+            cliente_nome: cliente.tipo_pessoa === 'FISICA' 
+              ? (cliente.nome_completo || '') 
+              : (cliente.razao_social || cliente.nome_fantasia || ''),
+            cliente_cpf_cnpj: cliente.tipo_pessoa === 'FISICA'
+              ? cliente.cpf
+              : cliente.cnpj,
+            descricao: `Venda #${numeroVenda || id} - ${pagamento.forma_pagamento}`,
+            valor_original: pagamento.valor,
+            data_emissao: formData.data_venda,
+            data_vencimento: pagamento.data_vencimento || calcularDataVencimento(pagamento.forma_pagamento, formData.data_venda),
+            forma_pagamento: pagamento.forma_pagamento,
+            status: statusConta
+          })
+        }
+      }
+      
+      // Agora confirmar o pedido
       const resultado = await vendasService.confirmarPedido(id)
       if (resultado.sucesso) {
         setToast({ tipo: 'success', mensagem: 'Pedido confirmado! Movimentação de estoque efetuada.' })
@@ -673,6 +843,7 @@ export default function NovaVenda() {
                   value={formData.tipo_venda}
                   onChange={(e) => setFormData({ ...formData, tipo_venda: e.target.value as any })}
                   className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                  disabled={statusVenda === 'PEDIDO_FECHADO'}
                 >
                   {TIPO_VENDA_LABELS.map(t => (
                     <option key={t.value} value={t.value}>{t.label}</option>
@@ -689,6 +860,7 @@ export default function NovaVenda() {
                   onChange={(date) => setFormData({ ...formData, data_venda: date ? date.toISOString().split('T')[0] : '' })}
                   placeholder="Selecione a data"
                   required
+                  disabled={statusVenda === 'PEDIDO_FECHADO'}
                 />
               </div>
 
@@ -729,13 +901,15 @@ export default function NovaVenda() {
                         }
                       }}
                       className="w-full pl-8 pr-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                      disabled={statusVenda === 'PEDIDO_FECHADO'}
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => window.open('/cadastro/clientes', '_blank')}
-                    className="px-2 py-1.5 bg-gray-800 text-white rounded-md hover:bg-gray-900 flex items-center justify-center"
+                    className="px-2 py-1.5 bg-gray-800 text-white rounded-md hover:bg-gray-900 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Cadastrar novo cliente"
+                    disabled={statusVenda === 'PEDIDO_FECHADO'}
                   >
                     <Plus className="h-4 w-4" />
                   </button>
@@ -779,6 +953,7 @@ export default function NovaVenda() {
                   value={formData.vendedor || ''}
                   onChange={(e) => setFormData({ ...formData, vendedor: e.target.value })}
                   className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
+                  disabled={statusVenda === 'PEDIDO_FECHADO'}
                 />
               </div>
             </div>
@@ -805,6 +980,7 @@ export default function NovaVenda() {
                     onChange={(e) => setBuscaProduto(e.target.value)}
                     className="w-full pl-8 pr-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
                     onFocus={() => buscaProduto.length >= 2 && setMostrarSugestoesProdutos(true)}
+                    disabled={statusVenda === 'PEDIDO_FECHADO'}
                   />
                 </div>
 
@@ -871,6 +1047,7 @@ export default function NovaVenda() {
                     className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
                     step="1"
                     min="0"
+                    disabled={statusVenda === 'PEDIDO_FECHADO'}
                   />
                 </div>
 
@@ -888,6 +1065,7 @@ export default function NovaVenda() {
                       step="0.01"
                       min="0"
                       placeholder="0,00"
+                      disabled={statusVenda === 'PEDIDO_FECHADO'}
                     />
                   </div>
                 </div>
@@ -895,7 +1073,8 @@ export default function NovaVenda() {
 
               <button
                 onClick={adicionarItem}
-                className="mt-2 px-3 py-1.5 text-sm bg-gray-800 text-white rounded-md hover:bg-gray-900"
+                className="mt-2 px-3 py-1.5 text-sm bg-gray-800 text-white rounded-md hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={statusVenda === 'PEDIDO_FECHADO'}
               >
                 + Adicionar Item
               </button>
@@ -928,7 +1107,8 @@ export default function NovaVenda() {
                         <td className="px-3 py-2 text-right">
                           <button
                             onClick={() => removerItem(index)}
-                            className="text-xs text-red-600 hover:text-red-800"
+                            className="text-xs text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={statusVenda === 'PEDIDO_FECHADO'}
                           >
                             Remover
                           </button>
@@ -967,8 +1147,9 @@ export default function NovaVenda() {
                     <button
                       type="button"
                       onClick={() => handleRemoverPagamento(index)}
-                      className="text-red-600 hover:text-red-800 font-bold text-lg"
+                      className="text-red-600 hover:text-red-800 font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Remover pagamento"
+                      disabled={statusVenda === 'PEDIDO_FECHADO'}
                     >
                       ×
                     </button>
@@ -999,7 +1180,7 @@ export default function NovaVenda() {
                   value={pagamentoAtual.forma_pagamento}
                   onChange={(e) => setPagamentoAtual({ ...pagamentoAtual, forma_pagamento: e.target.value })}
                   className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-                  disabled={carregandoParametros}
+                  disabled={carregandoParametros || statusVenda === 'PEDIDO_FECHADO'}
                 >
                   {formasPagamento.length === 0 ? (
                     <option>Carregando...</option>
@@ -1025,6 +1206,7 @@ export default function NovaVenda() {
                     step="0.01"
                     min="0"
                     placeholder="0,00"
+                    disabled={statusVenda === 'PEDIDO_FECHADO'}
                   />
                 </div>
               </div>
@@ -1037,6 +1219,7 @@ export default function NovaVenda() {
                   selected={pagamentoAtual.data_vencimento ? new Date(pagamentoAtual.data_vencimento) : null}
                   onChange={(date: Date | null) => setPagamentoAtual({ ...pagamentoAtual, data_vencimento: date ? date.toISOString().split('T')[0] : undefined })}
                   placeholder="Selecione a data de vencimento"
+                  disabled={statusVenda === 'PEDIDO_FECHADO'}
                 />
               </div>
             </div>
@@ -1044,7 +1227,8 @@ export default function NovaVenda() {
             <button
               type="button"
               onClick={handleAdicionarPagamento}
-              className="mt-2 px-3 py-1.5 text-sm bg-gray-800 text-white rounded-md hover:bg-gray-900"
+              className="mt-2 px-3 py-1.5 text-sm bg-gray-800 text-white rounded-md hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={statusVenda === 'PEDIDO_FECHADO'}
             >
               + Adicionar Pagamento
             </button>

@@ -14,7 +14,6 @@ import type {
   ResultadoVenda
 } from './types'
 import { calcularSubtotalVenda, calcularTotalVenda } from './types'
-import { criarContasParceladas } from '../financeiro/contasReceberService'
 
 /**
  * CRUD DE VENDAS
@@ -269,58 +268,10 @@ export const vendasService = {
         if (parcelasError) throw parcelasError
       }
 
-      // INTEGRAÇÃO FINANCEIRA: Criar contas a receber automaticamente
-      // Apenas criar contas se o status for diferente de ORCAMENTO
-      console.log('🔍 Verificando criação de contas a receber...')
-      console.log('Status:', formData.status)
-      console.log('Cliente ID:', formData.cliente_id)
-      
-      if (formData.status !== 'ORCAMENTO' && formData.cliente_id) {
-        try {
-          const numeroParcelas = (formData.condicao_pagamento === 'PARCELADO' && formData.numero_parcelas)
-            ? formData.numero_parcelas
-            : 1
-
-          // Data de vencimento: se à vista, 0 dias, senão 30 dias da primeira parcela
-          const dataBase = new Date(formData.data_venda)
-          const diasAteVencimento = formData.condicao_pagamento === 'A_VISTA' ? 0 : 30
-          dataBase.setDate(dataBase.getDate() + diasAteVencimento)
-
-          console.log('💰 Criando contas a receber:', {
-            venda_id: venda.id,
-            numero_venda: numero,
-            cliente_id: formData.cliente_id,
-            cliente_nome: clienteNome,
-            valor_total: total,
-            numero_parcelas: numeroParcelas
-          })
-
-          const resultado = await criarContasParceladas({
-            venda_id: venda.id,
-            numero_venda: numero,
-            cliente_id: typeof formData.cliente_id === 'string' ? parseInt(formData.cliente_id) : formData.cliente_id,
-            cliente_nome: clienteNome,
-            cliente_cpf_cnpj: clienteCpfCnpj,
-            valor_total: total,
-            numero_parcelas: numeroParcelas,
-            data_vencimento_primeira: dataBase.toISOString().split('T')[0],
-            dias_entre_parcelas: 30
-          })
-
-          if (resultado.error) {
-            console.error('❌ Erro ao criar contas a receber:', resultado.error)
-          } else {
-            console.log('✅ Contas a receber criadas com sucesso!', resultado.data)
-          }
-        } catch (error) {
-          console.error('❌ Exceção ao criar contas a receber:', error)
-        }
-      } else {
-        console.log('⚠️ Contas a receber NÃO criadas. Motivo:', {
-          isOrcamento: formData.status === 'ORCAMENTO',
-          temCliente: !!formData.cliente_id
-        })
-      }
+      // INTEGRAÇÃO FINANCEIRA DESABILITADA
+      // As contas a receber são criadas manualmente pelo componente NovaVenda.tsx
+      // para ter melhor controle sobre múltiplas formas de pagamento
+      console.log('ℹ️ Contas a receber serão criadas pelo componente de vendas')
 
       return {
         sucesso: true,
@@ -489,6 +440,24 @@ export const vendasService = {
         return {
           sucesso: false,
           mensagem: 'Apenas orçamentos, pedidos em aberto e vendas canceladas podem ser excluídos'
+        }
+      }
+
+      // Verificar se existem contas a receber vinculadas
+      const { data: contasReceber, error: contasError } = await supabase
+        .from('contas_receber')
+        .select('id')
+        .eq('venda_id', id)
+
+      if (contasError) {
+        console.error('Erro ao verificar contas a receber:', contasError)
+        throw contasError
+      }
+
+      if (contasReceber && contasReceber.length > 0) {
+        return {
+          sucesso: false,
+          mensagem: `Não é possível excluir esta venda pois existem ${contasReceber.length} registro(s) de contas a receber vinculado(s). Exclua as contas a receber primeiro.`
         }
       }
 
