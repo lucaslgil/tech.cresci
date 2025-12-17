@@ -83,6 +83,12 @@ export const useTabOpener = () => {
       icon: <TrendingUp className="w-3.5 h-3.5" />
     }),
 
+    parametrosVendas: () => openTab({
+      title: 'Parâmetros de Vendas',
+      path: '/vendas/parametros',
+      icon: <Settings className="w-3.5 h-3.5" />
+    }),
+
     // NOTAS FISCAIS
     emitirNotaFiscal: () => openTab({
       title: 'Emitir Nota Fiscal',

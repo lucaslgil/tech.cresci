@@ -18,9 +18,8 @@ export type StatusConta = typeof STATUS_CONTA[keyof typeof STATUS_CONTA]
 export const STATUS_LABELS = [
   { value: 'ABERTO', label: 'Aberto', color: 'bg-blue-100 text-blue-800' },
   { value: 'QUITADA', label: 'Quitada', color: 'bg-green-100 text-green-800' },
-  { value: 'PAGO', label: 'Pago', color: 'bg-green-100 text-green-800' },
   { value: 'PARCIAL', label: 'Parcial', color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'VENCIDO', label: 'Vencido', color: 'bg-red-100 text-red-800' },
+  { value: 'VENCIDO', label: 'Em atraso', color: 'bg-red-100 text-red-800' },
   { value: 'CANCELADO', label: 'Cancelado', color: 'bg-gray-100 text-gray-800' }
 ]
 
@@ -140,4 +139,21 @@ export const calcularDiasAtraso = (dataVencimento: string): number => {
   const diff = hoje.getTime() - vencimento.getTime()
   const dias = Math.floor(diff / (1000 * 60 * 60 * 24))
   return dias > 0 ? dias : 0
+}
+
+// Helper para obter o status efetivo da conta (considerando atraso)
+export const obterStatusEfetivo = (conta: { status: StatusConta; data_vencimento: string; valor_saldo: number }): StatusConta => {
+  // Se já está quitado, pago ou cancelado, mantém o status
+  if (conta.status === 'QUITADA' || conta.status === 'PAGO' || conta.status === 'CANCELADO') {
+    return conta.status
+  }
+  
+  // Se tem saldo (não foi totalmente pago) e está vencido
+  const diasAtraso = calcularDiasAtraso(conta.data_vencimento)
+  if (diasAtraso > 0 && conta.valor_saldo > 0) {
+    return 'VENCIDO' // Retorna como VENCIDO (exibir como "Em atraso")
+  }
+  
+  // Caso contrário, retorna o status original
+  return conta.status
 }

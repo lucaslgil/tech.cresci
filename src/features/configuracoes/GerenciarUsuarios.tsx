@@ -23,6 +23,7 @@ interface Usuario {
     vendas_listagem: boolean
     vendas_nova: boolean
     vendas_relatorios: boolean
+    vendas_parametros: boolean
     // Notas Fiscais
     notas_fiscais_emitir: boolean
     notas_fiscais_parametros: boolean
@@ -67,6 +68,7 @@ export const GerenciarUsuarios: React.FC = () => {
       vendas_listagem: false,
       vendas_nova: false,
       vendas_relatorios: false,
+      vendas_parametros: false,
       // Notas Fiscais
       notas_fiscais_emitir: false,
       notas_fiscais_parametros: false,
@@ -145,6 +147,7 @@ export const GerenciarUsuarios: React.FC = () => {
         vendas_listagem: false,
         vendas_nova: false,
         vendas_relatorios: false,
+        vendas_parametros: false,
         // Notas Fiscais
         notas_fiscais_emitir: false,
         notas_fiscais_parametros: false,
@@ -280,6 +283,7 @@ export const GerenciarUsuarios: React.FC = () => {
     { key: 'vendas_listagem' as const, label: 'Vendas - Listagem', grupo: 'Vendas' },
     { key: 'vendas_nova' as const, label: 'Vendas - Nova Venda', grupo: 'Vendas' },
     { key: 'vendas_relatorios' as const, label: 'Vendas - Relatórios', grupo: 'Vendas' },
+    { key: 'vendas_parametros' as const, label: 'Vendas - Parâmetros de Vendas', grupo: 'Vendas' },
     
     // NOTAS FISCAIS
     { key: 'notas_fiscais_emitir' as const, label: 'Emitir Nota Fiscal', grupo: 'Notas Fiscais' },

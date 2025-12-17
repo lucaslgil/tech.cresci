@@ -19,7 +19,7 @@ import { Configuracoes } from './features/configuracoes/Configuracoes'
 import ConfiguracaoUsuario from './features/perfil/ConfiguracaoUsuario'
 import { CadastroClientes, ListagemClientes } from './features/clientes'
 import { EmitirNotaFiscal, ParametrosFiscais } from './features/notas-fiscais'
-import { NovaVenda, ListagemVendas, RelatoriosVendas } from './features/vendas'
+import { NovaVenda, ListagemVendas, RelatoriosVendas, ParametrosVendas } from './features/vendas'
 import Franquias from './features/franquias/Franquias'
 import { ContasPagar } from './features/financeiro/ContasPagar'
 import { ContasReceber } from './features/financeiro/ContasReceber'
@@ -136,6 +136,11 @@ function App() {
             <Route path="vendas/relatorios" element={
               <PermissionGuard requiredPermissions={['vendas_relatorios']}>
                 <RelatoriosVendas />
+              </PermissionGuard>
+            } />
+            <Route path="vendas/parametros" element={
+              <PermissionGuard requiredPermissions={['vendas_parametros']}>
+                <ParametrosVendas />
               </PermissionGuard>
             } />
             

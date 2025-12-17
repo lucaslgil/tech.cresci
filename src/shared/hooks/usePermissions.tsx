@@ -16,6 +16,7 @@ interface Permissoes {
   vendas_listagem: boolean
   vendas_nova: boolean
   vendas_relatorios: boolean
+  vendas_parametros: boolean
   // Notas Fiscais
   notas_fiscais_emitir: boolean
   notas_fiscais_parametros: boolean
@@ -41,6 +42,7 @@ const permissoesDefault: Permissoes = {
   vendas_listagem: false,
   vendas_nova: false,
   vendas_relatorios: false,
+  vendas_parametros: false,
   notas_fiscais_emitir: false,
   notas_fiscais_parametros: false,
   financeiro_contas_pagar: false,

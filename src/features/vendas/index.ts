@@ -7,5 +7,6 @@
 export { default as NovaVenda } from './NovaVenda'
 export { default as ListagemVendas } from './ListagemVendas'
 export { RelatoriosVendas } from './RelatoriosVendas'
+export { ParametrosVendas } from './ParametrosVendas'
 export * from './types'
 export * from './vendasService'

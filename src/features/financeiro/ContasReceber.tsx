@@ -37,7 +37,8 @@ import {
   STATUS_LABELS,
   formatarMoeda,
   calcularDiasAtraso,
-  getStatusColor
+  getStatusColor,
+  obterStatusEfetivo
 } from './types'
 
 export const ContasReceber: React.FC = () => {
@@ -112,12 +113,32 @@ export const ContasReceber: React.FC = () => {
     return () => clearTimeout(timeoutId)
   }, [buscaCliente])
 
+  // Função para filtrar contas baseado no status efetivo
+  const obterContasFiltradas = () => {
+    if (filtros.status === 'TODOS') {
+      return contas
+    }
+    
+    return contas.filter(conta => {
+      const statusEfetivo = obterStatusEfetivo(conta)
+      return statusEfetivo === filtros.status
+    })
+  }
+
   const carregarDados = async () => {
     try {
       setLoading(true)
+      
+      // Para filtro de "Em atraso" (VENCIDO), não enviar filtro ao backend
+      // pois as contas estão com status ABERTO no banco
+      const filtrosBackend = {
+        ...filtros,
+        status: filtros.status === 'VENCIDO' ? 'TODOS' : filtros.status
+      }
+      
       const [contasResult, resumoResult] = await Promise.all([
-        listarContasReceber(filtros),
-        obterResumo(filtros)
+        listarContasReceber(filtrosBackend),
+        obterResumo(filtrosBackend)
       ])
 
       if (contasResult.data) setContas(contasResult.data)
@@ -556,8 +577,9 @@ export const ContasReceber: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {contas.map((conta, index) => {
+                {obterContasFiltradas().map((conta, index) => {
                   const diasAtraso = calcularDiasAtraso(conta.data_vencimento)
+                  const statusEfetivo = obterStatusEfetivo(conta)
                   
                   return (
                     <tr key={conta.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
@@ -608,8 +630,8 @@ export const ContasReceber: React.FC = () => {
                         {formatarMoeda(conta.valor_saldo)}
                       </td>
                       <td className="px-3 py-2 text-center">
-                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${getStatusColor(conta.status)}`}>
-                          {STATUS_LABELS.find(s => s.value === conta.status)?.label}
+                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${getStatusColor(statusEfetivo)}`}>
+                          {STATUS_LABELS.find(s => s.value === statusEfetivo)?.label}
                         </span>
                       </td>
                     </tr>

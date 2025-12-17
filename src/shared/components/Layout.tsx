@@ -442,7 +442,7 @@ export const Layout: React.FC = () => {
             )}
 
             {/* 8. VENDAS */}
-            {hasAnyPermission(['vendas_listagem', 'vendas_nova', 'vendas_relatorios']) && (
+            {hasAnyPermission(['vendas_listagem', 'vendas_nova', 'vendas_relatorios', 'vendas_parametros']) && (
             <div>
               <button
                 onClick={() => toggleMenu(setVendasOpen, vendasOpen)}
@@ -479,6 +479,15 @@ export const Layout: React.FC = () => {
                     className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
                   >
                     Relatórios
+                  </button>
+                  )}
+
+                  {hasPermission('vendas_parametros') && (
+                  <button
+                    onClick={() => { tabs.parametrosVendas(); closeMobileMenu(); }}
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                  >
+                    Parâmetros de Vendas
                   </button>
                   )}
                 </div>

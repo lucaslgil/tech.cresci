@@ -717,189 +717,157 @@ export const CadastroItem: React.FC = () => {
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 max-w-full overflow-x-hidden">
-      {/* Cabeçalho com botão Adicionar */}
-      <div className="bg-white shadow rounded-lg mb-4 sm:mb-6">
-        <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Itens do Inventário</h1>
-              <p className="text-sm text-gray-600 mt-1">
-                {filteredItens.length} {filteredItens.length === 1 ? 'item cadastrado' : 'itens cadastrados'}
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-              <button
-                onClick={() => setShowImportModal(true)}
-                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 shadow-sm text-xs sm:text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                style={{ border: '1px solid #C9C4B5' }}
-              >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-                </svg>
-                <span className="sm:inline">Importar Itens</span>
-              </button>
-              <button
-                onClick={() => setShowModal(true)}
-                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-semibold rounded-md text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2"
-                style={{ backgroundColor: '#394353' }}
-              >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span className="sm:inline">Adicionar Item</span>
-              </button>
-            </div>
+    <div className="min-h-screen bg-gray-50 p-4">
+      {/* Cabeçalho com informações e botões */}
+      <div className="mb-4">
+        <h1 className="text-xl font-bold text-gray-900">Itens do Inventário</h1>
+        <p className="text-sm text-gray-600">
+          {filteredItens.length} {filteredItens.length === 1 ? 'item cadastrado' : 'itens cadastrados'}
+        </p>
+      </div>
+
+      {/* Barra de Ações */}
+      <div className="bg-white rounded-lg border border-[#C9C4B5] p-3 mb-4">
+        <div className="flex flex-wrap gap-2 items-center justify-between">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowModal(true)}
+              style={{ backgroundColor: '#394353' }}
+              className="px-3 py-2 text-sm text-white rounded-md hover:opacity-90 transition-opacity flex items-center gap-2 font-semibold"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Novo Item
+            </button>
+            
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="px-3 py-2 text-sm border border-[#C9C4B5] rounded-md hover:bg-gray-50 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+              </svg>
+              Importar
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* Busca e Toggle de Visualização */}
-        <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            {/* Campo de Busca */}
-            <div className="flex-1 relative min-w-0">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
+      {/* Barra de Filtros */}
+      <div className="bg-white rounded-lg border border-[#C9C4B5] p-3 mb-4">
+        <div className="flex flex-wrap gap-2 items-center justify-between">
+          <div className="flex gap-2">
+            <div className="relative">
               <input
                 type="text"
                 placeholder="Buscar itens..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-slate-500 focus:border-slate-500 text-sm"
+                className="w-64 px-3 py-2 text-sm border border-[#C9C4B5] rounded-md focus:outline-none focus:ring-2 focus:ring-[#394353]"
               />
             </div>
-            
-            {/* Toggle de Visualização */}
-            <div className="flex items-center space-x-2 flex-shrink-0">
-              <button
-                onClick={() => {
-                  setViewMode('list')
-                  localStorage.setItem('inventario-view-mode', 'list')
-                }}
-                className={`inline-flex items-center px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-md ${
-                  viewMode === 'list'
-                    ? 'bg-slate-100 text-slate-700'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <svg className="w-4 h-4 sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                </svg>
-                <span className="hidden sm:inline">Lista</span>
-              </button>
-              <button
-                onClick={() => {
-                  setViewMode('cards')
-                  localStorage.setItem('inventario-view-mode', 'cards')
-                }}
-                className={`inline-flex items-center px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-md ${
-                  viewMode === 'cards'
-                    ? 'bg-slate-100 text-slate-700'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <svg className="w-4 h-4 sm:mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                </svg>
-                <span className="hidden sm:inline">Cards</span>
-              </button>
-            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setViewMode('list')
+                localStorage.setItem('inventario-view-mode', 'list')
+              }}
+              className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+                viewMode === 'list'
+                  ? 'bg-gray-800 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Lista
+            </button>
+            <button
+              onClick={() => {
+                setViewMode('cards')
+                localStorage.setItem('inventario-view-mode', 'cards')
+              }}
+              className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+                viewMode === 'cards'
+                  ? 'bg-gray-800 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Cards
+            </button>
           </div>
         </div>
 
-        {/* Filtros */}
-        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gray-50 border-b border-gray-200">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            {/* Filtro Categoria */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Categoria</label>
-              <select
-                value={filters.categoria}
-                onChange={(e) => setFilters({ ...filters, categoria: e.target.value })}
-                className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-500 focus:border-slate-500"
-              >
-                <option value="">Todas</option>
-                {uniqueCategories.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Filtro Setor */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Setor</label>
-              <select
-                value={filters.setor}
-                onChange={(e) => setFilters({ ...filters, setor: e.target.value })}
-                className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-500 focus:border-slate-500"
-              >
-                <option value="">Todos</option>
-                {uniqueSetores.map((setor) => (
-                  <option key={setor} value={setor}>{setor}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Filtro Status */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-500 focus:border-slate-500"
-              >
-                <option value="">Todos</option>
-                {uniqueStatus.map((status) => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Filtro Responsável */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Responsável</label>
-              <input
-                type="text"
-                placeholder="Nome do responsável..."
-                value={filters.responsavel}
-                onChange={(e) => setFilters({ ...filters, responsavel: e.target.value })}
-                className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-500 focus:border-slate-500"
-              />
-            </div>
+        {/* Filtros Expandidos */}
+        <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Categoria</label>
+            <select
+              value={filters.categoria}
+              onChange={(e) => setFilters({ ...filters, categoria: e.target.value })}
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md"
+            >
+              <option value="">Todas</option>
+              {uniqueCategories.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
           </div>
 
-          {/* Botão Limpar Filtros */}
-          {(filters.categoria || filters.setor || filters.status || filters.responsavel) && (
-            <div className="mt-3 flex justify-end">
-              <button
-                onClick={() => setFilters({ categoria: '', setor: '', status: '', responsavel: '' })}
-                className="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
-              >
-                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Limpar Filtros
-              </button>
-            </div>
-          )}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Setor</label>
+            <select
+              value={filters.setor}
+              onChange={(e) => setFilters({ ...filters, setor: e.target.value })}
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md"
+            >
+              <option value="">Todos</option>
+              {uniqueSetores.map((setor) => (
+                <option key={setor} value={setor}>{setor}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md"
+            >
+              <option value="">Todos</option>
+              {uniqueStatus.map((status) => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Responsável</label>
+            <input
+              type="text"
+              placeholder="Nome do responsável..."
+              value={filters.responsavel}
+              onChange={(e) => setFilters({ ...filters, responsavel: e.target.value })}
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md"
+            />
+          </div>
         </div>
       </div>
 
       {/* Conteúdo baseado no modo de visualização */}
       {viewMode === 'list' ? (
         // Visualização em Lista
-      <div className="bg-white rounded-lg shadow">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y" style={{ borderColor: '#C9C4B5' }}>
-            <thead style={{ backgroundColor: '#394353' }}>
-              <tr>
-                <th 
-                  className="px-4 py-2.5 text-left text-xs font-semibold text-white uppercase tracking-wider hover:opacity-90 select-none relative" 
-                  style={{ width: `${columnWidths.codigo}px`, minWidth: '80px' }}
-                >
+        <div className="bg-white rounded-lg shadow-sm border border-[#C9C4B5]">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y" style={{ borderColor: '#C9C4B5' }}>
+              <thead style={{ backgroundColor: '#394353' }}>
+                <tr>
+                  <th 
+                    className="px-4 py-2.5 text-left text-xs font-semibold text-white uppercase tracking-wider hover:opacity-90 select-none relative" 
+                    style={{ width: `${columnWidths.codigo}px`, minWidth: '80px' }}
+                  >
                   <div className="flex items-center gap-1 cursor-pointer" onClick={() => handleSort('codigo')}>
                     Código
                     {sortConfig?.key === 'codigo' && (
@@ -996,10 +964,10 @@ export const CadastroItem: React.FC = () => {
                     )}
                   </div>
                 </th>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+                <th className="px-4 py-2.5 text-left text-xs font-semibold text-white uppercase tracking-wider">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
               {filteredItens.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center">
@@ -1015,10 +983,10 @@ export const CadastroItem: React.FC = () => {
               ) : (
                 filteredItens.map((item) => (
                   <tr key={item.id} id={`item-${item.id}`} className="hover:bg-gray-50">
-                    <td className="px-2 sm:px-3 py-4 text-sm text-gray-900" style={{ width: `${columnWidths.codigo}px` }}>
+                    <td className="px-2 sm:px-3 py-3 text-xs text-gray-900" style={{ width: `${columnWidths.codigo}px` }}>
                       <div className="overflow-hidden text-ellipsis">{item.codigo}</div>
                     </td>
-                    <td className="px-3 sm:px-6 py-4 text-sm font-medium text-gray-900" style={{ width: `${columnWidths.item}px` }}>
+                    <td className="px-3 sm:px-6 py-3 text-xs font-medium text-gray-900" style={{ width: `${columnWidths.item}px` }}>
                       <div className="overflow-hidden">
                         <div>{item.item || 'Item sem nome'}</div>
                         <div className="text-xs text-gray-500 md:hidden mt-1">
@@ -1029,21 +997,21 @@ export const CadastroItem: React.FC = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 hidden md:table-cell">
+                    <td className="px-3 sm:px-6 py-3 text-xs text-gray-500 hidden md:table-cell">
                       {item.categoria || '-'}
                     </td>
-                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 hidden lg:table-cell">
+                    <td className="px-3 sm:px-6 py-3 text-xs text-gray-500 hidden lg:table-cell">
                       {item.setor}
                     </td>
-                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500 hidden xl:table-cell">
+                    <td className="px-3 sm:px-6 py-3 text-xs text-gray-500 hidden xl:table-cell">
                       {item.colaboradores?.nome || '-'}
                     </td>
-                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-3 sm:px-6 py-3 whitespace-nowrap text-xs text-gray-500">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
                         {item.status}
                       </span>
                     </td>
-                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-3 sm:px-6 py-3 whitespace-nowrap text-xs font-medium">
                       <div className="flex space-x-1.5 sm:space-x-2">
                         <button
                           onClick={() => handleTermoResponsabilidade(item)}
@@ -1077,16 +1045,16 @@ export const CadastroItem: React.FC = () => {
                   </tr>
                 ))
               )}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
       ) : (
         // Visualização em Cards
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
           {filteredItens.map((item) => (
-            <div key={item.id} id={`item-${item.id}`} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200">
-              <div className="p-3 sm:p-4">
+            <div key={item.id} id={`item-${item.id}`} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border" style={{ borderColor: '#C9C4B5' }}>
+              <div className="p-3">
                 <div className="flex justify-between items-start mb-2 sm:mb-3">
                   <div className="flex-1 min-w-0 pr-2">
                     <h3 className="text-sm font-semibold text-gray-900 truncate">{item.item}</h3>
@@ -1118,7 +1086,7 @@ export const CadastroItem: React.FC = () => {
                 </div>
               </div>
 
-              <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-50 border-t border-gray-200 rounded-b-lg flex justify-end gap-1.5 sm:gap-2">
+              <div className="px-3 py-2 bg-gray-50 border-t rounded-b-lg flex justify-end gap-1.5" style={{ borderColor: '#C9C4B5' }}>
                 <button
                   onClick={() => handleTermoResponsabilidade(item)}
                   className="text-purple-600 hover:text-purple-900 transition-colors"
@@ -1163,14 +1131,14 @@ export const CadastroItem: React.FC = () => {
 
       {/* Modal de Cadastro */}
       {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
           <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <div style={{ backgroundColor: '#394353' }} className="sticky top-0 px-4 py-3 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">
+                <h2 className="text-sm font-bold text-white">
                   {editingItem ? 'Editar Item' : 'Adicionar Novo Item'}
                 </h2>
-                <p className="text-sm text-gray-600 mt-1">Preencha os dados do item do inventário</p>
+                <p className="text-xs text-gray-300 mt-0.5">Preencha os dados do item do inventário</p>
               </div>
               <button
                 onClick={() => {
@@ -1178,15 +1146,15 @@ export const CadastroItem: React.FC = () => {
                   setEditingItem(null)
                   setMessage(null)
                 }}
-                className="text-gray-400 hover:text-gray-500"
+                className="text-white hover:text-gray-200"
               >
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            <form onSubmit={handleSubmit} className="p-4 space-y-4">
               {message && (
                 <div className={`p-4 rounded-md ${
                   message.type === 'success' 
@@ -1198,10 +1166,10 @@ export const CadastroItem: React.FC = () => {
               )}
 
               {/* Grid principal com 3 colunas */}
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {/* Código */}
             <div>
-              <label htmlFor="codigo" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="codigo" className="block text-xs font-medium text-gray-700 mb-1">
                 Código *
               </label>
               <input
@@ -1212,13 +1180,14 @@ export const CadastroItem: React.FC = () => {
                 value={formData.codigo}
                 onChange={handleChange}
                 placeholder="Ex: ITEM-001"
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+                style={{ borderColor: '#C9C4B5' }}
+                className="block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#394353] focus:border-transparent"
               />
             </div>
 
             {/* Item */}
             <div>
-              <label htmlFor="item" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="item" className="block text-xs font-medium text-gray-700 mb-1">
                 Item *
               </label>
               <input
@@ -1229,13 +1198,14 @@ export const CadastroItem: React.FC = () => {
                 value={formData.item}
                 onChange={handleChange}
                 placeholder="Nome do item"
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+                style={{ borderColor: '#C9C4B5' }}
+                className="block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#394353] focus:border-transparent"
               />
             </div>
 
             {/* Modelo */}
             <div>
-              <label htmlFor="modelo" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="modelo" className="block text-xs font-medium text-gray-700 mb-1">
                 Modelo
               </label>
               <input
@@ -1245,13 +1215,14 @@ export const CadastroItem: React.FC = () => {
                 value={formData.modelo}
                 onChange={handleChange}
                 placeholder="Ex: XYZ-2024"
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+                style={{ borderColor: '#C9C4B5' }}
+                className="block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#394353] focus:border-transparent"
               />
             </div>
 
             {/* Categoria */}
             <div>
-              <label htmlFor="categoria" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="categoria" className="block text-xs font-medium text-gray-700 mb-1">
                 Categoria
               </label>
               <input
@@ -1261,13 +1232,14 @@ export const CadastroItem: React.FC = () => {
                 value={formData.categoria}
                 onChange={handleChange}
                 placeholder="Digite a categoria"
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+                style={{ borderColor: '#C9C4B5' }}
+                className="block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#394353] focus:border-transparent"
               />
             </div>
 
             {/* Número de Série */}
             <div>
-              <label htmlFor="numero_serie" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="numero_serie" className="block text-xs font-medium text-gray-700 mb-1">
                 Número de Série
               </label>
               <input
@@ -1277,13 +1249,14 @@ export const CadastroItem: React.FC = () => {
                 value={formData.numero_serie}
                 onChange={handleChange}
                 placeholder="Ex: SN123456789"
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+                style={{ borderColor: '#C9C4B5' }}
+                className="block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#394353] focus:border-transparent"
               />
             </div>
 
             {/* Nota Fiscal */}
             <div>
-              <label htmlFor="nota_fiscal" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="nota_fiscal" className="block text-xs font-medium text-gray-700 mb-1">
                 Nota Fiscal
               </label>
               <input
@@ -1293,13 +1266,14 @@ export const CadastroItem: React.FC = () => {
                 value={formData.nota_fiscal}
                 onChange={handleChange}
                 placeholder="Ex: NF-123456"
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+                style={{ borderColor: '#C9C4B5' }}
+                className="block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#394353] focus:border-transparent"
               />
             </div>
 
             {/* Fornecedor */}
             <div>
-              <label htmlFor="fornecedor" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="fornecedor" className="block text-xs font-medium text-gray-700 mb-1">
                 Fornecedor
               </label>
               <input
@@ -1309,13 +1283,14 @@ export const CadastroItem: React.FC = () => {
                 value={formData.fornecedor}
                 onChange={handleChange}
                 placeholder="Nome do fornecedor"
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+                style={{ borderColor: '#C9C4B5' }}
+                className="block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#394353] focus:border-transparent"
               />
             </div>
 
             {/* Setor */}
             <div>
-              <label htmlFor="setor" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="setor" className="block text-xs font-medium text-gray-700 mb-1">
                 Setor *
               </label>
               <input
@@ -1326,13 +1301,14 @@ export const CadastroItem: React.FC = () => {
                 value={formData.setor}
                 onChange={handleChange}
                 placeholder="Digite o setor"
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+                style={{ borderColor: '#C9C4B5' }}
+                className="block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#394353] focus:border-transparent"
               />
             </div>
 
             {/* Status */}
             <div>
-              <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="status" className="block text-xs font-medium text-gray-700 mb-1">
                 Status *
               </label>
               <select
@@ -1341,7 +1317,8 @@ export const CadastroItem: React.FC = () => {
                 required
                 value={formData.status}
                 onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+                style={{ borderColor: '#C9C4B5' }}
+                className="block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#394353] focus:border-transparent"
               >
                 <option value="">Selecione o status</option>
                 {statusOptions.map((status) => (
@@ -1354,7 +1331,7 @@ export const CadastroItem: React.FC = () => {
 
             {/* Valor */}
             <div>
-              <label htmlFor="valor" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="valor" className="block text-xs font-medium text-gray-700 mb-1">
                 Valor (R$) *
               </label>
               <input
@@ -1367,29 +1344,31 @@ export const CadastroItem: React.FC = () => {
                 value={formData.valor}
                 onChange={handleChange}
                 placeholder="0.00"
-                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+                style={{ borderColor: '#C9C4B5' }}
+                className="block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#394353] focus:border-transparent"
               />
             </div>
           </div>
 
               {/* Detalhes - Campo grande separado */}
               <div>
-            <label htmlFor="detalhes" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="detalhes" className="block text-xs font-medium text-gray-700 mb-1">
               Detalhes
             </label>
             <textarea
               name="detalhes"
               id="detalhes"
-              rows={4}
+              rows={3}
               value={formData.detalhes}
               onChange={handleChange}
               placeholder="Informações adicionais sobre o item..."
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-slate-500 focus:border-slate-500"
+              style={{ borderColor: '#C9C4B5' }}
+              className="block w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#394353] focus:border-transparent"
             />
           </div>
 
               {/* Botões */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+              <div className="flex justify-end gap-2 pt-3 border-t" style={{ borderColor: '#C9C4B5' }}>
                 <button
                   type="button"
                   onClick={() => {
@@ -1408,14 +1387,16 @@ export const CadastroItem: React.FC = () => {
                     });
                     setMessage(null)
                   }}
-                  className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
+                  style={{ borderColor: '#C9C4B5' }}
+                  className="px-3 py-2 border rounded-md text-gray-700 bg-white hover:bg-gray-50 text-sm font-semibold transition-colors"
                 >
                   Limpar
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-slate-700 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: '#394353' }}
+                  className="px-4 py-2 text-white rounded-md hover:opacity-90 text-sm font-semibold transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                 >
                   {loading ? 'Salvando...' : (editingItem ? 'Atualizar Item' : 'Cadastrar Item')}
                 </button>
@@ -1427,12 +1408,12 @@ export const CadastroItem: React.FC = () => {
 
       {/* Modal de Importação */}
       {showImportModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
           <div className="relative bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <div style={{ backgroundColor: '#394353' }} className="sticky top-0 px-4 py-3 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Importar Itens</h2>
-                <p className="text-sm text-gray-600 mt-1">Faça upload de arquivo XLSX ou CSV com os dados dos itens</p>
+                <h2 className="text-sm font-bold text-white">Importar Itens</h2>
+                <p className="text-xs text-gray-300 mt-0.5">Faça upload de arquivo XLSX ou CSV com os dados dos itens</p>
               </div>
               <button
                 onClick={() => {
@@ -1442,15 +1423,15 @@ export const CadastroItem: React.FC = () => {
                   setImportErrors([])
                   setMessage(null)
                 }}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-white hover:text-gray-200"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            <div className="px-6 py-4">
+            <div className="px-4 py-4">
               {/* Mensagem */}
               {message && (
                 <div className={`mb-4 p-4 rounded-md ${
@@ -1461,30 +1442,31 @@ export const CadastroItem: React.FC = () => {
               )}
 
               {/* Botão para baixar modelo */}
-              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-medium text-blue-900">Primeiro passo: Baixe o modelo</h3>
-                    <p className="text-sm text-blue-700 mt-1">
-                      Baixe o arquivo modelo em Excel com os campos corretos e exemplos de preenchimento
+                    <h3 className="text-sm font-semibold text-blue-900">Baixe o modelo de importação</h3>
+                    <p className="text-xs text-blue-700 mt-1">
+                      Arquivo Excel com campos corretos e exemplos
                     </p>
                   </div>
                   <button
                     onClick={downloadTemplate}
-                    className="inline-flex items-center px-4 py-2 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    style={{ backgroundColor: '#394353' }}
+                    className="px-3 py-2 text-sm font-semibold text-white rounded-md hover:opacity-90 transition-opacity inline-flex items-center gap-2"
                   >
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    Baixar Modelo XLSX
+                    Baixar Modelo
                   </button>
                 </div>
               </div>
 
               {/* Upload de arquivo */}
-              <div className="mb-6">
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Segundo passo: Selecione o arquivo para importar
+                  Selecione o arquivo para importar
                 </label>
                 <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-gray-400">
                   <div className="space-y-1 text-center">
@@ -1504,7 +1486,7 @@ export const CadastroItem: React.FC = () => {
                     <div className="flex text-sm text-gray-600">
                       <label
                         htmlFor="file-upload"
-                        className="relative cursor-pointer bg-white rounded-md font-medium text-slate-600 hover:text-slate-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-slate-500"
+                        className="relative cursor-pointer bg-white rounded-md font-medium" style={{ color: '#394353' }}
                       >
                         <span>Faça upload de um arquivo</span>
                         <input
@@ -1557,7 +1539,7 @@ export const CadastroItem: React.FC = () => {
               {/* Preview dos dados */}
               {importPreview.length > 0 && (
                 <div className="mb-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-3">
+                  <h3 className="text-sm font-medium text-gray-900 mb-3">
                     Preview dos dados ({importPreview.length} itens)
                   </h3>
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -1577,13 +1559,13 @@ export const CadastroItem: React.FC = () => {
                         <tbody className="bg-white divide-y divide-gray-200">
                           {importPreview.map((item, index) => (
                             <tr key={index} className="hover:bg-gray-50">
-                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{item.codigo}</td>
-                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">{item.item}</td>
-                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{item.modelo || '-'}</td>
-                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{item.categoria || '-'}</td>
-                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{item.setor}</td>
-                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{item.status}</td>
-                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">{item.codigo}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">{item.item}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">{item.modelo || '-'}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">{item.categoria || '-'}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">{item.setor}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">{item.status}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-900">
                                 R$ {item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </td>
                             </tr>
@@ -1597,7 +1579,7 @@ export const CadastroItem: React.FC = () => {
 
               {/* Botões de ação */}
               {importPreview.length > 0 && (
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <div className="flex justify-end gap-2 pt-3 border-t" style={{ borderColor: '#C9C4B5' }}>
                   <button
                     type="button"
                     onClick={() => {
@@ -1607,7 +1589,8 @@ export const CadastroItem: React.FC = () => {
                       setImportErrors([])
                       setMessage(null)
                     }}
-                    className="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
+                    style={{ borderColor: '#C9C4B5' }}
+                    className="px-3 py-2 border rounded-md text-gray-700 bg-white hover:bg-gray-50 text-sm font-semibold transition-colors"
                   >
                     Cancelar
                   </button>
@@ -1615,7 +1598,8 @@ export const CadastroItem: React.FC = () => {
                     type="button"
                     onClick={executeImport}
                     disabled={importLoading || importErrors.length > 0}
-                    className="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-slate-700 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: '#394353' }}
+                    className="px-4 py-2 text-white rounded-md hover:opacity-90 text-sm font-semibold transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                   >
                     {importLoading ? 'Importando...' : `Importar ${importPreview.length} Itens`}
                   </button>
@@ -1628,7 +1612,7 @@ export const CadastroItem: React.FC = () => {
 
       {/* Modal de Confirmação de Exclusão */}
       {showDeleteModal && itemToDelete && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
           <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="p-6">
               <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
@@ -1638,26 +1622,27 @@ export const CadastroItem: React.FC = () => {
               </div>
               
               <div className="text-center">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Confirmar Exclusão</h3>
-                <p className="text-sm text-gray-600 mb-4">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">Confirmar Exclusão</h3>
+                <p className="text-sm text-gray-600 mb-3">
                   Tem certeza que deseja excluir o item "<span className="font-semibold">{itemToDelete.item}</span>"?
                 </p>
-                <p className="text-xs text-gray-500 mb-6">
+                <p className="text-xs text-gray-500 mb-4">
                   Esta ação não pode ser desfeita.
                 </p>
               </div>
 
-              <div className="flex space-x-3">
+              <div className="flex gap-2">
                 <button
                   onClick={cancelDelete}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                  style={{ borderColor: '#C9C4B5' }}
+                  className="flex-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white border rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#394353] disabled:opacity-50"
                   disabled={loading}
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={confirmDelete}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-3 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={loading}
                 >
                   {loading ? 'Excluindo...' : 'Excluir'}

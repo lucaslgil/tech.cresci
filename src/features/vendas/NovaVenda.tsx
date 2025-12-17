@@ -21,6 +21,7 @@ import { buscarProdutos } from '../produtos/produtosService'
 import type { Cliente } from '../clientes/types'
 import type { Produto } from '../produtos/types'
 import { BotoesAcaoVenda } from './components/BotoesAcaoVenda'
+import { ImpressaoPedido } from './components/ImpressaoPedido'
 import { useParametrosFinanceiros } from './hooks/useParametrosFinanceiros'
 import { criarContaReceber, buscarContasPorVenda } from '../financeiro/contasReceberService'
 
@@ -32,6 +33,7 @@ export default function NovaVenda() {
   const [statusVenda, setStatusVenda] = useState<string>('ORCAMENTO')
   const [numeroVenda, setNumeroVenda] = useState<number | null>(null)
   const [vendaBloqueada, setVendaBloqueada] = useState(false)
+  const [mostrarImpressao, setMostrarImpressao] = useState(false)
 
   // Hook para buscar parâmetros financeiros
   const { formasPagamento, parcelamentos, carregando: carregandoParametros } = useParametrosFinanceiros()
@@ -629,6 +631,14 @@ export default function NovaVenda() {
         } 
       } 
     })
+  }
+
+  const handleImprimirPedido = () => {
+    if (!id) {
+      setToast({ tipo: 'error', mensagem: 'Salve a venda antes de imprimir' })
+      return
+    }
+    setMostrarImpressao(true)
   }
 
   const handleBloquear = async () => {
@@ -1328,6 +1338,7 @@ export default function NovaVenda() {
               onReabrir={handleReabrirPedido}
               onConfirmar={handleConfirmarPedido}
               onEmitirNota={handleEmitirNota}
+              onImprimirPedido={handleImprimirPedido}
             />
           </div>
         </div>
@@ -1338,6 +1349,13 @@ export default function NovaVenda() {
           type={toast.tipo}
           message={toast.mensagem}
           onClose={() => setToast(null)}
+        />
+      )}
+
+      {mostrarImpressao && id && (
+        <ImpressaoPedido
+          vendaId={id}
+          onClose={() => setMostrarImpressao(false)}
         />
       )}
     </div>

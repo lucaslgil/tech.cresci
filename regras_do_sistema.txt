@@ -109,3 +109,16 @@
 - Otimizar queries do Supabase
 - Implementar cache quando necessário
 - Minimizar re-renders desnecessários
+
+### 11. CONTROLE DE PERMISSÕES - ⚠️ OBRIGATÓRIO
+- **SEMPRE QUE O SISTEMA CRIAR UMA NOVA TELA, DEVEMOS ADICIONAR A OPÇÃO DE ACESSO NAS CONFIGURAÇÕES DO USUÁRIO, PARA CONTROLE DE PERMISSÃO DE ACESSO ÀS TELAS**
+- Toda nova tela/funcionalidade deve ter uma permissão associada
+- Adicionar a permissão em:
+  1. Interface `Permissoes` em `src/shared/hooks/usePermissions.tsx`
+  2. Interface `Usuario` em `src/features/configuracoes/GerenciarUsuarios.tsx`
+  3. Array `permissoesModulos` em `src/features/configuracoes/GerenciarUsuarios.tsx`
+  4. Valores default em ambos os arquivos
+- Nomenclatura de permissões: `modulo_acao` (ex: `vendas_parametros`, `cadastro_empresa`)
+- Verificar permissões no componente antes de renderizar (usar `hasPermission()`)
+- Proteger rotas com `<PermissionGuard requiredPermissions={['permissao']}>` no App.tsx
+- Adicionar permissão no banco de dados para usuários Admin via SQL
