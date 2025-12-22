@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { vendasService } from '../vendasService'
 import { supabase } from '../../../lib/supabase'
+import { buscarContasPorVenda } from '../../financeiro/contasReceberService'
 import type { Venda } from '../types'
 import { PrintPedidoPortal } from './PrintPedidoPortal'
 import PedidoA4 from './PedidoA4'
@@ -26,12 +27,22 @@ export function ImpressaoPedido({ vendaId, onClose }: ImpressaoPedidoProps) {
     mostrarLogo: true
   })
   const [carregando, setCarregando] = useState(true)
+  const [contas, setContas] = useState<any[]>([])
 
   useEffect(() => {
     const carregarDados = async () => {
       try {
         const resultadoVenda = await vendasService.buscarPorId(Number(vendaId))
         if (resultadoVenda) setVenda(resultadoVenda)
+
+        // Carregar contas a receber (formas de pagamento) vinculadas à venda
+        try {
+          const { data: contasData, error: contasError } = await buscarContasPorVenda(Number(vendaId))
+          if (contasError) throw contasError
+          setContas(contasData || [])
+        } catch (err) {
+          console.error('Erro ao carregar contas a receber da venda:', err)
+        }
 
         const { data: parametrosData, error } = await supabase
           .from('parametros_vendas')
@@ -121,12 +132,12 @@ export function ImpressaoPedido({ vendaId, onClose }: ImpressaoPedidoProps) {
           </div>
 
           <div id="area-impressao">
-            <PedidoA4 venda={venda} parametros={parametros} formatarData={formatarData} formatarMoeda={formatarMoeda} calcularTotal={calcularTotal} />
+            <PedidoA4 venda={venda} parametros={parametros} formatarData={formatarData} formatarMoeda={formatarMoeda} calcularTotal={calcularTotal} contas={contas} />
           </div>
         </div>
       </div>
 
-      <PrintPedidoPortal open={printing} venda={venda} parametros={parametros} formatarData={formatarData} formatarMoeda={formatarMoeda} calcularTotal={calcularTotal} />
+      <PrintPedidoPortal open={printing} venda={venda} parametros={parametros} formatarData={formatarData} formatarMoeda={formatarMoeda} calcularTotal={calcularTotal} contas={contas} />
     </>
   )
 }

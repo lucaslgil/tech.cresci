@@ -10,9 +10,10 @@ interface PrintPedidoPortalProps {
   formatarData: (data: string) => string;
   formatarMoeda: (valor: number) => string;
   calcularTotal: () => number;
+  contas?: any[];
 }
 
-export function PrintPedidoPortal({ open, venda, parametros, formatarData, formatarMoeda, calcularTotal }: PrintPedidoPortalProps) {
+export function PrintPedidoPortal({ open, venda, parametros, formatarData, formatarMoeda, calcularTotal, contas }: PrintPedidoPortalProps) {
   if (!open || !venda) return null;
   return createPortal(
     <div className="hidden print:block fixed top-0 left-0 w-full bg-white z-[9999]">
@@ -22,6 +23,7 @@ export function PrintPedidoPortal({ open, venda, parametros, formatarData, forma
         formatarData={formatarData}
         formatarMoeda={formatarMoeda}
         calcularTotal={calcularTotal}
+        contas={contas}
       />
     </div>,
     document.body

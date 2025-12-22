@@ -1,5 +1,7 @@
 import React from 'react'
 import type { Venda } from '../types'
+import { FORMA_PAGAMENTO_LABELS } from '../types'
+import type { ContaReceber } from '../../financeiro/types'
 
 interface ParametrosImpressao {
   logoUrl: string | null;
@@ -14,9 +16,10 @@ interface PedidoA4Props {
   formatarData: (data: string) => string
   formatarMoeda: (valor: number) => string
   calcularTotal: () => number
+  contas?: ContaReceber[]
 }
 
-export default function PedidoA4({ venda, parametros, formatarData, formatarMoeda, calcularTotal }: PedidoA4Props) {
+export default function PedidoA4({ venda, parametros, formatarData, formatarMoeda, calcularTotal, contas }: PedidoA4Props) {
   return (
     <div className="bg-white p-8 print:p-12" style={{ width: '210mm', minHeight: '297mm' }}>
       {/* Cabeçalho */}
@@ -92,8 +95,34 @@ export default function PedidoA4({ venda, parametros, formatarData, formatarMoed
         </table>
       </div>
 
-      {/* Totalizadores e rodapé compactos */}
-      <div className="flex justify-end mb-6">
+      {/* Pagamentos (formas de pagamento vinculadas) - removido daqui e renderizado dentro do bloco de total */}
+
+      {/* Pagamentos (à esquerda) e Totalizadores (à direita) em linha, compacto */}
+      <div className="flex justify-between mb-6 items-start gap-4">
+        {/* Pagamentos compactos (lado esquerdo) */}
+        {(contas && contas.length > 0) && (
+          <div className="w-48 border border-[#C9C4B5] rounded-md p-3">
+            <h4 className="text-xs font-semibold text-gray-700 mb-2 uppercase">Pagamento</h4>
+            <div className="text-xs">
+              {contas.map((c, idx) => {
+                const label = FORMA_PAGAMENTO_LABELS.find(f => f.value === (c.forma_pagamento || '').toString())?.label || c.forma_pagamento || 'Pagamento'
+                const valor = (c as any).valor_total ?? (c as any).valor_original ?? 0
+                const venc = (c as any).data_vencimento
+                return (
+                  <div key={c.id ?? idx} className="flex justify-between mb-1">
+                    <div className="flex flex-col">
+                      <span className="text-gray-700 truncate">{label}{c.numero_parcela ? ` (${c.numero_parcela}/${c.total_parcelas})` : ''}</span>
+                      {venc && <span className="text-xs text-gray-500">Venc.: {formatarData(venc)}</span>}
+                    </div>
+                    <span className="font-semibold ml-2">{formatarMoeda(valor)}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Bloco de totais (lado direito) */}
         <div className="w-64 border border-[#C9C4B5] rounded-md p-3">
           <div className="flex justify-between text-xs mb-2">
             <span className="text-gray-600">Subtotal:</span>
