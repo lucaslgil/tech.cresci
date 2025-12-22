@@ -7,16 +7,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
-  DollarSign, Plus, Search, Filter, Calendar, 
-  CheckCircle, XCircle, Clock, AlertCircle, Download, ExternalLink
+  DollarSign, Plus, Search, Filter,
+  CheckCircle, XCircle, Clock, AlertCircle, ExternalLink
 } from 'lucide-react'
 import { Toast } from '../../shared/components/Toast'
-import { DatePicker } from '../../shared/components/DatePicker'
 import {
   listarContasReceber,
   criarContaReceber,
   registrarPagamento,
-  cancelarConta,
   excluirConta,
   reabrirConta,
   obterResumo,
@@ -58,7 +56,7 @@ export const ContasReceber: React.FC = () => {
   const [showPagamentoModal, setShowPagamentoModal] = useState(false)
   const [contaSelecionada, setContaSelecionada] = useState<ContaReceber | null>(null)
   const [pagamentos, setPagamentos] = useState<PagamentoReceber[]>([])
-  const [loadingPagamentos, setLoadingPagamentos] = useState(false)
+  const [_loadingPagamentos, setLoadingPagamentos] = useState(false)
   
   // Autocomplete de clientes
   const [buscaCliente, setBuscaCliente] = useState('')
@@ -174,7 +172,7 @@ export const ContasReceber: React.FC = () => {
       data_emissao: conta.data_emissao,
       data_vencimento: conta.data_vencimento,
       valor_original: conta.valor_original,
-      valor_acrescimo: conta.valor_acrescimo,
+      valor_juros: conta.valor_juros,
       valor_desconto: conta.valor_desconto,
       numero_documento: conta.numero_documento || '',
       forma_pagamento: conta.forma_pagamento || '',
@@ -279,9 +277,9 @@ export const ContasReceber: React.FC = () => {
 
     try {
       setSalvando(true)
-      const { data, error } = await criarContaReceber(formData)
+        const { error } = await criarContaReceber(formData)
 
-      if (error) throw error
+        if (error) throw error
 
       setToast({ message: 'Conta criada com sucesso!', type: 'success' })
       setShowModal(false)
@@ -337,20 +335,7 @@ export const ContasReceber: React.FC = () => {
     }
   }
 
-  const handleCancelar = async (id: number) => {
-    if (!confirm('Deseja realmente cancelar esta conta?')) return
-
-    try {
-      const { error } = await cancelarConta(id)
-      if (error) throw error
-
-      setToast({ message: 'Conta cancelada com sucesso!', type: 'success' })
-      carregarDados()
-    } catch (error) {
-      console.error('Erro ao cancelar conta:', error)
-      setToast({ message: 'Erro ao cancelar conta', type: 'error' })
-    }
-  }
+  // Função de cancelar conta removida (não utilizada no componente atual)
 
   const resetForm = () => {
     setFormData({

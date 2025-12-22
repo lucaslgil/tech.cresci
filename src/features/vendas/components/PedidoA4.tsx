@@ -1,4 +1,3 @@
-import React from 'react'
 import type { Venda } from '../types'
 import { FORMA_PAGAMENTO_LABELS } from '../types'
 import type { ContaReceber } from '../../financeiro/types'

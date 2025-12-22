@@ -23,13 +23,10 @@ interface BotoesAcaoVendaProps {
 export function BotoesAcaoVenda({
   vendaId,
   status,
-  bloqueado = false,
   carregando = false,
   onSalvar,
   onCancelar,
   onExcluir,
-  onBloquear,
-  onDesbloquear,
   onReabrir,
   onConfirmar,
   onEmitirNota,

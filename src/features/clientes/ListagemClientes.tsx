@@ -13,8 +13,7 @@ import {
 } from './types'
 import {
   listarClientes,
-  buscarEstatisticas,
-  bloquearCliente
+  buscarEstatisticas
 } from './services'
 import { formatarCPF, formatarCNPJ, formatarData } from './utils'
 
@@ -79,16 +78,7 @@ export function ListagemClientes() {
     setFiltros(prev => ({ ...prev, status: status || undefined, offset: 0 }))
   }
 
-  async function handleBloquear(id: number | string, bloqueado: boolean) {
-    try {
-      await bloquearCliente(String(id), bloqueado, bloqueado ? 'Bloqueado manualmente' : undefined, bloqueado ? 'OUTROS' : undefined)
-      await carregarClientes()
-      await carregarEstatisticas()
-    } catch (error) {
-      console.error('Erro ao bloquear/desbloquear cliente:', error)
-      alert('Erro ao alterar bloqueio do cliente')
-    }
-  }
+  // Função de bloqueio removida por não ser utilizada neste componente
 
   function getNomeCliente(cliente: Cliente): string {
     if (cliente.tipo_pessoa === 'FISICA') {

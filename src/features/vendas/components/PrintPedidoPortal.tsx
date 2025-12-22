@@ -1,5 +1,4 @@
 import { createPortal } from 'react-dom';
-import React from 'react';
 import type { Venda } from '../types';
 import PedidoA4 from './PedidoA4';
 

@@ -78,7 +78,7 @@ export function ImpressaoPedido({ vendaId, onClose }: ImpressaoPedidoProps) {
     carregarDados()
   }, [vendaId])
 
-  const handleImprimir = () => window.print()
+  // impressão é tratada via estado `printing` e efeito
   const [printing, setPrinting] = useState(false)
 
   // Mount print portal only when printing is requested

@@ -119,7 +119,7 @@ export const ParametrosContasReceber: React.FC = () => {
         ...novaForma
       }
       setFormasPagamento([...formasPagamento, nova])
-      setNovaForma({ nome: '', diasPrazo: 0, ativo: true })
+      setNovaForma({ nome: '', diasPrazo: 0, ativo: true, tipoRecebimento: 'OUTROS', permiteParcelamento: false, taxaJuros: 0, descontoAVista: 0, geraFinanceiro: true })
     }
     setModalForma(false)
   }
@@ -143,7 +143,7 @@ export const ParametrosContasReceber: React.FC = () => {
         ...novoParcelamento
       }
       setParcelamentos([...parcelamentos, novo])
-      setNovoParcelamento({ descricao: '', numeroParcelas: 1, intervaloEntreParcelas: 30, ativo: true })
+      setNovoParcelamento({ descricao: '', numeroParcelas: 1, intervaloEntreParcelas: 30, ativo: true, taxaJuros: 0, primeiroVencimento: 30 })
     }
     setModalParcelamento(false)
   }
@@ -167,7 +167,7 @@ export const ParametrosContasReceber: React.FC = () => {
         ...novaConta
       }
       setContasBancarias([...contasBancarias, nova])
-      setNovaConta({ banco: '', agencia: '', conta: '', descricao: '', ativo: true })
+      setNovaConta({ banco: '', codigoBanco: '', agencia: '', conta: '', tipoConta: 'CORRENTE', descricao: '', ativo: true, saldoInicial: 0 })
     }
     setModalConta(false)
   }
@@ -189,7 +189,7 @@ export const ParametrosContasReceber: React.FC = () => {
           </div>
           <button
             onClick={() => {
-              setNovaForma({ nome: '', diasPrazo: 0, ativo: true })
+              setNovaForma({ nome: '', diasPrazo: 0, ativo: true, tipoRecebimento: 'OUTROS', permiteParcelamento: false, taxaJuros: 0, descontoAVista: 0, geraFinanceiro: true })
               setFormaEditando(null)
               setModalForma(true)
             }}
@@ -271,7 +271,7 @@ export const ParametrosContasReceber: React.FC = () => {
           </div>
           <button
             onClick={() => {
-              setNovoParcelamento({ descricao: '', numeroParcelas: 1, intervaloEntreParcelas: 30, ativo: true })
+              setNovoParcelamento({ descricao: '', numeroParcelas: 1, intervaloEntreParcelas: 30, ativo: true, taxaJuros: 0, primeiroVencimento: 30 })
               setParcelamentoEditando(null)
               setModalParcelamento(true)
             }}
@@ -345,7 +345,7 @@ export const ParametrosContasReceber: React.FC = () => {
           </div>
           <button
             onClick={() => {
-              setNovaConta({ banco: '', agencia: '', conta: '', descricao: '', ativo: true })
+              setNovaConta({ banco: '', codigoBanco: '', agencia: '', conta: '', tipoConta: 'CORRENTE', descricao: '', ativo: true, saldoInicial: 0 })
               setContaEditando(null)
               setModalConta(true)
             }}

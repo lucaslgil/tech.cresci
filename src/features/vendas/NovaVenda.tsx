@@ -36,7 +36,7 @@ export default function NovaVenda() {
   const [mostrarImpressao, setMostrarImpressao] = useState(false)
 
   // Hook para buscar parâmetros financeiros
-  const { formasPagamento, parcelamentos, carregando: carregandoParametros } = useParametrosFinanceiros()
+  const { formasPagamento, parcelamentos: _parcelamentos, carregando: carregandoParametros } = useParametrosFinanceiros()
 
   // Refs para detectar clique fora
   const clienteRef = useRef<HTMLDivElement>(null)
@@ -734,8 +734,8 @@ export default function NovaVenda() {
         // Buscar informações do cliente se necessário
         let cliente = clienteSelecionado
         if (!cliente && formData.cliente_id) {
-          const clientes = await listarClientes()
-          cliente = clientes.find(c => c.id === formData.cliente_id) || null
+          const { data: clientes } = await listarClientes()
+          cliente = (clientes || []).find((c: Cliente) => c.id === formData.cliente_id) || null
         }
         
         if (!cliente) {

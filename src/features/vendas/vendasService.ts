@@ -315,7 +315,7 @@ export const vendasService = {
 
       // Atualização completa: calcular totais
       const subtotal = dados.itens ? calcularSubtotalVenda(dados.itens) : 0
-      const total = dados.itens ? calcularTotalVenda(dados) : 0
+      const total = dados.itens ? calcularTotalVenda(dados as VendaFormData) : 0
 
       // Buscar dados do cliente se informado
       let clienteNome = dados.cliente_nome || ''
