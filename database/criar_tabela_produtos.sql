@@ -20,13 +20,13 @@ CREATE TABLE IF NOT EXISTS public.produtos (
   -- Dados Fiscais (NF-e / NFC-e / SAT)
   ncm VARCHAR(8) NOT NULL, -- Nomenclatura Comum do Mercosul (8 dígitos)
   cest VARCHAR(7), -- Código Especificador da Substituição Tributária
-  cfop_entrada VARCHAR(4), -- CFOP padrão para entrada
-  cfop_saida VARCHAR(4), -- CFOP padrão para saída
+  cfop_entrada VARCHAR(5), -- CFOP padrão para entrada
+  cfop_saida VARCHAR(5), -- CFOP padrão para saída
   origem_mercadoria INTEGER CHECK (origem_mercadoria BETWEEN 0 AND 8), -- 0-Nacional, 1-Estrangeira importação direta, etc.
   
   -- ICMS
   cst_icms VARCHAR(3), -- CST do ICMS (00, 10, 20, etc.)
-  csosn_icms VARCHAR(4), -- CSOSN para Simples Nacional (101, 102, 103, etc.)
+  csosn_icms VARCHAR(5), -- CSOSN para Simples Nacional (101, 102, 103, etc.)
   aliquota_icms DECIMAL(5,2) DEFAULT 0.00, -- % ICMS
   reducao_bc_icms DECIMAL(5,2) DEFAULT 0.00, -- % Redução base de cálculo
   
@@ -111,6 +111,9 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Ensure trigger does not already exist to make migration idempotent
+DROP TRIGGER IF EXISTS trigger_atualizar_timestamp_produtos ON public.produtos;
 
 CREATE TRIGGER trigger_atualizar_timestamp_produtos
   BEFORE UPDATE ON public.produtos

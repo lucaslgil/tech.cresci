@@ -16,8 +16,8 @@ CREATE TABLE IF NOT EXISTS regras_tributacao (
   ncm VARCHAR(8),
   cest VARCHAR(7),
   categoria VARCHAR(100),
-  cfop_entrada VARCHAR(4),
-  cfop_saida VARCHAR(4),
+  cfop_entrada VARCHAR(5),
+  cfop_saida VARCHAR(5),
   origem_mercadoria VARCHAR(1),
   
   -- Configurações Operacionais
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS regras_tributacao (
   
   -- ICMS Básico
   cst_icms VARCHAR(3),
-  csosn_icms VARCHAR(4),
+  csosn_icms VARCHAR(5),
   aliquota_icms NUMERIC(5,2),
   reducao_bc_icms NUMERIC(5,2),
   incide_icms_ipi BOOLEAN DEFAULT false,
@@ -112,11 +112,11 @@ CREATE TABLE IF NOT EXISTS regras_tributacao (
 );
 
 -- Índices para performance
-CREATE INDEX idx_regras_tributacao_empresa ON regras_tributacao(empresa_id);
-CREATE INDEX idx_regras_tributacao_ncm ON regras_tributacao(ncm) WHERE ncm IS NOT NULL;
-CREATE INDEX idx_regras_tributacao_categoria ON regras_tributacao(categoria) WHERE categoria IS NOT NULL;
-CREATE INDEX idx_regras_tributacao_cfop_saida ON regras_tributacao(cfop_saida) WHERE cfop_saida IS NOT NULL;
-CREATE INDEX idx_regras_tributacao_ativo ON regras_tributacao(ativo);
+CREATE INDEX IF NOT EXISTS idx_regras_tributacao_empresa ON regras_tributacao(empresa_id);
+CREATE INDEX IF NOT EXISTS idx_regras_tributacao_ncm ON regras_tributacao(ncm) WHERE ncm IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_regras_tributacao_categoria ON regras_tributacao(categoria) WHERE categoria IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_regras_tributacao_cfop_saida ON regras_tributacao(cfop_saida) WHERE cfop_saida IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_regras_tributacao_ativo ON regras_tributacao(ativo);
 
 -- RLS Policies
 ALTER TABLE regras_tributacao ENABLE ROW LEVEL SECURITY;

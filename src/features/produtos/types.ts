@@ -112,6 +112,17 @@ export interface Produto {
   // Regime Tributário
   regime_tributario?: RegimeTributario
   
+  // Reforma Tributária 2026 - IBS e CBS
+  aliquota_ibs?: number
+  aliquota_cbs?: number
+  regime_transicao?: 'MISTO' | 'ANTIGO' | 'NOVO'
+  excecao_ibs?: boolean
+  excecao_cbs?: boolean
+  aliquota_ibs_reduzida?: number
+  aliquota_cbs_reduzida?: number
+  cst_ibs?: string
+  cst_cbs?: string
+  
   // Dados Comerciais
   preco_custo?: number
   preco_venda: number
@@ -197,6 +208,17 @@ export interface ProdutoFormData {
   
   // Regime
   regime_tributario?: RegimeTributario
+  
+  // Reforma Tributária 2026 - IBS e CBS
+  aliquota_ibs?: number
+  aliquota_cbs?: number
+  regime_transicao?: 'MISTO' | 'ANTIGO' | 'NOVO'
+  excecao_ibs?: boolean
+  excecao_cbs?: boolean
+  aliquota_ibs_reduzida?: number
+  aliquota_cbs_reduzida?: number
+  cst_ibs?: string
+  cst_cbs?: string
   
   // Comercial
   preco_custo?: number

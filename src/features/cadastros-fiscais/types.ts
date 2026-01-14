@@ -109,6 +109,7 @@ export interface OperacaoFiscal {
   tipo_operacao: TipoOperacaoFiscal
   finalidade: FinalidadeOperacao
   natureza_operacao: string
+  regime_tributario?: string // SIMPLES, PRESUMIDO, REAL, TODOS
   
   // Tributação
   calcular_icms: boolean
@@ -117,14 +118,7 @@ export interface OperacaoFiscal {
   calcular_cofins: boolean
   calcular_st: boolean
   
-  // Controles
-  movimenta_estoque: boolean
-  movimenta_financeiro: boolean
-  gera_duplicata: boolean
-  gera_comissao: boolean
-  
   // Observações
-  mensagem_nota?: string
   observacoes?: string
   
   ativo: boolean
@@ -164,6 +158,7 @@ export interface OperacaoFiscalFormData {
   tipo_operacao: TipoOperacaoFiscal
   finalidade: FinalidadeOperacao
   natureza_operacao: string
+  regime_tributario?: string // SIMPLES, PRESUMIDO, REAL, TODOS
   calcular_icms?: boolean
   calcular_ipi?: boolean
   calcular_pis?: boolean
@@ -240,6 +235,50 @@ export interface UnidadeMedidaFiltros {
 // =====================================================
 // RESULTADO GENÉRICO
 // =====================================================
+
+// =====================================================
+// ICMS-ST POR UF
+// =====================================================
+
+export interface ICMSST {
+  id: number
+  uf_origem: string
+  uf_destino: string
+  ncm?: string
+  cest?: string
+  mva?: number
+  aliquota_interna?: number
+  aliquota_fcp?: number
+  modalidade_bc_st?: string
+  reducao_bc_st?: number
+  observacoes?: string
+  ativo: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ICMSSTFormData {
+  uf_origem: string
+  uf_destino: string
+  ncm?: string
+  cest?: string
+  mva?: number
+  aliquota_interna?: number
+  aliquota_fcp?: number
+  modalidade_bc_st?: string
+  reducao_bc_st?: number
+  observacoes?: string
+  ativo?: boolean
+}
+
+export interface ICMSSTFiltros {
+  busca?: string
+  uf_origem?: string
+  uf_destino?: string
+  ncm?: string
+  ativo?: boolean
+}
+
 
 export interface ResultadoCadastro {
   sucesso: boolean

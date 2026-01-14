@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Toast } from '../../shared/components/Toast'
-import { CadastroNCM, CadastroCFOP, CadastroOperacoesFiscais, CadastroUnidadesMedida } from '../cadastros-fiscais'
+import { CadastroNCM, CadastroCFOP, CadastroOperacoesFiscais, CadastroUnidadesMedida, CadastroICMSST, CadastroTiposContribuinte } from '../cadastros-fiscais'
 import RegrasTributacao from './RegrasTributacao'
 
 interface ParametrosFiscais {
@@ -31,7 +31,7 @@ export default function ParametrosFiscais() {
   const [abaAtiva, setAbaAtiva] = useState<'empresa' | 'certificado' | 'numeracao' | 'cadastros' | 'regras'>('empresa')
   const [carregando, setCarregando] = useState(false)
   const [toast, setToast] = useState<{ tipo: 'success' | 'error'; mensagem: string } | null>(null)
-  const [modalAberto, setModalAberto] = useState<'ncm' | 'cfop' | 'operacoes' | 'unidades' | null>(null)
+  const [modalAberto, setModalAberto] = useState<'ncm' | 'cfop' | 'operacoes' | 'unidades' | 'icmsst' | 'tipos-contribuinte' | null>(null)
   const [empresaId, setEmpresaId] = useState<number | null>(null)
 
   const [parametros, setParametros] = useState<ParametrosFiscais>({
@@ -575,6 +575,14 @@ export default function ParametrosFiscais() {
                   <p className="text-sm text-slate-600 mt-1">Tributos aproximados por NCM</p>
                 </a>
 
+                <button
+                  onClick={() => setModalAberto('icmsst')}
+                  className="bg-slate-50 p-4 rounded-md border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all text-left"
+                >
+                  <h3 className="font-semibold text-slate-800">ICMS-ST por UF</h3>
+                  <p className="text-sm text-slate-600 mt-1">MVA e alíquotas por par UF/NCM</p>
+                </button>
+
                 <a
                   href="/fiscal/icms-uf"
                   className="bg-slate-50 p-4 rounded-md border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all"
@@ -582,6 +590,14 @@ export default function ParametrosFiscais() {
                   <h3 className="font-semibold text-slate-800">Regras ICMS/ST</h3>
                   <p className="text-sm text-slate-600 mt-1">Alíquotas e MVA por UF</p>
                 </a>
+
+                <button
+                  onClick={() => setModalAberto('tipos-contribuinte')}
+                  className="bg-slate-50 p-4 rounded-md border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all text-left"
+                >
+                  <h3 className="font-semibold text-slate-800">Tipo de Contribuinte</h3>
+                  <p className="text-sm text-slate-600 mt-1">Perfis fiscais para clientes</p>
+                </button>
               </div>
 
               <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mt-6">
@@ -684,6 +700,48 @@ export default function ParametrosFiscais() {
             </div>
             <div className="flex-1 overflow-auto p-4">
               <CadastroUnidadesMedida />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalAberto === 'icmsst' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h2 className="text-xl font-semibold text-slate-800">ICMS-ST por UF</h2>
+              <button
+                onClick={() => setModalAberto(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <CadastroICMSST />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalAberto === 'tipos-contribuinte' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <h2 className="text-xl font-semibold text-slate-800">Tipos de Contribuinte</h2>
+              <button
+                onClick={() => setModalAberto(null)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <CadastroTiposContribuinte />
             </div>
           </div>
         </div>

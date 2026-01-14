@@ -205,6 +205,9 @@ export interface NotaFiscalItem {
  * FORM DATA PARA EMISSÃO DE NOTA
  */
 export interface NotaFiscalFormData {
+  // Empresa Emissora
+  empresa_id?: number
+  
   tipo_nota: 'NFE' | 'NFCE'
   serie: number
   natureza_operacao: string
@@ -254,12 +257,18 @@ export interface NotaFiscalItemFormData {
   codigo_produto: string
   descricao: string
   ncm: string
+  cest?: string
   cfop: string
   unidade_comercial: string
   quantidade_comercial: number
   valor_unitario_comercial: number
   valor_desconto?: number
+  valor_frete?: number
+  valor_seguro?: number
+  valor_outras_despesas?: number
   operacao_fiscal_id?: string | number
+  aliquota_iss?: number
+  item_lista_servico?: string
 }
 
 /**

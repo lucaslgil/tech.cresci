@@ -2,18 +2,65 @@
 // COMPONENTE - EMITIR NOTA FISCAL
 // Tela para emissão de NF-e e NFC-e
 // Data: 01/12/2025
+// FASE 1: Unidade Emissora + Pré-preenchimento Venda + Motor Fiscal
 // =====================================================
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
+import { supabase } from '../../lib/supabase'
 import { notasFiscaisService } from './notasFiscaisService'
+import { aplicarMotorFiscalNoItem } from './fiscalEngine'
 import type { NotaFiscalFormData, NotaFiscalItemFormData } from './types'
 import { FINALIDADES_NOTA, MODALIDADES_FRETE, FORMAS_PAGAMENTO, MEIOS_PAGAMENTO } from './types'
 import { Toast } from '../../shared/components/Toast'
 
+interface Empresa {
+  id: number
+  codigo: string
+  razao_social: string
+  nome_fantasia: string
+  cnpj: string
+  emite_nfe: boolean
+  serie_nfe: number
+  ambiente_nfe: string
+}
+
+interface Cliente {
+  id: number
+  codigo: string
+  tipo_pessoa: 'FISICA' | 'JURIDICA'
+  nome_completo?: string
+  cpf?: string
+  razao_social?: string
+  nome_fantasia?: string
+  cnpj?: string
+  inscricao_estadual?: string
+  email?: string
+  telefone?: string
+  logradouro?: string
+  numero?: string
+  complemento?: string
+  bairro?: string
+  cidade?: string
+  estado?: string
+  cep?: string
+}
+
 export default function EmitirNotaFiscal() {
+  const location = useLocation()
+  const vendaRecebida = location.state?.venda
+  
   const [etapaAtual, setEtapaAtual] = useState(1)
   const [carregando, setCarregando] = useState(false)
   const [toast, setToast] = useState<{ tipo: 'success' | 'error'; mensagem: string } | null>(null)
+  
+  // Lista de empresas emissoras
+  const [empresas, setEmpresas] = useState<Empresa[]>([])
+  const [empresaSelecionada, setEmpresaSelecionada] = useState<Empresa | null>(null)
+  
+  // Lista de clientes
+  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null)
 
   const [formData, setFormData] = useState<NotaFiscalFormData>({
     tipo_nota: 'NFE',
@@ -22,7 +69,8 @@ export default function EmitirNotaFiscal() {
     finalidade: '1',
     modalidade_frete: '9',
     forma_pagamento: '0',
-    itens: []
+    itens: [],
+    empresa_id: undefined
   })
 
   const [itemAtual, setItemAtual] = useState<NotaFiscalItemFormData>({
@@ -34,29 +82,325 @@ export default function EmitirNotaFiscal() {
     quantidade_comercial: 1,
     valor_unitario_comercial: 0
   })
+  
+  // Carregar empresas emissoras e clientes ao montar
+  useEffect(() => {
+    carregarEmpresasEmissoras()
+    carregarClientes()
+  }, [])
 
-  const adicionarItem = () => {
+  // Pré-preencher dados quando vem de uma venda
+  useEffect(() => {
+    console.log('🔍 Verificando venda recebida:', vendaRecebida)
+    console.log('🏢 Empresas carregadas:', empresas.length)
+    
+    if (vendaRecebida && empresas.length > 0) {
+      console.log('✅ Iniciando preenchimento automático...')
+      preencherDadosVenda(vendaRecebida)
+    } else if (vendaRecebida && empresas.length === 0) {
+      console.log('⏳ Aguardando carregamento das empresas...')
+    }
+  }, [vendaRecebida, empresas])
+
+  const carregarEmpresasEmissoras = async () => {
+    try {
+      console.log('🔄 Carregando empresas emissoras...')
+      
+      const { data, error } = await supabase
+        .from('empresas')
+        .select('id, codigo, razao_social, nome_fantasia, cnpj, emite_nfe, serie_nfe, ambiente_nfe')
+        .eq('ativo', true)
+        .eq('emite_nfe', true)
+        .order('razao_social')
+
+      if (error) {
+        console.error('❌ Erro ao carregar empresas:', error)
+        throw error
+      }
+      
+      console.log('✅ Empresas carregadas:', data)
+      console.log(`📊 Total: ${data?.length || 0} empresas`)
+      
+      setEmpresas(data || [])
+      
+      // Selecionar primeira empresa automaticamente se houver apenas uma
+      if (data && data.length === 1) {
+        console.log('🎯 Selecionando única empresa automaticamente')
+        setEmpresaSelecionada(data[0])
+        setFormData(prev => ({ ...prev, empresa_id: data[0].id, serie: data[0].serie_nfe || 1 }))
+      } else if (!data || data.length === 0) {
+        console.warn('⚠️ Nenhuma empresa configurada para emitir NF-e!')
+        setToast({ 
+          tipo: 'error', 
+          mensagem: 'Nenhuma empresa configurada para emitir NF-e. Configure uma empresa em Cadastros > Empresa.' 
+        })
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar empresas:', error)
+      setToast({ tipo: 'error', mensagem: 'Erro ao carregar empresas emissoras' })
+    }
+  }
+
+  const carregarClientes = async () => {
+    try {
+      console.log('🔄 Carregando clientes...')
+      
+      const { data, error } = await supabase
+        .from('clientes')
+        .select(`
+          id, codigo, tipo_pessoa, 
+          nome_completo, cpf, 
+          razao_social, nome_fantasia, cnpj,
+          inscricao_estadual
+        `)
+        .eq('status', 'ATIVO')
+        .order('codigo')
+
+      if (error) {
+        console.error('❌ Erro ao carregar clientes:', error)
+        throw error
+      }
+      
+      console.log(`✅ Clientes carregados: ${data?.length || 0}`)
+      setClientes(data || [])
+    } catch (error) {
+      console.error('❌ Erro ao carregar clientes:', error)
+      setToast({ tipo: 'error', mensagem: 'Erro ao carregar clientes' })
+    }
+  }
+
+  const preencherDadosCliente = async (cliente: Cliente) => {
+    try {
+      console.log('📝 Preenchendo dados do cliente:', cliente)
+      
+      // Buscar endereço principal do cliente
+      const { data: endereco, error } = await supabase
+        .from('clientes_enderecos')
+        .select('*')
+        .eq('cliente_id', cliente.id)
+        .eq('principal', true)
+        .maybeSingle()
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erro ao buscar endereço:', error)
+      }
+
+      // Buscar email e telefone
+      const { data: contatos } = await supabase
+        .from('clientes_contatos')
+        .select('*')
+        .eq('cliente_id', cliente.id)
+        .eq('principal', true)
+
+      const email = contatos?.find(c => c.tipo === 'EMAIL')?.valor || ''
+      const telefone = contatos?.find(c => c.tipo === 'TELEFONE' || c.tipo === 'CELULAR')?.valor || ''
+
+      setFormData(prev => ({
+        ...prev,
+        destinatario_cpf_cnpj: cliente.tipo_pessoa === 'FISICA' ? cliente.cpf : cliente.cnpj,
+        destinatario_nome: cliente.tipo_pessoa === 'FISICA' ? cliente.nome_completo : (cliente.razao_social || cliente.nome_fantasia),
+        destinatario_ie: cliente.inscricao_estadual || '',
+        destinatario_email: email,
+        destinatario_telefone: telefone,
+        destinatario_logradouro: endereco?.logradouro || '',
+        destinatario_numero: endereco?.numero || '',
+        destinatario_complemento: endereco?.complemento || '',
+        destinatario_bairro: endereco?.bairro || '',
+        destinatario_cidade: endereco?.cidade || '',
+        destinatario_uf: endereco?.estado || '',
+        destinatario_cep: endereco?.cep || ''
+      }))
+
+      setClienteSelecionado(cliente)
+      console.log('✅ Dados do cliente preenchidos com sucesso')
+    } catch (error) {
+      console.error('❌ Erro ao preencher dados do cliente:', error)
+      setToast({ tipo: 'error', mensagem: 'Erro ao carregar dados do cliente' })
+    }
+  }
+
+  const preencherDadosVenda = async (venda: any) => {
+    try {
+      setCarregando(true)
+      
+      console.log('📦 Venda recebida:', venda)
+      
+      // Buscar dados completos da venda com cliente e itens
+      const { data: vendaCompleta, error } = await supabase
+        .from('vendas')
+        .select(`
+          *,
+          cliente:clientes(*),
+          vendas_itens(*)
+        `)
+        .eq('id', venda.id)
+        .single()
+
+      if (error) {
+        console.error('❌ Erro ao buscar venda:', error)
+        throw error
+      }
+
+      console.log('✅ Venda completa carregada:', vendaCompleta)
+
+      const cliente = vendaCompleta.cliente
+      
+      if (!cliente) {
+        throw new Error('Cliente não encontrado na venda')
+      }
+      
+      // Preencher destinatário
+      setFormData(prev => ({
+        ...prev,
+        empresa_id: vendaCompleta.empresa_id,
+        destinatario_cpf_cnpj: cliente.cpf_cnpj,
+        destinatario_nome: cliente.razao_social || cliente.nome,
+        destinatario_ie: cliente.inscricao_estadual,
+        destinatario_email: cliente.email,
+        destinatario_telefone: cliente.telefone,
+        destinatario_logradouro: cliente.endereco,
+        destinatario_numero: cliente.numero,
+        destinatario_complemento: cliente.complemento,
+        destinatario_bairro: cliente.bairro,
+        destinatario_cidade: cliente.cidade,
+        destinatario_uf: cliente.estado,
+        destinatario_cep: cliente.cep,
+        forma_pagamento: vendaCompleta.forma_pagamento || '0',
+        meio_pagamento: vendaCompleta.condicao_pagamento === 'A_VISTA' ? '01' : '15'
+      }))
+
+      // Converter itens da venda para itens da nota fiscal
+      const itensNota: NotaFiscalItemFormData[] = await Promise.all(
+        (vendaCompleta.vendas_itens || []).map(async (itemVenda: any) => {
+          // Buscar dados do produto para pegar NCM
+          const { data: produto } = await supabase
+            .from('produtos')
+            .select('ncm, cfop_padrao')
+            .eq('id', itemVenda.produto_id)
+            .single()
+
+          const itemBase: NotaFiscalItemFormData = {
+            codigo_produto: itemVenda.codigo_produto || String(itemVenda.produto_id),
+            descricao: itemVenda.descricao,
+            ncm: produto?.ncm || '00000000',
+            cfop: produto?.cfop_padrao || '5102',
+            unidade_comercial: itemVenda.unidade || 'UN',
+            quantidade_comercial: itemVenda.quantidade,
+            valor_unitario_comercial: itemVenda.valor_unitario,
+            valor_desconto: itemVenda.desconto || 0
+          }
+
+          // Aplicar motor fiscal automaticamente
+          try {
+            const tributosCalculados = await aplicarMotorFiscalNoItem(itemBase, {
+              empresa_id: vendaCompleta.empresa_id,
+              cliente_id: cliente.id,
+              tipo_operacao: 'SAIDA',
+              uf_origem: 'SP', // TODO: Pegar da empresa
+              uf_destino: cliente.estado
+            })
+
+            return {
+              ...itemBase,
+              ...tributosCalculados
+            }
+          } catch (error) {
+            console.error('Erro ao calcular tributos:', error)
+            return itemBase
+          }
+        })
+      )
+
+      setFormData(prev => ({ ...prev, itens: itensNota }))
+      
+      console.log('📝 FormData atualizado:', formData)
+      console.log(`🛒 ${itensNota.length} itens adicionados`)
+      
+      // Selecionar empresa da venda
+      const empresaVenda = empresas.find(e => e.id === vendaCompleta.empresa_id)
+      if (empresaVenda) {
+        setEmpresaSelecionada(empresaVenda)
+        console.log('🏢 Empresa selecionada:', empresaVenda.nome_fantasia)
+      } else {
+        console.warn('⚠️ Empresa da venda não encontrada na lista de emissoras')
+      }
+
+      setToast({ tipo: 'success', mensagem: `Dados da venda carregados! ${itensNota.length} itens importados.` })
+      setEtapaAtual(3) // Pular para etapa de produtos, pois já tem tudo preenchido
+    } catch (error) {
+      console.error('Erro ao preencher dados da venda:', error)
+      setToast({ tipo: 'error', mensagem: 'Erro ao carregar dados da venda' })
+    } finally {
+      setCarregando(false)
+    }
+  }
+
+  const adicionarItem = async () => {
     if (!itemAtual.codigo_produto || !itemAtual.descricao || !itemAtual.ncm) {
       setToast({ tipo: 'error', mensagem: 'Preencha todos os campos obrigatórios do item' })
       return
     }
 
-    setFormData(prev => ({
-      ...prev,
-      itens: [...prev.itens, itemAtual]
-    }))
+    if (!formData.empresa_id) {
+      setToast({ tipo: 'error', mensagem: 'Selecione a empresa emissora primeiro' })
+      return
+    }
 
-    setItemAtual({
-      codigo_produto: '',
-      descricao: '',
-      ncm: '',
-      cfop: '5102',
-      unidade_comercial: 'UN',
-      quantidade_comercial: 1,
-      valor_unitario_comercial: 0
-    })
+    // Aplicar motor fiscal ao item antes de adicionar
+    try {
+      setCarregando(true)
+      
+      const tributosCalculados = await aplicarMotorFiscalNoItem(itemAtual, {
+        empresa_id: formData.empresa_id,
+        cliente_id: undefined, // TODO: Pegar do destinatário se já preenchido
+        tipo_operacao: 'SAIDA',
+        uf_origem: 'SP', // TODO: Pegar da empresa selecionada
+        uf_destino: formData.destinatario_uf || 'SP'
+      })
 
-    setToast({ tipo: 'success', mensagem: 'Item adicionado' })
+      const itemComImpostos = {
+        ...itemAtual,
+        ...tributosCalculados
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        itens: [...prev.itens, itemComImpostos]
+      }))
+
+      setItemAtual({
+        codigo_produto: '',
+        descricao: '',
+        ncm: '',
+        cfop: '5102',
+        unidade_comercial: 'UN',
+        quantidade_comercial: 1,
+        valor_unitario_comercial: 0
+      })
+
+      setToast({ tipo: 'success', mensagem: 'Item adicionado com impostos calculados' })
+    } catch (error) {
+      console.error('Erro ao calcular tributos:', error)
+      setToast({ tipo: 'error', mensagem: 'Erro ao calcular impostos. Item adicionado sem tributos.' })
+      
+      // Adicionar item mesmo sem tributos em caso de erro
+      setFormData(prev => ({
+        ...prev,
+        itens: [...prev.itens, itemAtual]
+      }))
+      
+      setItemAtual({
+        codigo_produto: '',
+        descricao: '',
+        ncm: '',
+        cfop: '5102',
+        unidade_comercial: 'UN',
+        quantidade_comercial: 1,
+        valor_unitario_comercial: 0
+      })
+    } finally {
+      setCarregando(false)
+    }
   }
 
   const removerItem = (index: number) => {
@@ -72,6 +416,18 @@ export default function EmitirNotaFiscal() {
 
   const calcularTotalNota = () => {
     return formData.itens.reduce((sum, item) => sum + calcularTotalItem(item), 0)
+  }
+
+  const validarEtapa1 = () => {
+    if (!formData.empresa_id) {
+      setToast({ tipo: 'error', mensagem: 'Selecione a empresa emissora' })
+      return false
+    }
+    if (!formData.natureza_operacao) {
+      setToast({ tipo: 'error', mensagem: 'Informe a natureza da operação' })
+      return false
+    }
+    return true
   }
 
   const handleSubmit = async () => {
@@ -155,6 +511,41 @@ export default function EmitirNotaFiscal() {
           <div className="space-y-4">
             <h2 className="text-xl font-semibold text-slate-800 mb-4">Dados Gerais da Nota</h2>
             
+            {/* Unidade Emissora */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                🏢 Unidade Emissora * <span className="text-xs text-slate-500">(Empresa que emitirá a NF-e)</span>
+              </label>
+              <select
+                value={empresaSelecionada?.id || ''}
+                onChange={(e) => {
+                  const empresa = empresas.find(emp => emp.id === parseInt(e.target.value))
+                  setEmpresaSelecionada(empresa || null)
+                  setFormData({ 
+                    ...formData, 
+                    empresa_id: empresa?.id,
+                    serie: empresa?.serie_nfe || 1
+                  })
+                }}
+                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 bg-white"
+                required
+              >
+                <option value="">Selecione a empresa emissora</option>
+                {empresas.map(empresa => (
+                  <option key={empresa.id} value={empresa.id}>
+                    {empresa.nome_fantasia || empresa.razao_social} - {empresa.cnpj} (Série: {empresa.serie_nfe})
+                  </option>
+                ))}
+              </select>
+              {empresaSelecionada && (
+                <div className="mt-2 text-xs text-slate-600">
+                  <p><strong>Razão Social:</strong> {empresaSelecionada.razao_social}</p>
+                  <p><strong>CNPJ:</strong> {empresaSelecionada.cnpj}</p>
+                  <p><strong>Ambiente:</strong> {empresaSelecionada.ambiente_nfe === 'PRODUCAO' ? '🟢 Produção' : '🟡 Homologação'}</p>
+                </div>
+              )}
+            </div>
+            
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -214,7 +605,11 @@ export default function EmitirNotaFiscal() {
 
             <div className="flex justify-end mt-6">
               <button
-                onClick={() => setEtapaAtual(2)}
+                onClick={() => {
+                  if (validarEtapa1()) {
+                    setEtapaAtual(2)
+                  }
+                }}
                 className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
                 Próximo
@@ -227,6 +622,39 @@ export default function EmitirNotaFiscal() {
         {etapaAtual === 2 && (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold text-slate-800 mb-4">Dados do Destinatário</h2>
+            
+            {/* Campo de busca de cliente */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                🔍 Buscar Cliente Cadastrado
+              </label>
+              <select
+                value={clienteSelecionado?.id || ''}
+                onChange={(e) => {
+                  const cliente = clientes.find(c => c.id === Number(e.target.value))
+                  if (cliente) preencherDadosCliente(cliente)
+                }}
+                className="w-full px-3 py-2 border border-[#C9C4B5] rounded-md focus:ring-2 focus:ring-[#394353] text-sm"
+              >
+                <option value="">Selecione um cliente cadastrado...</option>
+                {clientes.map(cliente => {
+                  const nome = cliente.tipo_pessoa === 'FISICA' 
+                    ? cliente.nome_completo 
+                    : (cliente.razao_social || cliente.nome_fantasia)
+                  const doc = cliente.tipo_pessoa === 'FISICA' 
+                    ? cliente.cpf 
+                    : cliente.cnpj
+                  return (
+                    <option key={cliente.id} value={cliente.id}>
+                      {cliente.codigo} - {nome} {doc ? `(${doc})` : ''}
+                    </option>
+                  )
+                })}
+              </select>
+              <p className="text-xs text-slate-600 mt-2">
+                💡 Selecione um cliente para preencher automaticamente os dados abaixo
+              </p>
+            </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div>

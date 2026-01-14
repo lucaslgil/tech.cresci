@@ -5,6 +5,7 @@
 // =====================================================
 
 import { supabase } from '../../lib/supabase'
+import { aplicarMotorFiscalNoItem } from './fiscalEngine'
 import type { 
   NotaFiscal, 
   NotaFiscalFormData, 
@@ -133,7 +134,19 @@ export const notasFiscaisService = {
     if (erroNota) throw erroNota
 
     // 4. Inserir itens
-    const itensParaInserir = dados.itens.map((item, index) => ({
+    // Antes de inserir, aplicar motor fiscal para preencher campos de impostos
+    const itensComImpostos = await Promise.all(dados.itens.map(async (item) => {
+      const impostos = await aplicarMotorFiscalNoItem(item, {
+        empresaId: dados.cliente_id ? Number(dados.cliente_id) : 1,
+        tipoOperacao: dados.natureza_operacao || 'VENDA',
+        ufOrigem: 'SP',
+        ufDestino: dados.destinatario_uf || 'SP'
+      })
+
+      return { ...item, ...impostos }
+    }))
+
+    const itensParaInserir = itensComImpostos.map((item, index) => ({
       nota_fiscal_id: nota.id,
       numero_item: index + 1,
       produto_id: item.produto_id,
@@ -150,22 +163,29 @@ export const notasFiscaisService = {
       unidade_tributavel: item.unidade_comercial,
       quantidade_tributavel: item.quantidade_comercial,
       valor_unitario_tributavel: item.valor_unitario_comercial,
-      origem_mercadoria: '0', // Será preenchido pela operação fiscal
-      base_calculo_icms: 0,
-      aliquota_icms: 0,
-      valor_icms: 0,
-      base_calculo_icms_st: 0,
-      aliquota_icms_st: 0,
-      valor_icms_st: 0,
-      base_calculo_pis: 0,
-      aliquota_pis: 0,
-      valor_pis: 0,
-      base_calculo_cofins: 0,
-      aliquota_cofins: 0,
-      valor_cofins: 0,
-      base_calculo_ipi: 0,
-      aliquota_ipi: 0,
-      valor_ipi: 0
+      origem_mercadoria: item.origem_mercadoria || '0',
+      cst_icms: (item as any).cst_icms,
+      csosn_icms: (item as any).csosn_icms,
+      modalidade_bc_icms: (item as any).modalidade_bc_icms,
+      reducao_bc_icms: (item as any).reducao_bc_icms || 0,
+      base_calculo_icms: (item as any).base_calculo_icms || 0,
+      aliquota_icms: (item as any).aliquota_icms || 0,
+      valor_icms: (item as any).valor_icms || 0,
+      modalidade_bc_icms_st: (item as any).modalidade_bc_icms_st,
+      mva_st: (item as any).mva_st || 0,
+      reducao_bc_icms_st: (item as any).reducao_bc_icms_st || 0,
+      base_calculo_icms_st: (item as any).base_calculo_icms_st || 0,
+      aliquota_icms_st: (item as any).aliquota_icms_st || 0,
+      valor_icms_st: (item as any).valor_icms_st || 0,
+      base_calculo_pis: (item as any).base_calculo_pis || 0,
+      aliquota_pis: (item as any).aliquota_pis || 0,
+      valor_pis: (item as any).valor_pis || 0,
+      base_calculo_cofins: (item as any).base_calculo_cofins || 0,
+      aliquota_cofins: (item as any).aliquota_cofins || 0,
+      valor_cofins: (item as any).valor_cofins || 0,
+      base_calculo_ipi: (item as any).base_calculo_ipi || 0,
+      aliquota_ipi: (item as any).aliquota_ipi || 0,
+      valor_ipi: (item as any).valor_ipi || 0
     }))
 
     const { error: erroItens } = await supabase

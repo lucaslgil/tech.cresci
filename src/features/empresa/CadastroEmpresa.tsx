@@ -15,10 +15,54 @@ interface Empresa {
   cep: string
   endereco: string
   numero: string
+  bairro?: string
+  complemento?: string
   cidade: string
   estado: string
+  codigo_municipio?: string
+  pais?: string
+  codigo_pais?: string
+  
+  // Inscrições
+  inscricao_estadual?: string
+  inscricao_municipal?: string
+  inscricao_suframa?: string
+  
+  // Regime Tributário
+  regime_tributario?: 'SIMPLES' | 'PRESUMIDO' | 'REAL'
+  crt?: '1' | '2' | '3' // 1=Simples Nacional, 2=Simples Excesso, 3=Regime Normal
+  
+  // CNAE
+  cnae_principal?: string
+  cnae_secundarios?: string[]
+  
+  // NF-e
+  emite_nfe?: boolean
+  serie_nfe?: string
+  ultimo_numero_nfe?: number
+  ambiente_nfe?: 'PRODUCAO' | 'HOMOLOGACAO'
+  
+  // Certificado Digital
+  certificado_digital_id?: number
+  certificado_senha?: string
+  certificado_validade?: string
+  
+  // Contador
+  contador_nome?: string
+  contador_cpf?: string
+  contador_cnpj?: string
+  contador_crc?: string
+  contador_telefone?: string
+  contador_email?: string
+  
+  // Outros
+  logo_url?: string
+  ativo?: boolean
+  matriz?: boolean
+  empresa_matriz_id?: number
   observacoes?: string
   created_at?: string
+  updated_at?: string
 }
 
 interface EnderecoViaCep {
@@ -57,8 +101,41 @@ export const CadastroEmpresa: React.FC = () => {
     cep: '',
     endereco: '',
     numero: '',
+    bairro: '',
+    complemento: '',
     cidade: '',
     estado: '',
+    codigo_municipio: '',
+    
+    // Inscrições
+    inscricao_estadual: '',
+    inscricao_municipal: '',
+    inscricao_suframa: '',
+    
+    // Regime Tributário
+    regime_tributario: 'SIMPLES' as 'SIMPLES' | 'PRESUMIDO' | 'REAL',
+    crt: '1' as '1' | '2' | '3',
+    
+    // CNAE
+    cnae_principal: '',
+    
+    // NF-e
+    emite_nfe: false,
+    serie_nfe: '1',
+    ultimo_numero_nfe: 0,
+    ambiente_nfe: 'HOMOLOGACAO' as 'PRODUCAO' | 'HOMOLOGACAO',
+    
+    // Contador
+    contador_nome: '',
+    contador_cpf: '',
+    contador_cnpj: '',
+    contador_crc: '',
+    contador_telefone: '',
+    contador_email: '',
+    
+    // Outros
+    ativo: true,
+    matriz: false,
     observacoes: ''
   })
 
@@ -220,8 +297,29 @@ export const CadastroEmpresa: React.FC = () => {
         cep: empresa.cep,
         endereco: empresa.endereco,
         numero: empresa.numero,
+        bairro: empresa.bairro || '',
+        complemento: empresa.complemento || '',
         cidade: empresa.cidade,
         estado: empresa.estado,
+        codigo_municipio: empresa.codigo_municipio || '',
+        inscricao_estadual: empresa.inscricao_estadual || '',
+        inscricao_municipal: empresa.inscricao_municipal || '',
+        inscricao_suframa: empresa.inscricao_suframa || '',
+        regime_tributario: empresa.regime_tributario || 'SIMPLES',
+        crt: empresa.crt || '1',
+        cnae_principal: empresa.cnae_principal || '',
+        emite_nfe: empresa.emite_nfe || false,
+        serie_nfe: empresa.serie_nfe || '1',
+        ultimo_numero_nfe: empresa.ultimo_numero_nfe || 0,
+        ambiente_nfe: empresa.ambiente_nfe || 'HOMOLOGACAO',
+        contador_nome: empresa.contador_nome || '',
+        contador_cpf: empresa.contador_cpf || '',
+        contador_cnpj: empresa.contador_cnpj || '',
+        contador_crc: empresa.contador_crc || '',
+        contador_telefone: empresa.contador_telefone || '',
+        contador_email: empresa.contador_email || '',
+        ativo: empresa.ativo !== undefined ? empresa.ativo : true,
+        matriz: empresa.matriz || false,
         observacoes: empresa.observacoes || ''
       })
     } else {
@@ -691,6 +789,202 @@ export const CadastroEmpresa: React.FC = () => {
                     value={formData.estado}
                     onChange={handleChange}
                     placeholder="SP"
+                    className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                    style={{ borderColor: '#C9C4B5' }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Bairro
+                  </label>
+                  <input
+                    type="text"
+                    name="bairro"
+                    value={formData.bairro}
+                    onChange={handleChange}
+                    className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                    style={{ borderColor: '#C9C4B5' }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Complemento
+                  </label>
+                  <input
+                    type="text"
+                    name="complemento"
+                    value={formData.complemento}
+                    onChange={handleChange}
+                    placeholder="Apto, Sala, etc"
+                    className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                    style={{ borderColor: '#C9C4B5' }}
+                  />
+                </div>
+
+                {/* SEPARADOR - DADOS FISCAIS */}
+                <div className="md:col-span-3 mt-4 pt-4" style={{ borderTopWidth: '2px', borderTopColor: '#C9C4B5' }}>
+                  <h4 className="text-sm font-bold text-gray-800 mb-3" style={{ color: '#394353' }}>
+                    📋 Dados Fiscais
+                  </h4>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Inscrição Estadual <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="inscricao_estadual"
+                    value={formData.inscricao_estadual}
+                    onChange={handleChange}
+                    placeholder="123.456.789.012"
+                    className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                    style={{ borderColor: '#C9C4B5' }}
+                  />
+                  <p className="text-xs text-gray-500 mt-0.5">Obrigatório para NF-e</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Inscrição Municipal
+                  </label>
+                  <input
+                    type="text"
+                    name="inscricao_municipal"
+                    value={formData.inscricao_municipal}
+                    onChange={handleChange}
+                    className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                    style={{ borderColor: '#C9C4B5' }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    CNAE Principal <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="cnae_principal"
+                    value={formData.cnae_principal}
+                    onChange={handleChange}
+                    placeholder="0000-0/00"
+                    className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                    style={{ borderColor: '#C9C4B5' }}
+                  />
+                  <p className="text-xs text-gray-500 mt-0.5">Obrigatório para NF-e</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Regime Tributário <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="regime_tributario"
+                    value={formData.regime_tributario}
+                    onChange={handleChange}
+                    className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                    style={{ borderColor: '#C9C4B5' }}
+                  >
+                    <option value="SIMPLES">Simples Nacional</option>
+                    <option value="PRESUMIDO">Lucro Presumido</option>
+                    <option value="REAL">Lucro Real</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    CRT <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="crt"
+                    value={formData.crt}
+                    onChange={handleChange}
+                    className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                    style={{ borderColor: '#C9C4B5' }}
+                  >
+                    <option value="1">1 - Simples Nacional</option>
+                    <option value="2">2 - Simples Excesso</option>
+                    <option value="3">3 - Regime Normal</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="emite_nfe"
+                    id="emite_nfe"
+                    checked={formData.emite_nfe}
+                    onChange={(e) => setFormData({ ...formData, emite_nfe: e.target.checked })}
+                    className="w-4 h-4 mr-2"
+                    style={{ accentColor: '#394353' }}
+                  />
+                  <label htmlFor="emite_nfe" className="text-sm font-medium text-gray-700">
+                    Emite NF-e
+                  </label>
+                </div>
+
+                {/* SEPARADOR - CONTADOR */}
+                <div className="md:col-span-3 mt-4 pt-4" style={{ borderTopWidth: '2px', borderTopColor: '#C9C4B5' }}>
+                  <h4 className="text-sm font-bold text-gray-800 mb-3" style={{ color: '#394353' }}>
+                    👤 Dados do Contador (Opcional)
+                  </h4>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Nome do Contador
+                  </label>
+                  <input
+                    type="text"
+                    name="contador_nome"
+                    value={formData.contador_nome}
+                    onChange={handleChange}
+                    className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                    style={{ borderColor: '#C9C4B5' }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    CPF do Contador
+                  </label>
+                  <input
+                    type="text"
+                    name="contador_cpf"
+                    value={formData.contador_cpf}
+                    onChange={handleChange}
+                    placeholder="000.000.000-00"
+                    className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                    style={{ borderColor: '#C9C4B5' }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Email do Contador
+                  </label>
+                  <input
+                    type="email"
+                    name="contador_email"
+                    value={formData.contador_email}
+                    onChange={handleChange}
+                    className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                    style={{ borderColor: '#C9C4B5' }}
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Telefone do Contador
+                  </label>
+                  <input
+                    type="tel"
+                    name="contador_telefone"
+                    value={formData.contador_telefone}
+                    onChange={handleChange}
+                    placeholder="(00) 00000-0000"
                     className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
                     style={{ borderColor: '#C9C4B5' }}
                   />

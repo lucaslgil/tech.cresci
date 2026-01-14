@@ -92,6 +92,7 @@ export interface Cliente {
   contribuinte_icms: ContribuinteICMS
   consumidor_final: boolean
   codigo_suframa?: string
+  tipo_contribuinte_id?: number
   
   // Dados Financeiros
   limite_credito: number
@@ -242,6 +243,7 @@ export interface ClienteFormData {
   consumidor_final?: boolean
   simples_nacional?: boolean
   observacoes_fiscais?: string
+  tipo_contribuinte_id?: number
   
   // Dados Financeiros
   condicao_pagamento_id?: number

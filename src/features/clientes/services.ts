@@ -26,7 +26,7 @@ const CAMPOS_CLIENTES = [
   'tipo_pessoa',
   'nome_completo', 'cpf', 'rg', 'data_nascimento', 'genero',
   'razao_social', 'nome_fantasia', 'cnpj', 'inscricao_estadual', 'inscricao_municipal', 'cnae_principal',
-  'regime_tributario', 'contribuinte_icms', 'consumidor_final', 'codigo_suframa',
+  'regime_tributario', 'contribuinte_icms', 'consumidor_final', 'codigo_suframa', 'tipo_contribuinte_id',
   'limite_credito', 'condicao_pagamento_id', 'tabela_preco_id',
   'status', 'bloqueio', 'motivo_bloqueio', 'data_bloqueio',
   'observacoes', 'observacoes_internas',

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { supabase } from '../../lib/supabase'
+import { supabase, isSupabaseConfigured } from '../../lib/supabase'
 
 interface Aparelho {
   id: string
   codigo: string
   item: string
   modelo: string
+  categoria?: string
 }
 
 interface SelectAparelhoProps {
@@ -52,13 +53,27 @@ export const SelectAparelho: React.FC<SelectAparelhoProps> = ({
   }, [])
 
   const fetchAparelhos = async () => {
+    if (!isSupabaseConfigured) {
+      // Dados demo - incluindo aparelhos com e sem responsavel
+      setAparelhos([
+        { id: '1', codigo: 'CEL-001', item: 'iPhone 13', modelo: '128GB' },
+        { id: '2', codigo: 'CEL-002', item: 'Samsung Galaxy S21', modelo: '256GB' },
+        { id: '3', codigo: 'CEL-003', item: 'Motorola Edge', modelo: '128GB' }
+      ])
+      setLoading(false)
+      return
+    }
+
     try {
       setLoading(true)
+      // IMPORTANTE: Busca TODOS os itens do inventário
+      // Não filtra por categoria - qualquer item pode ter uma linha telefônica
+      // (celular, notebook com chip, tablet, etc)
+      // Também não filtra por responsavel_id - itens podem estar vinculados a colaboradores
       const { data, error } = await supabase
         .from('itens')
-        .select('id, codigo, item, modelo')
-        .eq('categoria', 'Celular')
-        .order('item', { ascending: true })
+        .select('id, codigo, item, modelo, categoria')
+        .order('codigo', { ascending: true })
 
       if (error) {
         console.error('Erro ao buscar aparelhos:', error)
@@ -78,7 +93,8 @@ export const SelectAparelho: React.FC<SelectAparelhoProps> = ({
     return (
       aparelho.codigo.toLowerCase().includes(searchTerm) ||
       aparelho.item.toLowerCase().includes(searchTerm) ||
-      (aparelho.modelo && aparelho.modelo.toLowerCase().includes(searchTerm))
+      (aparelho.modelo && aparelho.modelo.toLowerCase().includes(searchTerm)) ||
+      (aparelho.categoria && aparelho.categoria.toLowerCase().includes(searchTerm))
     )
   })
 
@@ -140,16 +156,16 @@ export const SelectAparelho: React.FC<SelectAparelhoProps> = ({
                 <div
                   key={aparelho.id}
                   onClick={() => handleSelectAparelho(aparelho)}
-                  className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm"
+                  className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
                 >
                   <div className="font-medium text-gray-900">
                     {aparelho.codigo} - {aparelho.item}
                   </div>
-                  {aparelho.modelo && (
-                    <div className="text-xs text-gray-500">
-                      Modelo: {aparelho.modelo}
-                    </div>
-                  )}
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    {aparelho.modelo && <span>Modelo: {aparelho.modelo}</span>}
+                    {aparelho.modelo && aparelho.categoria && <span> • </span>}
+                    {aparelho.categoria && <span>Categoria: {aparelho.categoria}</span>}
+                  </div>
                 </div>
               ))}
             </>

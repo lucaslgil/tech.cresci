@@ -5,10 +5,19 @@
 // Data: 02/12/2025
 // =====================================================
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { regrasTributacaoService, type RegraTributacao } from './regrasTributacaoService'
 import { ncmService, cfopService, operacoesFiscaisService } from '../cadastros-fiscais/services'
 import type { NCM, CFOP, OperacaoFiscal } from '../cadastros-fiscais/types'
+import { supabase } from '../../lib/supabase'
+
+interface Empresa {
+  id: number
+  codigo: string
+  razao_social: string
+  nome_fantasia: string
+  cnpj: string
+}
 
 interface Props {
   empresaId: number
@@ -25,7 +34,17 @@ export default function RegrasTributacao({ empresaId }: Props) {
   const [ncmList, setNcmList] = useState<NCM[]>([])
   const [cfopList, setCfopList] = useState<CFOP[]>([])
   const [operacoesFiscais, setOperacoesFiscais] = useState<OperacaoFiscal[]>([])
+  const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [loadingAuxiliares, setLoadingAuxiliares] = useState(false)
+  // Autocomplete CFOP (pesquisa reduzida)
+  const [saidaSearch, setSaidaSearch] = useState('')
+  const [entradaSearch, setEntradaSearch] = useState('')
+  const [saidaResults, setSaidaResults] = useState<CFOP[]>([])
+  const [entradaResults, setEntradaResults] = useState<CFOP[]>([])
+  const [showSaidaDropdown, setShowSaidaDropdown] = useState(false)
+  const [showEntradaDropdown, setShowEntradaDropdown] = useState(false)
+  const saidaDebounce = useRef<number | null>(null)
+  const entradaDebounce = useRef<number | null>(null)
 
   const [formData, setFormData] = useState<RegraTributacao>({
     nome: '',
@@ -64,12 +83,71 @@ export default function RegrasTributacao({ empresaId }: Props) {
 
       // Carregar Operações Fiscais ativas
       const operacoes = await operacoesFiscaisService.listar({ ativo: true })
+
+      // Carregar Empresas ativas
+      const { data: empresasData, error: empresasError } = await supabase
+        .from('empresas')
+        .select('id, codigo, razao_social, nome_fantasia, cnpj')
+        .eq('ativo', true)
+        .order('razao_social')
+
+      if (empresasError) {
+        console.error('Erro ao carregar empresas:', empresasError)
+      } else {
+        setEmpresas(empresasData || [])
+      }
       setOperacoesFiscais(operacoes)
     } catch (error) {
       console.error('Erro ao carregar cadastros auxiliares:', error)
     } finally {
       setLoadingAuxiliares(false)
     }
+  }
+
+  const searchCfop = async (term: string, tipoPrefix: '5' | '6') => {
+    try {
+      if (!term) {
+        // show top results filtered by prefix
+        const list = await cfopService.listar({ ativo: true })
+        return list.filter(c => c.codigo.startsWith(tipoPrefix))
+      }
+      const list = await cfopService.listar({ busca: term, ativo: true })
+      return list.filter(c => c.codigo.startsWith(tipoPrefix))
+    } catch (error) {
+      return []
+    }
+  }
+
+  const handleSaidaInput = (val: string) => {
+    setSaidaSearch(val)
+    setShowSaidaDropdown(true)
+    if (saidaDebounce.current) clearTimeout(saidaDebounce.current)
+    saidaDebounce.current = window.setTimeout(async () => {
+      const res = await searchCfop(val, '5')
+      setSaidaResults(res.slice(0, 8))
+    }, 250)
+  }
+
+  const handleEntradaInput = (val: string) => {
+    setEntradaSearch(val)
+    setShowEntradaDropdown(true)
+    if (entradaDebounce.current) clearTimeout(entradaDebounce.current)
+    entradaDebounce.current = window.setTimeout(async () => {
+      const res = await searchCfop(val, '6')
+      setEntradaResults(res.slice(0, 8))
+    }, 250)
+  }
+
+  const selectSaida = (cfop: CFOP) => {
+    setFormData({ ...formData, cfop_saida: cfop.codigo })
+    setSaidaSearch(`${cfop.codigo} - ${cfop.descricao}`)
+    setShowSaidaDropdown(false)
+  }
+
+  const selectEntrada = (cfop: CFOP) => {
+    setFormData({ ...formData, cfop_entrada: cfop.codigo })
+    setEntradaSearch(`${cfop.codigo} - ${cfop.descricao}`)
+    setShowEntradaDropdown(false)
   }
 
   const abrirModalNovo = () => {
@@ -79,12 +157,16 @@ export default function RegrasTributacao({ empresaId }: Props) {
       empresa_id: empresaId,
       origem_mercadoria: '0'
     })
+    setSaidaSearch('')
+    setEntradaSearch('')
     setModalAberto(true)
   }
 
   const abrirModalEditar = (regra: RegraTributacao) => {
     setRegraSelecionada(regra)
     setFormData(regra)
+    setSaidaSearch(regra.cfop_saida ? `${regra.cfop_saida}` : '')
+    setEntradaSearch(regra.cfop_entrada ? `${regra.cfop_entrada}` : '')
     setModalAberto(true)
   }
 
@@ -290,15 +372,25 @@ export default function RegrasTributacao({ empresaId }: Props) {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
-                    Unidade emissora
+                    Unidade emissora <span className="text-red-500">*</span>
                   </label>
                   <select 
                     value={formData.unidade_emissora || ''}
                     onChange={(e) => setFormData({ ...formData, unidade_emissora: e.target.value })}
                     className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
+                    disabled={loadingAuxiliares}
+                    required
                   >
-                    <option>[Suprimentos]</option>
+                    <option value="">{loadingAuxiliares ? 'Carregando empresas...' : 'Selecione a empresa emissora'}</option>
+                    {empresas.map((empresa) => (
+                      <option key={empresa.id} value={empresa.id.toString()}>
+                        {empresa.nome_fantasia || empresa.razao_social} - {empresa.cnpj}
+                      </option>
+                    ))}
                   </select>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Empresa que emitirá a NF-e desta regra
+                  </p>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">
@@ -328,41 +420,63 @@ export default function RegrasTributacao({ empresaId }: Props) {
                     <option value="2">Estrangeira - Adquirida no mercado interno</option>
                   </select>
                 </div>
-                <div>
+                <div className="relative">
                   <label className="block text-xs font-medium text-slate-700 mb-1">
                     CFOP dentro da mesma UF da Unidade emissora da NF
                   </label>
-                  <select 
-                    value={formData.cfop_saida || ''}
-                    onChange={(e) => setFormData({ ...formData, cfop_saida: e.target.value })}
+                  <input
+                    type="text"
+                    value={saidaSearch || formData.cfop_saida || ''}
+                    onChange={(e) => handleSaidaInput(e.target.value)}
+                    onFocus={async () => {
+                      setShowSaidaDropdown(true)
+                      const res = await searchCfop(saidaSearch, '5')
+                      setSaidaResults(res.slice(0, 8))
+                    }}
+                    onBlur={() => setTimeout(() => setShowSaidaDropdown(false), 150)}
+                    placeholder={loadingAuxiliares ? 'Carregando...' : 'Digite código ou descrição e selecione'}
                     className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
                     disabled={loadingAuxiliares}
-                  >
-                    <option value="">{loadingAuxiliares ? 'Carregando...' : 'Selecione um CFOP'}</option>
-                    {cfopList.filter(c => c.codigo.startsWith('5')).map((cfop) => (
-                      <option key={cfop.id} value={cfop.codigo}>
-                        {cfop.codigo} - {cfop.descricao}
-                      </option>
-                    ))}
-                  </select>
+                  />
+                  {showSaidaDropdown && saidaResults.length > 0 && (
+                    <ul className="absolute z-50 mt-1 left-0 right-0 bg-white border border-slate-200 rounded shadow max-h-52 overflow-auto text-sm">
+                      {saidaResults.map((c) => (
+                        <li key={c.id} className="px-3 py-2 hover:bg-slate-50 cursor-pointer" onMouseDown={(e) => { e.preventDefault(); selectSaida(c); }}>
+                          <strong className="font-mono mr-2">{c.codigo}</strong>
+                          <span className="text-slate-700">{c.descricao}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-                <div>
+                <div className="relative">
                   <label className="block text-xs font-medium text-slate-700 mb-1">
                     CFOP fora da UF da Unidade emissora da NF
                   </label>
-                  <select 
-                    value={formData.cfop_entrada || ''}
-                    onChange={(e) => setFormData({ ...formData, cfop_entrada: e.target.value })}
+                  <input
+                    type="text"
+                    value={entradaSearch || formData.cfop_entrada || ''}
+                    onChange={(e) => handleEntradaInput(e.target.value)}
+                    onFocus={async () => {
+                      setShowEntradaDropdown(true)
+                      const res = await searchCfop(entradaSearch, '6')
+                      setEntradaResults(res.slice(0, 8))
+                    }}
+                    onBlur={() => setTimeout(() => setShowEntradaDropdown(false), 150)}
+                    placeholder={loadingAuxiliares ? 'Carregando...' : 'Digite código ou descrição e selecione'}
                     className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
                     disabled={loadingAuxiliares}
-                  >
-                    <option value="">{loadingAuxiliares ? 'Carregando...' : 'Selecione um CFOP'}</option>
-                    {cfopList.filter(c => c.codigo.startsWith('6')).map((cfop) => (
-                      <option key={cfop.id} value={cfop.codigo}>
-                        {cfop.codigo} - {cfop.descricao}
-                      </option>
-                    ))}
-                  </select>
+                  />
+                  {showEntradaDropdown && entradaResults.length > 0 && (
+                    <ul className="absolute z-50 mt-1 left-0 right-0 bg-white border border-slate-200 rounded shadow max-h-52 overflow-auto text-sm">
+                      {entradaResults.map((c) => (
+                        <li key={c.id} className="px-3 py-2 hover:bg-slate-50 cursor-pointer" onMouseDown={(e) => { e.preventDefault(); selectEntrada(c); }}>
+                          <strong className="font-mono mr-2">{c.codigo}</strong>
+                          <span className="text-slate-700">{c.descricao}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-700 mb-1">
@@ -963,6 +1077,198 @@ export default function RegrasTributacao({ empresaId }: Props) {
                       />
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Reforma Tributária 2026 - IBS e CBS */}
+              <div className="bg-blue-50 border border-blue-300 rounded-lg p-4 mt-4">
+                <div className="flex items-start gap-2 mb-3">
+                  <span className="text-2xl">🆕</span>
+                  <div>
+                    <h3 className="font-semibold text-blue-900 text-sm">Reforma Tributária 2026 - IBS e CBS</h3>
+                    <p className="text-xs text-blue-700 mt-1">
+                      Novos impostos federais que substituirão ICMS/ISS/PIS/COFINS gradualmente entre 2026-2033.
+                      Configure alíquotas diferenciadas por NCM/CFOP conforme legislação.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      Alíquota IBS (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.aliquota_ibs || ''}
+                      onChange={(e) => setFormData({ ...formData, aliquota_ibs: parseFloat(e.target.value) || undefined })}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
+                      placeholder="27.00 (padrão)"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Padrão: 27% | Cesta básica: 0%</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      Alíquota CBS (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.aliquota_cbs || ''}
+                      onChange={(e) => setFormData({ ...formData, aliquota_cbs: parseFloat(e.target.value) || undefined })}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
+                      placeholder="12.00 (padrão)"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Padrão: 12% | Cesta básica: 0%</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      Ano de Vigência
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.ano_vigencia || 2026}
+                      onChange={(e) => setFormData({ ...formData, ano_vigencia: parseInt(e.target.value) || undefined })}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
+                      placeholder="2026"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Ano inicial da regra</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      CST IBS
+                    </label>
+                    <select
+                      value={formData.cst_ibs || '00'}
+                      onChange={(e) => setFormData({ ...formData, cst_ibs: e.target.value })}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm bg-white"
+                    >
+                      <option value="00">00 - Tributado Integralmente</option>
+                      <option value="10">10 - Tributado com Redução de BC</option>
+                      <option value="20">20 - Tributado com Diferimento</option>
+                      <option value="30">30 - Isento</option>
+                      <option value="40">40 - Não Tributado</option>
+                      <option value="41">41 - Suspenso</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      CST CBS
+                    </label>
+                    <select
+                      value={formData.cst_cbs || '00'}
+                      onChange={(e) => setFormData({ ...formData, cst_cbs: e.target.value })}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm bg-white"
+                    >
+                      <option value="00">00 - Tributado Integralmente</option>
+                      <option value="10">10 - Tributado com Redução de BC</option>
+                      <option value="20">20 - Tributado com Diferimento</option>
+                      <option value="30">30 - Isento</option>
+                      <option value="40">40 - Não Tributado</option>
+                      <option value="41">41 - Suspenso</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      Redução BC IBS (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.reducao_base_ibs || ''}
+                      onChange={(e) => setFormData({ ...formData, reducao_base_ibs: parseFloat(e.target.value) || undefined })}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      Redução BC CBS (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.reducao_base_cbs || ''}
+                      onChange={(e) => setFormData({ ...formData, reducao_base_cbs: parseFloat(e.target.value) || undefined })}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      Diferimento IBS (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.percentual_diferimento_ibs || ''}
+                      onChange={(e) => setFormData({ ...formData, percentual_diferimento_ibs: parseFloat(e.target.value) || undefined })}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      Diferimento CBS (%)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.percentual_diferimento_cbs || ''}
+                      onChange={(e) => setFormData({ ...formData, percentual_diferimento_cbs: parseFloat(e.target.value) || undefined })}
+                      className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <label className="flex items-center text-sm">
+                      <input 
+                        type="checkbox"
+                        checked={formData.base_calculo_ibs_diferenciada || false}
+                        onChange={(e) => setFormData({ ...formData, base_calculo_ibs_diferenciada: e.target.checked })}
+                        className="mr-2" 
+                      />
+                      <span className="text-slate-700">Base de Cálculo IBS Diferenciada</span>
+                    </label>
+                    <p className="text-xs text-slate-500 ml-6 mt-1">
+                      Marque se a BC não for o valor da operação
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center text-sm">
+                      <input 
+                        type="checkbox"
+                        checked={formData.base_calculo_cbs_diferenciada || false}
+                        onChange={(e) => setFormData({ ...formData, base_calculo_cbs_diferenciada: e.target.checked })}
+                        className="mr-2" 
+                      />
+                      <span className="text-slate-700">Base de Cálculo CBS Diferenciada</span>
+                    </label>
+                    <p className="text-xs text-slate-500 ml-6 mt-1">
+                      Marque se a BC não for o valor da operação
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-blue-100 rounded p-3 mt-3">
+                  <p className="text-xs text-blue-800">
+                    <strong>💡 Dica:</strong> Se não informar alíquotas, o sistema buscará automaticamente por NCM na tabela 
+                    <code className="bg-blue-200 px-1 rounded mx-1">reforma_aliquotas_ncm</code>. 
+                    Padrões: IBS 27%, CBS 12%. Produtos cesta básica: 0%. Medicamentos: redução 60%.
+                  </p>
                 </div>
               </div>
             </div>

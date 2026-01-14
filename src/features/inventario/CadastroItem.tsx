@@ -5,6 +5,16 @@ import * as XLSX from 'xlsx'
 import { Toast } from '../../shared/components/Toast'
 
 
+interface Anexo {
+  id: string
+  nome: string
+  tipo: string
+  tamanho: number
+  url: string
+  data_upload: string
+  usuario_upload?: string
+}
+
 interface Item {
   id: string
   codigo: string
@@ -20,6 +30,7 @@ interface Item {
   valor: number
   created_at: string
   responsavel_id?: string | null
+  anexos?: Anexo[]
   colaboradores?: {
     nome: string
     cpf?: string
@@ -97,6 +108,12 @@ export const CadastroItem: React.FC = () => {
   // Estados para termo de responsabilidade  
   const [showTermoModal, setShowTermoModal] = useState(false)
   const [itemParaTermo, setItemParaTermo] = useState<Item | null>(null)
+
+  // Estados para anexos
+  const [uploadingFiles, setUploadingFiles] = useState<boolean>(false)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [showAnexosModal, setShowAnexosModal] = useState(false)
+  const [itemAnexos, setItemAnexos] = useState<Item | null>(null)
 
   // Estados para redimensionamento de colunas
   const [columnWidths, setColumnWidths] = useState(() => {
@@ -666,12 +683,37 @@ export const CadastroItem: React.FC = () => {
     setShowDeleteModal(true)
   }
 
-  // Função para confirmar exclusão
   const confirmDelete = async () => {
     if (!itemToDelete) return
 
+    setLoading(true)
+
+    if (!isSupabaseConfigured) {
+      setToast({ 
+        message: 'Modo Demo: Item seria excluído com sucesso!',
+        type: 'success'
+      })
+      setShowDeleteModal(false)
+      setItemToDelete(null)
+      setLoading(false)
+      return
+    }
+
     try {
-      setLoading(true)
+      // Deletar anexos do storage primeiro
+      if (itemToDelete.anexos && itemToDelete.anexos.length > 0) {
+        for (const anexo of itemToDelete.anexos) {
+          const { error: storageError } = await supabase.storage
+            .from('inventario-anexos')
+            .remove([anexo.url])
+          
+          if (storageError) {
+            console.warn('Erro ao deletar anexo do storage:', storageError)
+          }
+        }
+      }
+
+      // Deletar item do banco
       const { error } = await supabase
         .from('itens')
         .delete()
@@ -679,15 +721,220 @@ export const CadastroItem: React.FC = () => {
 
       if (error) throw error
 
-      setToast({ message: 'Item excluído com sucesso!', type: 'success' })
+      setToast({ 
+        message: 'Item excluído com sucesso!',
+        type: 'success'
+      })
+      
       await fetchItens()
+    } catch (error: any) {
+      setToast({ 
+        message: error.message || 'Erro ao excluir item',
+        type: 'error'
+      })
+    } finally {
       setShowDeleteModal(false)
       setItemToDelete(null)
-    } catch (error: any) {
-      setToast({ message: error.message || 'Erro ao excluir item', type: 'error' })
-    } finally {
       setLoading(false)
     }
+  }
+
+  // ==========================================
+  // FUNÇÕES DE GERENCIAMENTO DE ANEXOS
+  // ==========================================
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files
+    if (!files) return
+
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/webp']
+    const maxSize = 10 * 1024 * 1024 // 10MB
+
+    const validFiles: File[] = []
+    const errors: string[] = []
+
+    Array.from(files).forEach(file => {
+      if (!allowedTypes.includes(file.type)) {
+        errors.push(`${file.name}: Tipo de arquivo não permitido`)
+        return
+      }
+      if (file.size > maxSize) {
+        errors.push(`${file.name}: Arquivo muito grande (máx 10MB)`)
+        return
+      }
+      validFiles.push(file)
+    })
+
+    if (errors.length > 0) {
+      setToast({ message: errors.join(', '), type: 'error' })
+    }
+
+    setSelectedFiles(prev => [...prev, ...validFiles])
+  }
+
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const uploadFiles = async (itemId: string) => {
+    if (selectedFiles.length === 0) return
+
+    setUploadingFiles(true)
+
+    try {
+      const anexosAtuais = editingItem?.anexos || []
+      const novosAnexos: Anexo[] = []
+
+      for (const file of selectedFiles) {
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${itemId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+
+        // Upload para o Supabase Storage
+        const { error: uploadError } = await supabase.storage
+          .from('inventario-anexos')
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+          })
+
+        if (uploadError) {
+          console.error('Erro no upload:', uploadError)
+          throw uploadError
+        }
+
+        // Adicionar anexo ao array
+        novosAnexos.push({
+          id: `${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          nome: file.name,
+          tipo: file.type,
+          tamanho: file.size,
+          url: fileName,
+          data_upload: new Date().toISOString()
+        })
+      }
+
+      // Atualizar item com novos anexos
+      const anexosAtualizados = [...anexosAtuais, ...novosAnexos]
+
+      const { error: updateError } = await supabase
+        .from('itens')
+        .update({ anexos: anexosAtualizados })
+        .eq('id', itemId)
+
+      if (updateError) throw updateError
+
+      setToast({ message: 'Arquivos anexados com sucesso!', type: 'success' })
+      setSelectedFiles([])
+      await fetchItens()
+
+      return true
+    } catch (error: any) {
+      setToast({ message: error.message || 'Erro ao anexar arquivos', type: 'error' })
+      return false
+    } finally {
+      setUploadingFiles(false)
+    }
+  }
+
+  const downloadAnexo = async (anexo: Anexo) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('inventario-anexos')
+        .download(anexo.url)
+
+      if (error) throw error
+
+      // Criar URL temporária e fazer download
+      const url = window.URL.createObjectURL(data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = anexo.nome
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error: any) {
+      setToast({ message: 'Erro ao baixar arquivo', type: 'error' })
+    }
+  }
+
+  const deleteAnexo = async (item: Item, anexo: Anexo) => {
+    if (!confirm(`Tem certeza que deseja excluir o anexo "${anexo.nome}"?`)) {
+      return
+    }
+
+    try {
+      // Deletar do storage
+      const { error: storageError } = await supabase.storage
+        .from('inventario-anexos')
+        .remove([anexo.url])
+
+      if (storageError) throw storageError
+
+      // Atualizar item removendo o anexo
+      const anexosAtualizados = (item.anexos || []).filter(a => a.id !== anexo.id)
+
+      const { error: updateError } = await supabase
+        .from('itens')
+        .update({ anexos: anexosAtualizados })
+        .eq('id', item.id)
+
+      if (updateError) throw updateError
+
+      setToast({ message: 'Anexo excluído com sucesso!', type: 'success' })
+      await fetchItens()
+
+      // Atualizar modal se estiver aberto
+      if (itemAnexos && itemAnexos.id === item.id) {
+        setItemAnexos({ ...item, anexos: anexosAtualizados })
+      }
+    } catch (error: any) {
+      setToast({ message: error.message || 'Erro ao excluir anexo', type: 'error' })
+    }
+  }
+
+  const visualizarAnexo = async (anexo: Anexo) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('inventario-anexos')
+        .createSignedUrl(anexo.url, 3600) // URL válida por 1 hora
+
+      if (error) throw error
+
+      // Abrir em nova aba
+      window.open(data.signedUrl, '_blank')
+    } catch (error: any) {
+      setToast({ message: 'Erro ao visualizar arquivo', type: 'error' })
+    }
+  }
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+  }
+
+  const getFileIcon = (tipo: string) => {
+    if (tipo === 'application/pdf') {
+      return (
+        <svg className="w-8 h-8 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+        </svg>
+      )
+    } else if (tipo.startsWith('image/')) {
+      return (
+        <svg className="w-8 h-8 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+        </svg>
+      )
+    }
+    return (
+      <svg className="w-8 h-8 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+      </svg>
+    )
   }
 
   // Função para cancelar exclusão
@@ -893,7 +1140,7 @@ export const CadastroItem: React.FC = () => {
                   </div>
                 </th>
                 <th 
-                  className="px-4 py-2.5 text-left text-xs font-semibold text-white uppercase tracking-wider hover:opacity-90 select-none relative"
+                  className="px-4 py-2.5 text-left text-xs font-normal text-white uppercase tracking-wider hover:opacity-90 select-none relative"
                   style={{ width: `${columnWidths.item}px`, minWidth: '120px' }}
                 >
                   <div className="flex items-center gap-1 cursor-pointer" onClick={() => handleSort('item')}>
@@ -921,7 +1168,7 @@ export const CadastroItem: React.FC = () => {
                   </div>
                 </th>
                 <th 
-                  className="px-4 py-2.5 text-left text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:opacity-90 select-none hidden md:table-cell"
+                  className="px-4 py-2.5 text-left text-xs font-normal text-white uppercase tracking-wider cursor-pointer hover:opacity-90 select-none hidden md:table-cell"
                   onClick={() => handleSort('categoria')}
                 >
                   <div className="flex items-center gap-1">
@@ -932,7 +1179,7 @@ export const CadastroItem: React.FC = () => {
                   </div>
                 </th>
                 <th 
-                  className="px-4 py-2.5 text-left text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:opacity-90 select-none hidden lg:table-cell"
+                  className="px-4 py-2.5 text-left text-xs font-normal text-white uppercase tracking-wider cursor-pointer hover:opacity-90 select-none hidden lg:table-cell"
                   onClick={() => handleSort('setor')}
                 >
                   <div className="flex items-center gap-1">
@@ -943,7 +1190,7 @@ export const CadastroItem: React.FC = () => {
                   </div>
                 </th>
                 <th 
-                  className="px-4 py-2.5 text-left text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:opacity-90 select-none hidden xl:table-cell"
+                  className="px-4 py-2.5 text-left text-xs font-normal text-white uppercase tracking-wider cursor-pointer hover:opacity-90 select-none hidden xl:table-cell"
                   onClick={() => handleSort('responsavel')}
                 >
                   <div className="flex items-center gap-1">
@@ -954,7 +1201,7 @@ export const CadastroItem: React.FC = () => {
                   </div>
                 </th>
                 <th 
-                  className="px-4 py-2.5 text-left text-xs font-semibold text-white uppercase tracking-wider cursor-pointer hover:opacity-90 select-none"
+                  className="px-4 py-2.5 text-left text-xs font-normal text-white uppercase tracking-wider cursor-pointer hover:opacity-90 select-none"
                   onClick={() => handleSort('status')}
                 >
                   <div className="flex items-center gap-1">
@@ -964,7 +1211,7 @@ export const CadastroItem: React.FC = () => {
                     )}
                   </div>
                 </th>
-                <th className="px-4 py-2.5 text-left text-xs font-semibold text-white uppercase tracking-wider">Ações</th>
+                <th className="px-4 py-2.5 text-left text-xs font-normal text-white uppercase tracking-wider">Ações</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -986,7 +1233,7 @@ export const CadastroItem: React.FC = () => {
                     <td className="px-2 sm:px-3 py-3 text-xs text-gray-900" style={{ width: `${columnWidths.codigo}px` }}>
                       <div className="overflow-hidden text-ellipsis">{item.codigo}</div>
                     </td>
-                    <td className="px-3 sm:px-6 py-3 text-xs font-medium text-gray-900" style={{ width: `${columnWidths.item}px` }}>
+                    <td className="px-3 sm:px-6 py-3 text-xs text-gray-900" style={{ width: `${columnWidths.item}px` }}>
                       <div className="overflow-hidden">
                         <div>{item.item || 'Item sem nome'}</div>
                         <div className="text-xs text-gray-500 md:hidden mt-1">
@@ -1007,11 +1254,11 @@ export const CadastroItem: React.FC = () => {
                       {item.colaboradores?.nome || '-'}
                     </td>
                     <td className="px-3 sm:px-6 py-3 whitespace-nowrap text-xs text-gray-500">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs ${getStatusColor(item.status)}`}>
                         {item.status}
                       </span>
                     </td>
-                    <td className="px-3 sm:px-6 py-3 whitespace-nowrap text-xs font-medium">
+                    <td className="px-3 sm:px-6 py-3 whitespace-nowrap text-xs">
                       <div className="flex space-x-1.5 sm:space-x-2">
                         <button
                           onClick={() => handleTermoResponsabilidade(item)}
@@ -1367,6 +1614,130 @@ export const CadastroItem: React.FC = () => {
             />
           </div>
 
+              {/* Seção de Anexos */}
+              {editingItem && isSupabaseConfigured && (
+                <div className="border-t pt-4" style={{ borderColor: '#C9C4B5' }}>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                    </svg>
+                    Anexos (PDF, Imagens)
+                  </h3>
+
+                  {/* Arquivos já anexados */}
+                  {editingItem.anexos && editingItem.anexos.length > 0 && (
+                    <div className="mb-3 space-y-2">
+                      {editingItem.anexos.map((anexo) => (
+                        <div key={anexo.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border" style={{ borderColor: '#C9C4B5' }}>
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            {getFileIcon(anexo.tipo)}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-gray-900 truncate">{anexo.nome}</p>
+                              <p className="text-xs text-gray-500">{formatFileSize(anexo.tamanho)}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => visualizarAnexo(anexo)}
+                              className="p-1 text-blue-600 hover:text-blue-800"
+                              title="Visualizar"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => downloadAnexo(anexo)}
+                              className="p-1 text-green-600 hover:text-green-800"
+                              title="Baixar"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteAnexo(editingItem, anexo)}
+                              className="p-1 text-red-600 hover:text-red-800"
+                              title="Excluir"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Upload de novos arquivos */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        id="file-upload"
+                        multiple
+                        accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="file-upload"
+                        className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                        style={{ borderColor: '#C9C4B5' }}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Selecionar Arquivos
+                      </label>
+                      <span className="text-xs text-gray-500">
+                        PDF, JPEG, PNG, GIF (máx 10MB cada)
+                      </span>
+                    </div>
+
+                    {/* Arquivos selecionados para upload */}
+                    {selectedFiles.length > 0 && (
+                      <div className="space-y-2">
+                        {selectedFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between p-2 bg-blue-50 rounded border border-blue-200">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              {getFileIcon(file.type)}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-gray-900 truncate">{file.name}</p>
+                                <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeSelectedFile(index)}
+                              className="p-1 text-red-600 hover:text-red-800"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => uploadFiles(editingItem.id)}
+                          disabled={uploadingFiles}
+                          className="w-full px-3 py-2 text-xs font-semibold text-white rounded-md disabled:opacity-50"
+                          style={{ backgroundColor: '#394353' }}
+                        >
+                          {uploadingFiles ? 'Enviando...' : `Enviar ${selectedFiles.length} arquivo(s)`}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Botões */}
               <div className="flex justify-end gap-2 pt-3 border-t" style={{ borderColor: '#C9C4B5' }}>
                 <button
@@ -1660,6 +2031,171 @@ export const CadastroItem: React.FC = () => {
           isOpen={showTermoModal}
           onClose={handleCloseTermoModal}
         />
+      )}
+
+      {/* Modal de Anexos */}
+      {showAnexosModal && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 overflow-y-auto h-full w-full z-50 px-4 py-6">
+          <div className="relative top-20 mx-auto p-6 border w-full max-w-2xl shadow-2xl rounded-md bg-white" style={{ borderColor: '#C9C4B5' }}>
+            <div className="mb-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-gray-900">
+                  Anexos - {editingItem?.item}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowAnexosModal(false)
+                    setSelectedFiles([])
+                    setItemAnexos([])
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Lista de Anexos Existentes */}
+            {itemAnexos.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Arquivos anexados:</h4>
+                <div className="space-y-2">
+                  {itemAnexos.map((anexo) => (
+                    <div key={anexo.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md border" style={{ borderColor: '#C9C4B5' }}>
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="flex-shrink-0">
+                          {getFileIcon(anexo.tipo)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{anexo.nome}</p>
+                          <p className="text-xs text-gray-500">
+                            {formatFileSize(anexo.tamanho)} • {new Date(anexo.data_upload).toLocaleDateString('pt-BR')}
+                            {anexo.usuario_upload && ` • ${anexo.usuario_upload}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 ml-2 flex-shrink-0">
+                        <button
+                          onClick={() => visualizarAnexo(anexo)}
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                          title="Visualizar"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => downloadAnexo(anexo)}
+                          className="p-1.5 text-green-600 hover:bg-green-50 rounded"
+                          title="Baixar"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => deleteAnexo(anexo.id, anexo.url)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                          title="Excluir"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Upload de Novos Arquivos */}
+            <div className="border-t border-gray-200 pt-4" style={{ borderColor: '#C9C4B5' }}>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Adicionar novo anexo:</h4>
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                onChange={handleFileSelect}
+                multiple
+                accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.webp"
+                className="hidden"
+              />
+              
+              <label
+                htmlFor="file-upload"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center justify-center w-full px-4 py-3 border-2 border-dashed rounded-md cursor-pointer hover:border-gray-400 transition-colors"
+                style={{ borderColor: '#C9C4B5' }}
+              >
+                <div className="text-center">
+                  <svg className="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <p className="mt-1 text-xs text-gray-600">
+                    Clique para selecionar arquivos ou arraste aqui
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    PDF, JPEG, PNG, GIF, BMP, WEBP (máx. 10MB)
+                  </p>
+                </div>
+              </label>
+
+              {/* Preview de Arquivos Selecionados */}
+              {selectedFiles.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-sm font-medium text-gray-700">Arquivos selecionados:</p>
+                  {selectedFiles.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-blue-50 rounded-md border border-blue-200">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="flex-shrink-0">
+                          {getFileIcon(file.type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-900 truncate">{file.name}</p>
+                          <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeSelectedFile(index)}
+                        className="ml-2 p-1 text-red-600 hover:bg-red-50 rounded flex-shrink-0"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => editingItem && uploadFiles(editingItem.id)}
+                    disabled={uploadingFiles}
+                    className="w-full px-4 py-2 text-sm font-semibold text-white rounded-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: '#394353' }}
+                  >
+                    {uploadingFiles ? 'Enviando...' : `Enviar ${selectedFiles.length} arquivo(s)`}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowAnexosModal(false)
+                  setSelectedFiles([])
+                  setItemAnexos([])
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border rounded-md hover:bg-gray-50"
+                style={{ borderColor: '#C9C4B5' }}
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Toast de Notificação */}

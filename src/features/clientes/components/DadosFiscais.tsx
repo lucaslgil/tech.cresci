@@ -2,11 +2,22 @@
  * DADOS FISCAIS - COMPONENTE DE FORMULÁRIO
  */
 
+import { useState, useEffect } from 'react'
+import { supabase } from '../../../lib/supabase'
 import {
   RegimeTributarioLabels,
   ContribuinteICMSLabels,
   type ClienteFormData
 } from '../types'
+
+interface TipoContribuinte {
+  id: number
+  nome: string
+  descricao?: string
+  consumidor_final: boolean
+  contribuinte_icms: string
+  ativo: boolean
+}
 
 interface Props {
   formData: Partial<ClienteFormData>
@@ -15,6 +26,39 @@ interface Props {
 }
 
 export function DadosFiscais({ formData, onChange }: Props) {
+  const [tiposContribuinte, setTiposContribuinte] = useState<TipoContribuinte[]>([])
+
+  useEffect(() => {
+    carregarTiposContribuinte()
+  }, [])
+
+  const carregarTiposContribuinte = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tipos_contribuinte')
+        .select('*')
+        .eq('ativo', true)
+        .order('nome')
+
+      if (error) throw error
+      setTiposContribuinte(data || [])
+    } catch (error) {
+      console.error('Erro ao carregar tipos de contribuinte:', error)
+    }
+  }
+
+  const handleTipoContribuinteChange = (tipoId: number | null) => {
+    onChange('tipo_contribuinte_id', tipoId || undefined)
+
+    if (tipoId) {
+      const tipo = tiposContribuinte.find(t => t.id === tipoId)
+      if (tipo) {
+        onChange('consumidor_final', tipo.consumidor_final)
+        onChange('contribuinte_icms', tipo.contribuinte_icms)
+      }
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -24,6 +68,29 @@ export function DadosFiscais({ formData, onChange }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
+        {/* Tipo de Contribuinte */}
+        <div className="col-span-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Tipo de Contribuinte
+          </label>
+          <select
+            value={formData.tipo_contribuinte_id || ''}
+            onChange={(e) => handleTipoContribuinteChange(e.target.value ? Number(e.target.value) : null)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">Selecione o tipo de contribuinte...</option>
+            {tiposContribuinte.map(tipo => (
+              <option key={tipo.id} value={tipo.id}>
+                {tipo.nome}
+                {tipo.descricao && ` - ${tipo.descricao}`}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-gray-500">
+            Ao selecionar um tipo, os campos "Consumidor Final" e "Contribuinte ICMS" serão preenchidos automaticamente
+          </p>
+        </div>
+
         {/* Regime Tributário */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">

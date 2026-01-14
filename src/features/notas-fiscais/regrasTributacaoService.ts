@@ -19,6 +19,10 @@ export interface RegraTributacao {
   cfop_entrada?: string
   cfop_saida?: string
   origem_mercadoria?: string
+  tipo_documento?: string
+  uf_origem?: string
+  uf_destino?: string
+  prioridade?: number
   
   // Configurações
   operacao_fiscal?: string
@@ -104,6 +108,19 @@ export interface RegraTributacao {
   outras_retencoes?: string
   aliquota_outras_retencoes?: number
   
+  // Reforma Tributária 2026 - IBS e CBS
+  aliquota_ibs?: number
+  aliquota_cbs?: number
+  cst_ibs?: string
+  cst_cbs?: string
+  base_calculo_ibs_diferenciada?: boolean
+  base_calculo_cbs_diferenciada?: boolean
+  reducao_base_ibs?: number
+  reducao_base_cbs?: number
+  percentual_diferimento_ibs?: number
+  percentual_diferimento_cbs?: number
+  ano_vigencia?: number
+  
   created_at?: string
   updated_at?: string
 }
@@ -163,9 +180,15 @@ export const regrasTributacaoService = {
   // Criar nova regra
   async criar(regra: RegraTributacao): Promise<{ data: RegraTributacao | null; error: any }> {
     try {
-      // Limpar campos vazios
+      // Limpar campos vazios e remover pontos dos CFOPs
       const regraNova = Object.fromEntries(
-        Object.entries(regra).map(([key, value]) => [key, value === '' ? null : value])
+        Object.entries(regra).map(([key, value]) => {
+          // Remover pontos dos campos CFOP
+          if ((key === 'cfop_entrada' || key === 'cfop_saida') && typeof value === 'string') {
+            return [key, value.replace(/\./g, '').replace(/[^0-9]/g, '') || null]
+          }
+          return [key, value === '' ? null : value]
+        })
       )
 
       const { data, error } = await supabase
@@ -189,9 +212,15 @@ export const regrasTributacaoService = {
   // Atualizar regra existente
   async atualizar(id: number, regra: Partial<RegraTributacao>): Promise<{ data: RegraTributacao | null; error: any }> {
     try {
-      // Limpar campos vazios
+      // Limpar campos vazios e remover pontos dos CFOPs
       const regraAtualizada = Object.fromEntries(
-        Object.entries(regra).map(([key, value]) => [key, value === '' ? null : value])
+        Object.entries(regra).map(([key, value]) => {
+          // Remover pontos dos campos CFOP
+          if ((key === 'cfop_entrada' || key === 'cfop_saida') && typeof value === 'string') {
+            return [key, value.replace(/\./g, '').replace(/[^0-9]/g, '') || null]
+          }
+          return [key, value === '' ? null : value]
+        })
       )
 
       const { data, error } = await supabase

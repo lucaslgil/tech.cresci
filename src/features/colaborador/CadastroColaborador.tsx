@@ -4,6 +4,7 @@ import { Edit, Trash2, Mail, Phone, FileText, Building, Package } from 'lucide-r
 import VincularItens from './VincularItens'
 import * as XLSX from 'xlsx'
 import { Toast } from '../../shared/components/Toast'
+import { SelectLinhaTelefonica } from '../../shared/components/SelectLinhaTelefonica'
 
 
 interface Empresa {
@@ -23,6 +24,12 @@ interface Colaborador {
   cargo: string
   empresa_id: string
   status: string
+  telefone_comercial_id: string | null
+  telefone_comercial?: {
+    numero_linha: string
+    tipo: string
+    operadora: string
+  }
   created_at: string
   empresas?: { razao_social: string }
 }
@@ -38,6 +45,14 @@ interface FormData {
   cargo: string
   empresa_id: string
   status: string
+  telefone_comercial_id: string | null
+}
+
+interface LinhaTelefonica {
+  id: string
+  numero_linha: string
+  tipo: string
+  operadora: string
 }
 
 export const CadastroColaborador: React.FC = () => {
@@ -59,6 +74,9 @@ export const CadastroColaborador: React.FC = () => {
     errors: string[]
   } | null>(null)
   
+  // Estados para linha telefônica selecionada
+  const [linhaTelefonicaSelecionada, setLinhaTelefonicaSelecionada] = useState<LinhaTelefonica | null>(null)
+  
   // Estados para notificações
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null)
   
@@ -75,7 +93,8 @@ export const CadastroColaborador: React.FC = () => {
     setor: '',
     cargo: '',
     empresa_id: '',
-    status: 'Ativo'
+    status: 'Ativo',
+    telefone_comercial_id: null
   })
 
   const [setores, setSetores] = useState<string[]>([])
@@ -220,6 +239,7 @@ export const CadastroColaborador: React.FC = () => {
           cargo: 'Desenvolvedor',
           empresa_id: '1',
           status: 'Ativo',
+          telefone_comercial_id: null,
           created_at: '2024-01-01T00:00:00.000Z',
           empresas: { razao_social: 'CRESCI E PERDI FRANCHISING LTDA' }
         }
@@ -243,8 +263,10 @@ export const CadastroColaborador: React.FC = () => {
           cargo,
           empresa_id,
           status,
+          telefone_comercial_id,
           created_at,
-          empresas:empresa_id (razao_social)
+          empresas:empresa_id (razao_social),
+          telefone_comercial:telefone_comercial_id (numero_linha, tipo, operadora)
         `)
         .order('nome')
 
@@ -253,7 +275,8 @@ export const CadastroColaborador: React.FC = () => {
       setColaboradores((data || []).map(item => ({
         ...item,
         status: item.status || 'Ativo',
-        empresas: Array.isArray(item.empresas) ? item.empresas[0] : item.empresas
+        empresas: Array.isArray(item.empresas) ? item.empresas[0] : item.empresas,
+        telefone_comercial: Array.isArray(item.telefone_comercial) ? item.telefone_comercial[0] : item.telefone_comercial
       })))
     } catch (error: any) {
       console.error('Erro ao carregar colaboradores:', error)
@@ -272,6 +295,7 @@ export const CadastroColaborador: React.FC = () => {
           cargo: 'Desenvolvedor',
           empresa_id: '1',
           status: 'Ativo',
+          telefone_comercial_id: null,
           created_at: '2024-01-01T00:00:00.000Z',
           empresas: { razao_social: 'CRESCI E PERDI FRANCHISING LTDA' }
         }
@@ -469,7 +493,8 @@ export const CadastroColaborador: React.FC = () => {
       setor: '',
       cargo: '',
       empresa_id: '',
-      status: 'Ativo'
+      status: 'Ativo',
+      telefone_comercial_id: null
     })
     setEditingColaborador(null)
   }
@@ -487,10 +512,24 @@ export const CadastroColaborador: React.FC = () => {
         setor: colaborador.setor,
         cargo: colaborador.cargo,
         empresa_id: colaborador.empresa_id,
-        status: colaborador.status || 'Ativo'
+        status: colaborador.status || 'Ativo',
+        telefone_comercial_id: colaborador.telefone_comercial_id || null
       })
+      
+      // Carregar linha telefônica selecionada se houver
+      if (colaborador.telefone_comercial_id && colaborador.telefone_comercial) {
+        setLinhaTelefonicaSelecionada({
+          id: colaborador.telefone_comercial_id,
+          numero_linha: colaborador.telefone_comercial.numero_linha,
+          tipo: colaborador.telefone_comercial.tipo,
+          operadora: colaborador.telefone_comercial.operadora
+        })
+      } else {
+        setLinhaTelefonicaSelecionada(null)
+      }
     } else {
       resetForm()
+      setLinhaTelefonicaSelecionada(null)
     }
     setShowModal(true)
   }
@@ -498,6 +537,7 @@ export const CadastroColaborador: React.FC = () => {
   const closeModal = () => {
     setShowModal(false)
     resetForm()
+    setLinhaTelefonicaSelecionada(null)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1220,6 +1260,18 @@ export const CadastroColaborador: React.FC = () => {
                         placeholder="(00) 00000-0000"
                         className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none"
                         style={{borderColor: '#C9C4B5'}}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                        Telefone Comercial
+                      </label>
+                      <SelectLinhaTelefonica
+                        value={formData.telefone_comercial_id}
+                        onChange={(value) => setFormData({ ...formData, telefone_comercial_id: value })}
+                        linhaSelecionada={linhaTelefonicaSelecionada}
+                        onLinhaSelecionadaChange={setLinhaTelefonicaSelecionada}
                       />
                     </div>
 

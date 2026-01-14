@@ -170,10 +170,17 @@ export const cfopService = {
 
       const { data, error } = await query
 
-      if (error) throw error
+      if (error) {
+        // Detectar erro de tabela ausente no Supabase/PostgREST e lançar mensagem amigável
+        const msg = (error.message || '').toString()
+        if (msg.includes("Could not find the table 'public.cfop'") || (error.code && error.code === 'PGRST205')) {
+          throw new Error("Tabela 'cfop' não encontrada no projeto Supabase. Execute 'database/aplicar_cadastros_auxiliares.sql' no SQL editor do Supabase e habilite RLS/permissões.")
+        }
+        throw error
+      }
       return data as CFOP[]
     } catch (error) {
-      console.error('Erro ao listar CFOP:', error)
+      console.error('Erro ao listar CFOP')
       throw error
     }
   },
@@ -186,10 +193,16 @@ export const cfopService = {
         .eq('id', id)
         .single()
 
-      if (error) throw error
+      if (error) {
+        const msg = (error.message || '').toString()
+        if (msg.includes("Could not find the table 'public.cfop'") || (error.code && error.code === 'PGRST205')) {
+          throw new Error("Tabela 'cfop' não encontrada no projeto Supabase. Execute 'database/aplicar_cadastros_auxiliares.sql' no SQL editor do Supabase e habilite RLS/permissões.")
+        }
+        throw error
+      }
       return data as CFOP
     } catch (error) {
-      console.error('Erro ao buscar CFOP:', error)
+      console.error('Erro ao buscar CFOP')
       throw error
     }
   },
@@ -219,6 +232,13 @@ export const cfopService = {
         id: data.id
       }
     } catch (error: any) {
+      const msg = (error?.message || '').toString()
+      if (msg.includes("Could not find the table 'public.cfop'") || (error?.code === 'PGRST205')) {
+        return {
+          sucesso: false,
+          mensagem: "Tabela 'cfop' não encontrada no Supabase. Execute 'database/aplicar_cadastros_auxiliares.sql' no SQL editor do Supabase."
+        }
+      }
       return {
         sucesso: false,
         mensagem: error.message || 'Erro ao cadastrar CFOP'
@@ -240,6 +260,13 @@ export const cfopService = {
         mensagem: 'CFOP atualizado com sucesso'
       }
     } catch (error: any) {
+      const msg = (error?.message || '').toString()
+      if (msg.includes("Could not find the table 'public.cfop'") || (error?.code === 'PGRST205')) {
+        return {
+          sucesso: false,
+          mensagem: "Tabela 'cfop' não encontrada no Supabase. Execute 'database/aplicar_cadastros_auxiliares.sql' no SQL editor do Supabase."
+        }
+      }
       return {
         sucesso: false,
         mensagem: error.message || 'Erro ao atualizar CFOP'
@@ -261,6 +288,13 @@ export const cfopService = {
         mensagem: 'CFOP excluído com sucesso'
       }
     } catch (error: any) {
+      const msg = (error?.message || '').toString()
+      if (msg.includes("Could not find the table 'public.cfop'") || (error?.code === 'PGRST205')) {
+        return {
+          sucesso: false,
+          mensagem: "Tabela 'cfop' não encontrada no Supabase. Execute 'database/aplicar_cadastros_auxiliares.sql' no SQL editor do Supabase."
+        }
+      }
       return {
         sucesso: false,
         mensagem: error.message || 'Erro ao excluir CFOP'
@@ -329,16 +363,13 @@ export const operacoesFiscaisService = {
         .from('operacoes_fiscais')
         .insert([{
           ...dados,
+          regime_tributario: dados.regime_tributario ?? 'TODOS',
           ativo: dados.ativo ?? true,
           calcular_icms: dados.calcular_icms ?? true,
           calcular_ipi: dados.calcular_ipi ?? true,
           calcular_pis: dados.calcular_pis ?? true,
           calcular_cofins: dados.calcular_cofins ?? true,
-          calcular_st: dados.calcular_st ?? false,
-          movimenta_estoque: dados.movimenta_estoque ?? true,
-          movimenta_financeiro: dados.movimenta_financeiro ?? true,
-          gera_duplicata: dados.gera_duplicata ?? true,
-          gera_comissao: dados.gera_comissao ?? true
+          calcular_st: dados.calcular_st ?? false
         }])
         .select()
         .single()
@@ -404,6 +435,92 @@ export const operacoesFiscaisService = {
 // =====================================================
 // UNIDADES DE MEDIDA
 // =====================================================
+
+// =====================================================
+// ICMS-ST POR UF
+// =====================================================
+
+export const icmsStService = {
+  async listar(filtros?: any) {
+    try {
+      let query = supabase
+        .from('icms_st_por_uf')
+        .select('*')
+        .order('uf_origem', { ascending: true })
+
+      if (filtros?.busca) {
+        query = query.or(`uf_origem.ilike.%${filtros.busca}%,uf_destino.ilike.%${filtros.busca}%`)
+      }
+
+      if (filtros?.uf_origem) query = query.eq('uf_origem', filtros.uf_origem)
+      if (filtros?.uf_destino) query = query.eq('uf_destino', filtros.uf_destino)
+      if (filtros?.ncm) query = query.eq('ncm', filtros.ncm)
+      if (filtros?.ativo !== undefined) query = query.eq('ativo', filtros.ativo)
+
+      const { data, error } = await query
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Erro ao listar ICMS-ST por UF:', error)
+      throw error
+    }
+  },
+
+  async buscarPorId(id: number) {
+    try {
+      const { data, error } = await supabase
+        .from('icms_st_por_uf')
+        .select('*')
+        .eq('id', id)
+        .single()
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Erro ao buscar ICMS-ST por ID:', error)
+      throw error
+    }
+  },
+
+  async criar(dados: any) {
+    try {
+      const { data, error } = await supabase
+        .from('icms_st_por_uf')
+        .insert([dados])
+        .select()
+        .single()
+      if (error) throw error
+      return { sucesso: true, mensagem: 'ICMS-ST cadastrado', id: data.id }
+    } catch (error: any) {
+      return { sucesso: false, mensagem: error.message || 'Erro ao cadastrar ICMS-ST' }
+    }
+  },
+
+  async atualizar(id: number, dados: any) {
+    try {
+      const { error } = await supabase
+        .from('icms_st_por_uf')
+        .update(dados)
+        .eq('id', id)
+      if (error) throw error
+      return { sucesso: true, mensagem: 'ICMS-ST atualizado' }
+    } catch (error: any) {
+      return { sucesso: false, mensagem: error.message || 'Erro ao atualizar ICMS-ST' }
+    }
+  },
+
+  async deletar(id: number) {
+    try {
+      const { error } = await supabase
+        .from('icms_st_por_uf')
+        .delete()
+        .eq('id', id)
+      if (error) throw error
+      return { sucesso: true, mensagem: 'ICMS-ST excluído' }
+    } catch (error: any) {
+      return { sucesso: false, mensagem: error.message || 'Erro ao excluir ICMS-ST' }
+    }
+  }
+}
 
 export const unidadesMedidaService = {
   async listar(filtros?: UnidadeMedidaFiltros) {
