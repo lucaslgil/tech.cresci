@@ -439,24 +439,26 @@ export function CadastroClientes() {
               <button
                 onClick={() => setAbaAtiva('enderecos')}
                 disabled={!isEdicao}
+                title={!isEdicao ? 'Salve o cliente primeiro para adicionar endereços' : ''}
                 className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${
                   abaAtiva === 'enderecos'
                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300'
                 } ${!isEdicao ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                📍 Endereços
+                📍 Endereços {!isEdicao && '🔒'}
               </button>
               <button
                 onClick={() => setAbaAtiva('contatos')}
                 disabled={!isEdicao}
+                title={!isEdicao ? 'Salve o cliente primeiro para adicionar contatos' : ''}
                 className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${
                   abaAtiva === 'contatos'
                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300'
                 } ${!isEdicao ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                📞 Contatos
+                📞 Contatos {!isEdicao && '🔒'}
               </button>
               {isEdicao && (
                 <button

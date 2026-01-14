@@ -269,6 +269,62 @@ export interface NotaFiscalItemFormData {
   operacao_fiscal_id?: string | number
   aliquota_iss?: number
   item_lista_servico?: string
+  
+  // Campos calculados pelo Motor Fiscal
+  origem_mercadoria?: string
+  
+  // ICMS
+  cst_icms?: string
+  csosn_icms?: string
+  modalidade_bc_icms?: string
+  reducao_bc_icms?: number
+  base_calculo_icms?: number
+  aliquota_icms?: number
+  valor_icms?: number
+  
+  // ICMS-ST
+  modalidade_bc_icms_st?: string
+  mva_st?: number
+  reducao_bc_icms_st?: number
+  base_calculo_icms_st?: number
+  aliquota_icms_st?: number
+  valor_icms_st?: number
+  
+  // PIS
+  cst_pis?: string
+  base_calculo_pis?: number
+  aliquota_pis?: number
+  valor_pis?: number
+  
+  // COFINS
+  cst_cofins?: string
+  base_calculo_cofins?: number
+  aliquota_cofins?: number
+  valor_cofins?: number
+  
+  // IPI
+  cst_ipi?: string
+  base_calculo_ipi?: number
+  aliquota_ipi?: number
+  valor_ipi?: number
+  
+  // ISS (NFS-e)
+  base_calculo_iss?: number
+  valor_iss?: number
+  retencao_iss?: boolean
+  codigo_tributacao_municipio?: string
+  municipio_incidencia_iss?: string
+  
+  // Retenções
+  aliquota_ir?: number
+  valor_ir?: number
+  aliquota_csll?: number
+  valor_csll?: number
+  aliquota_inss?: number
+  valor_inss?: number
+  
+  // Mensagens fiscais
+  mensagens_fiscais?: string[]
 }
 
 /**

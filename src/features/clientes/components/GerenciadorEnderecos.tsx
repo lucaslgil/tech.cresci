@@ -97,6 +97,8 @@ export function GerenciadorEnderecos({ clienteId, enderecos, onAtualizarEndereco
   }
 
   async function handleSalvar() {
+    console.log('🔍 Salvando endereço. ClienteId:', clienteId, 'Tipo:', typeof clienteId)
+    
     const resultado = validarEndereco(formData)
     
     if (!resultado.valid) {
@@ -108,12 +110,24 @@ export function GerenciadorEnderecos({ clienteId, enderecos, onAtualizarEndereco
       return
     }
 
+    // Verifica se clienteId existe
+    if (!clienteId) {
+      alert('Erro: Cliente ainda não foi salvo. Salve o cliente primeiro antes de adicionar endereços.')
+      return
+    }
+
     setSalvando(true)
     try {
       if (enderecoEditando) {
         await atualizarEndereco(String(enderecoEditando.id), formData as Partial<ClienteEndereco>)
       } else {
-        await criarEndereco(formData as Partial<ClienteEndereco>)
+        // Adiciona o cliente_id ao criar novo endereço
+        const enderecoComCliente = {
+          ...formData,
+          cliente_id: Number(clienteId)
+        }
+        console.log('📝 Criando endereço com dados:', enderecoComCliente)
+        await criarEndereco(enderecoComCliente as Partial<ClienteEndereco>)
       }
       
       await carregarEnderecos()

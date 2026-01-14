@@ -72,6 +72,8 @@ export function GerenciadorContatos({ clienteId, contatos, onAtualizarContatos }
   }
 
   async function handleSalvar() {
+    console.log('🔍 Salvando contato. ClienteId:', clienteId, 'Tipo:', typeof clienteId)
+    
     const resultado = validarContato(formData)
     
     if (!resultado.valid) {
@@ -83,12 +85,24 @@ export function GerenciadorContatos({ clienteId, contatos, onAtualizarContatos }
       return
     }
 
+    // Verifica se clienteId existe
+    if (!clienteId) {
+      alert('Erro: Cliente ainda não foi salvo. Salve o cliente primeiro antes de adicionar contatos.')
+      return
+    }
+
     setSalvando(true)
     try {
       if (contatoEditando) {
         await atualizarContato(String(contatoEditando.id), formData as Partial<ClienteContato>)
       } else {
-        await criarContato(formData as Partial<ClienteContato>)
+        // Adiciona o cliente_id ao criar novo contato
+        const contatoComCliente = {
+          ...formData,
+          cliente_id: Number(clienteId)
+        }
+        console.log('📝 Criando contato com dados:', contatoComCliente)
+        await criarContato(contatoComCliente as Partial<ClienteContato>)
       }
       
       await carregarContatos()

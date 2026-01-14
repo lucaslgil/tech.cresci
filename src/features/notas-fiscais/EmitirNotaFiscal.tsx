@@ -46,6 +46,29 @@ interface Cliente {
   cep?: string
 }
 
+interface Produto {
+  id: string
+  codigo_interno: string
+  codigo_barras?: string
+  nome: string
+  descricao?: string
+  ncm: string
+  cest?: string
+  cfop_saida?: string
+  unidade_medida: string
+  preco_venda: number
+  preco_custo?: number
+  origem_mercadoria?: number
+  cst_icms?: string
+  csosn_icms?: string
+  aliquota_icms?: number
+  cst_pis?: string
+  aliquota_pis?: number
+  cst_cofins?: string
+  aliquota_cofins?: number
+  ativo: boolean
+}
+
 export default function EmitirNotaFiscal() {
   const location = useLocation()
   const vendaRecebida = location.state?.venda
@@ -61,6 +84,10 @@ export default function EmitirNotaFiscal() {
   // Lista de clientes
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null)
+
+  // Lista de produtos
+  const [produtos, setProdutos] = useState<Produto[]>([])
+  const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null)
 
   const [formData, setFormData] = useState<NotaFiscalFormData>({
     tipo_nota: 'NFE',
@@ -87,6 +114,7 @@ export default function EmitirNotaFiscal() {
   useEffect(() => {
     carregarEmpresasEmissoras()
     carregarClientes()
+    carregarProdutos()
   }, [])
 
   // Pré-preencher dados quando vem de uma venda
@@ -219,6 +247,49 @@ export default function EmitirNotaFiscal() {
     }
   }
 
+  /**
+   * Carregar produtos ativos do sistema
+   */
+  const carregarProdutos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('produtos')
+        .select('id, codigo_interno, codigo_barras, nome, descricao, ncm, cest, cfop_saida, unidade_medida, preco_venda, origem_mercadoria, cst_icms, csosn_icms, aliquota_icms, cst_pis, aliquota_pis, cst_cofins, aliquota_cofins, ativo')
+        .eq('ativo', true)
+        .order('nome')
+
+      if (error) {
+        console.error('Erro ao carregar produtos:', error)
+        return
+      }
+
+      console.log('✅ Produtos carregados:', data?.length)
+      setProdutos(data || [])
+    } catch (error) {
+      console.error('❌ Erro ao carregar produtos:', error)
+    }
+  }
+
+  /**
+   * Preencher dados do produto selecionado no itemAtual
+   */
+  const preencherDadosProduto = (produto: Produto) => {
+    console.log('📦 Preenchendo dados do produto:', produto)
+    
+    setItemAtual({
+      codigo_produto: produto.codigo_interno,
+      descricao: produto.nome,
+      ncm: produto.ncm,
+      cfop: produto.cfop_saida || '5102',
+      unidade_comercial: produto.unidade_medida || 'UN',
+      quantidade_comercial: 1,
+      valor_unitario_comercial: produto.preco_venda || 0
+    })
+
+    setProdutoSelecionado(produto)
+    console.log('✅ Dados do produto preenchidos')
+  }
+
   const preencherDadosVenda = async (venda: any) => {
     try {
       setCarregando(true)
@@ -293,11 +364,11 @@ export default function EmitirNotaFiscal() {
           // Aplicar motor fiscal automaticamente
           try {
             const tributosCalculados = await aplicarMotorFiscalNoItem(itemBase, {
-              empresa_id: vendaCompleta.empresa_id,
-              cliente_id: cliente.id,
-              tipo_operacao: 'SAIDA',
-              uf_origem: 'SP', // TODO: Pegar da empresa
-              uf_destino: cliente.estado
+              empresaId: vendaCompleta.empresa_id,
+              tipoDocumento: 'NFE',
+              tipoOperacao: 'SAIDA',
+              ufOrigem: 'SP', // TODO: Pegar da empresa
+              ufDestino: cliente.estado
             })
 
             return {
@@ -351,11 +422,11 @@ export default function EmitirNotaFiscal() {
       setCarregando(true)
       
       const tributosCalculados = await aplicarMotorFiscalNoItem(itemAtual, {
-        empresa_id: formData.empresa_id,
-        cliente_id: undefined, // TODO: Pegar do destinatário se já preenchido
-        tipo_operacao: 'SAIDA',
-        uf_origem: 'SP', // TODO: Pegar da empresa selecionada
-        uf_destino: formData.destinatario_uf || 'SP'
+        empresaId: formData.empresa_id,
+        tipoDocumento: 'NFE',
+        tipoOperacao: 'SAIDA',
+        ufOrigem: 'SP', // TODO: Pegar da empresa selecionada
+        ufDestino: formData.destinatario_uf || 'SP'
       })
 
       const itemComImpostos = {
@@ -803,6 +874,42 @@ export default function EmitirNotaFiscal() {
           <div className="space-y-4">
             <h2 className="text-xl font-semibold text-slate-800 mb-4">Produtos/Serviços</h2>
             
+            {/* Buscar Produto do Cadastro */}
+            <div className="bg-blue-50 p-4 rounded-md border-2 border-blue-200">
+              <h3 className="font-medium text-blue-900 mb-3">🔍 Buscar Produto do Cadastro</h3>
+              <p className="text-sm text-blue-700 mb-3">
+                Selecione um produto já cadastrado no sistema para preencher automaticamente os dados.
+              </p>
+              
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-blue-900 mb-1">
+                    Produto
+                  </label>
+                  <select
+                    value={produtoSelecionado?.id || ''}
+                    onChange={(e) => {
+                      const produto = produtos.find(p => p.id === e.target.value)
+                      if (produto) {
+                        preencherDadosProduto(produto)
+                      }
+                    }}
+                    className="w-full px-3 py-2 border-2 border-blue-300 rounded-md focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    <option value="">Selecione um produto...</option>
+                    {produtos.map(produto => (
+                      <option key={produto.id} value={produto.id}>
+                        {produto.codigo_interno} - {produto.nome} (NCM: {produto.ncm})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Total: {produtos.length} produto(s) ativo(s) disponível(is)
+                  </p>
+                </div>
+              </div>
+            </div>
+            
             {/* Formulário de Item */}
             <div className="bg-slate-50 p-4 rounded-md border border-slate-200">
               <h3 className="font-medium text-slate-700 mb-3">Adicionar Item</h3>
@@ -913,45 +1020,319 @@ export default function EmitirNotaFiscal() {
             {formData.itens.length > 0 && (
               <div className="mt-6">
                 <h3 className="font-medium text-slate-700 mb-3">Itens Adicionados</h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-slate-200">
-                    <thead className="bg-slate-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Código</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Descrição</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Qtd</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Valor Unit.</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Total</th>
-                        <th className="px-4 py-3"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-slate-200">
-                      {formData.itens.map((item, index) => (
-                        <tr key={index}>
-                          <td className="px-4 py-3 text-sm text-slate-900">{item.codigo_produto}</td>
-                          <td className="px-4 py-3 text-sm text-slate-900">{item.descricao}</td>
-                          <td className="px-4 py-3 text-sm text-slate-900">{item.quantidade_comercial}</td>
-                          <td className="px-4 py-3 text-sm text-slate-900">R$ {item.valor_unitario_comercial.toFixed(2)}</td>
-                          <td className="px-4 py-3 text-sm font-semibold text-slate-900">R$ {calcularTotalItem(item).toFixed(2)}</td>
-                          <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => removerItem(index)}
-                              className="text-red-600 hover:text-red-800"
-                            >
-                              Remover
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-slate-50">
-                        <td colSpan={4} className="px-4 py-3 text-right font-semibold text-slate-700">Total da Nota:</td>
-                        <td className="px-4 py-3 text-lg font-bold text-blue-600">R$ {calcularTotalNota().toFixed(2)}</td>
-                        <td></td>
-                      </tr>
-                    </tfoot>
-                  </table>
+                <div className="space-y-4">
+                  {formData.itens.map((item, index) => (
+                    <div key={index} className="border border-slate-300 rounded-lg overflow-hidden bg-white">
+                      {/* Cabeçalho do Item */}
+                      <div className="bg-[#394353] text-white p-3 flex justify-between items-center">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <span className="font-semibold text-base">Item {index + 1}</span>
+                            <span className="text-sm opacity-90">|</span>
+                            <span className="text-sm font-medium">{item.codigo_produto}</span>
+                            <span className="text-sm opacity-90">-</span>
+                            <span className="text-sm">{item.descricao}</span>
+                          </div>
+                          <div className="flex items-center gap-4 mt-1 text-xs opacity-90">
+                            <span>NCM: {item.ncm}</span>
+                            {item.cest && <span>CEST: {item.cest}</span>}
+                            <span>CFOP: {item.cfop}</span>
+                            <span>Origem: {item.origem_mercadoria}</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => removerItem(index)}
+                          className="ml-4 px-3 py-1 bg-red-600 hover:bg-red-700 rounded text-sm font-semibold transition-colors"
+                        >
+                          Remover
+                        </button>
+                      </div>
+
+                      {/* Corpo - Informações Detalhadas */}
+                      <div className="p-4">
+                        {/* Linha 1: Valores Comerciais */}
+                        <div className="grid grid-cols-6 gap-4 pb-3 border-b border-slate-200">
+                          <div>
+                            <label className="text-xs font-medium text-slate-500 uppercase">Quantidade</label>
+                            <p className="text-sm font-semibold text-slate-900 mt-1">
+                              {item.quantidade_comercial.toFixed(2)} {item.unidade_comercial}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-slate-500 uppercase">Valor Unitário</label>
+                            <p className="text-sm font-semibold text-slate-900 mt-1">
+                              R$ {item.valor_unitario_comercial.toFixed(2)}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-slate-500 uppercase">Valor Bruto</label>
+                            <p className="text-sm font-semibold text-slate-900 mt-1">
+                              R$ {(item.quantidade_comercial * item.valor_unitario_comercial).toFixed(2)}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-slate-500 uppercase">Desconto</label>
+                            <p className="text-sm font-semibold text-red-600 mt-1">
+                              {item.valor_desconto ? `- R$ ${item.valor_desconto.toFixed(2)}` : 'R$ 0,00'}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-slate-500 uppercase">Outras Despesas</label>
+                            <p className="text-sm font-semibold text-slate-900 mt-1">
+                              {item.valor_outras_despesas ? `R$ ${item.valor_outras_despesas.toFixed(2)}` : 'R$ 0,00'}
+                            </p>
+                          </div>
+                          <div className="bg-blue-50 p-2 rounded">
+                            <label className="text-xs font-bold text-blue-900 uppercase">Total do Item</label>
+                            <p className="text-base font-bold text-blue-900 mt-1">
+                              R$ {calcularTotalItem(item).toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Linha 2: Tributos Calculados */}
+                        <div className="mt-3">
+                          <h4 className="text-xs font-bold text-slate-700 uppercase mb-2 flex items-center gap-2">
+                            <span className="w-1 h-4 bg-blue-600 rounded"></span>
+                            Tributos Calculados pelo Motor Fiscal
+                          </h4>
+                          
+                          <div className="grid grid-cols-4 gap-3">
+                            {/* ICMS */}
+                            <div className="bg-amber-50 border border-amber-200 rounded p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                                  ICMS
+                                </div>
+                                <div>
+                                  <p className="text-xs font-medium text-amber-900">
+                                    {item.csosn_icms ? `CSOSN: ${item.csosn_icms}` : item.cst_icms ? `CST: ${item.cst_icms}` : 'N/A'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-slate-600">Base Cálculo:</span>
+                                  <span className="font-semibold text-slate-900">R$ {(item.base_calculo_icms || 0).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-slate-600">Alíquota:</span>
+                                  <span className="font-semibold text-slate-900">{(item.aliquota_icms || 0).toFixed(2)}%</span>
+                                </div>
+                                <div className="flex justify-between text-xs pt-1 border-t border-amber-300">
+                                  <span className="font-bold text-amber-900">Valor ICMS:</span>
+                                  <span className="font-bold text-amber-900">R$ {(item.valor_icms || 0).toFixed(2)}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* PIS */}
+                            <div className="bg-green-50 border border-green-200 rounded p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                                  PIS
+                                </div>
+                                <div>
+                                  <p className="text-xs font-medium text-green-900">
+                                    {item.cst_pis ? `CST: ${item.cst_pis}` : 'N/A'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-slate-600">Base Cálculo:</span>
+                                  <span className="font-semibold text-slate-900">R$ {(item.base_calculo_pis || 0).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-slate-600">Alíquota:</span>
+                                  <span className="font-semibold text-slate-900">{(item.aliquota_pis || 0).toFixed(2)}%</span>
+                                </div>
+                                <div className="flex justify-between text-xs pt-1 border-t border-green-300">
+                                  <span className="font-bold text-green-900">Valor PIS:</span>
+                                  <span className="font-bold text-green-900">R$ {(item.valor_pis || 0).toFixed(2)}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* COFINS */}
+                            <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                                  COFINS
+                                </div>
+                                <div>
+                                  <p className="text-xs font-medium text-blue-900">
+                                    {item.cst_cofins ? `CST: ${item.cst_cofins}` : 'N/A'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-slate-600">Base Cálculo:</span>
+                                  <span className="font-semibold text-slate-900">R$ {(item.base_calculo_cofins || 0).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-slate-600">Alíquota:</span>
+                                  <span className="font-semibold text-slate-900">{(item.aliquota_cofins || 0).toFixed(2)}%</span>
+                                </div>
+                                <div className="flex justify-between text-xs pt-1 border-t border-blue-300">
+                                  <span className="font-bold text-blue-900">Valor COFINS:</span>
+                                  <span className="font-bold text-blue-900">R$ {(item.valor_cofins || 0).toFixed(2)}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* IPI */}
+                            <div className="bg-purple-50 border border-purple-200 rounded p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                                  IPI
+                                </div>
+                                <div>
+                                  <p className="text-xs font-medium text-purple-900">
+                                    {item.cst_ipi ? `CST: ${item.cst_ipi}` : 'N/A'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-slate-600">Base Cálculo:</span>
+                                  <span className="font-semibold text-slate-900">R$ {(item.base_calculo_ipi || 0).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-slate-600">Alíquota:</span>
+                                  <span className="font-semibold text-slate-900">{(item.aliquota_ipi || 0).toFixed(2)}%</span>
+                                </div>
+                                <div className="flex justify-between text-xs pt-1 border-t border-purple-300">
+                                  <span className="font-bold text-purple-900">Valor IPI:</span>
+                                  <span className="font-bold text-purple-900">R$ {(item.valor_ipi || 0).toFixed(2)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Linha 3: ICMS-ST e Reforma Tributária (IBS/CBS) */}
+                          <div className="grid grid-cols-2 gap-3 mt-3">
+                            {/* ICMS-ST */}
+                            {(item.valor_icms_st && item.valor_icms_st > 0) && (
+                              <div className="bg-orange-50 border border-orange-200 rounded p-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className="w-8 h-8 bg-orange-600 rounded-full flex items-center justify-center text-white font-bold text-[10px]">
+                                    ST
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-bold text-orange-900">ICMS - Substituição Tributária</p>
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-slate-600">Base Cálculo ST:</span>
+                                    <span className="font-semibold text-slate-900">R$ {(item.base_calculo_icms_st || 0).toFixed(2)}</span>
+                                  </div>
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-slate-600">Alíquota ST:</span>
+                                    <span className="font-semibold text-slate-900">{(item.aliquota_icms_st || 0).toFixed(2)}%</span>
+                                  </div>
+                                  {item.mva_st && (
+                                    <div className="flex justify-between text-xs">
+                                      <span className="text-slate-600">MVA:</span>
+                                      <span className="font-semibold text-slate-900">{item.mva_st.toFixed(2)}%</span>
+                                    </div>
+                                  )}
+                                  <div className="flex justify-between text-xs pt-1 border-t border-orange-300">
+                                    <span className="font-bold text-orange-900">Valor ICMS-ST:</span>
+                                    <span className="font-bold text-orange-900">R$ {item.valor_icms_st.toFixed(2)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* IBS/CBS - Reforma Tributária */}
+                            <div className="bg-indigo-50 border-2 border-indigo-300 rounded p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-10 h-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded flex items-center justify-center text-white font-bold text-[9px]">
+                                  IBS/CBS
+                                </div>
+                                <div>
+                                  <p className="text-xs font-bold text-indigo-900">Reforma Tributária 2026</p>
+                                  <p className="text-[10px] text-indigo-700">Lei Complementar 214/2026</p>
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-xs bg-white rounded px-2 py-1">
+                                  <span className="text-indigo-700 font-medium">IBS (Estadual/Municipal):</span>
+                                  <span className="font-bold text-indigo-900">27%</span>
+                                </div>
+                                <div className="flex justify-between text-xs bg-white rounded px-2 py-1">
+                                  <span className="text-purple-700 font-medium">CBS (Federal):</span>
+                                  <span className="font-bold text-purple-900">12%</span>
+                                </div>
+                                <div className="flex justify-between text-xs pt-1 border-t-2 border-indigo-400 mt-1">
+                                  <span className="font-bold text-indigo-900">Alíquota Total:</span>
+                                  <span className="font-bold text-indigo-900 text-sm">39%</span>
+                                </div>
+                                <div className="bg-gradient-to-r from-indigo-100 to-purple-100 rounded px-2 py-1 mt-1">
+                                  <div className="flex justify-between text-xs">
+                                    <span className="font-bold text-slate-700">Valor Estimado:</span>
+                                    <span className="font-bold text-indigo-900">
+                                      R$ {((item.quantidade_comercial * item.valor_unitario_comercial) * 0.39).toFixed(2)}
+                                    </span>
+                                  </div>
+                                  <p className="text-[9px] text-slate-600 mt-1">
+                                    * Valor estimado considerando alíquota padrão
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Total de Tributos */}
+                          <div className="mt-3 bg-gradient-to-r from-slate-700 to-slate-800 rounded p-3">
+                            <div className="flex justify-between items-center text-white">
+                              <div>
+                                <p className="text-xs font-medium opacity-90">Total de Tributos Calculados (sem IBS/CBS)</p>
+                                <p className="text-[10px] opacity-75 mt-0.5">ICMS + PIS + COFINS + IPI + ICMS-ST</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-2xl font-bold">
+                                  R$ {(
+                                    (item.valor_icms || 0) + 
+                                    (item.valor_pis || 0) + 
+                                    (item.valor_cofins || 0) + 
+                                    (item.valor_ipi || 0) + 
+                                    (item.valor_icms_st || 0)
+                                  ).toFixed(2)}
+                                </p>
+                                <p className="text-xs opacity-90 mt-1">
+                                  Carga Tributária: {(
+                                    ((item.valor_icms || 0) + 
+                                    (item.valor_pis || 0) + 
+                                    (item.valor_cofins || 0) + 
+                                    (item.valor_ipi || 0) + 
+                                    (item.valor_icms_st || 0)) / 
+                                    (item.quantidade_comercial * item.valor_unitario_comercial) * 100
+                                  ).toFixed(2)}%
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Total Geral da Nota */}
+                <div className="mt-4 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-4">
+                  <div className="flex justify-between items-center text-white">
+                    <div>
+                      <p className="text-sm font-medium opacity-90">Total da Nota Fiscal</p>
+                      <p className="text-xs opacity-75 mt-0.5">{formData.itens.length} item(ns) adicionado(s)</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-3xl font-bold">R$ {calcularTotalNota().toFixed(2)}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
