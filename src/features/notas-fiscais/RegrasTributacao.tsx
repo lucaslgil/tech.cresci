@@ -32,7 +32,6 @@ export default function RegrasTributacao({ empresaId }: Props) {
 
   // Cadastros auxiliares
   const [ncmList, setNcmList] = useState<NCM[]>([])
-  const [cfopList, setCfopList] = useState<CFOP[]>([])
   const [operacoesFiscais, setOperacoesFiscais] = useState<OperacaoFiscal[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [loadingAuxiliares, setLoadingAuxiliares] = useState(false)
@@ -78,8 +77,8 @@ export default function RegrasTributacao({ empresaId }: Props) {
       setNcmList(ncms)
 
       // Carregar CFOPs ativos
-      const cfops = await cfopService.listar({ ativo: true })
-      setCfopList(cfops)
+      // const cfops = await cfopService.listar({ ativo: true })
+      // Removido temporariamente
 
       // Carregar Operações Fiscais ativas
       const operacoes = await operacoesFiscaisService.listar({ ativo: true })

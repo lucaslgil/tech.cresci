@@ -5,9 +5,8 @@
 // =====================================================
 
 import { useState, useEffect } from 'react'
-import { FileText, Plus, Search, Calendar, DollarSign, AlertCircle, CheckCircle, XCircle, Loader } from 'lucide-react'
+import { FileText, Plus, DollarSign, AlertCircle, CheckCircle, XCircle, Loader } from 'lucide-react'
 import { notasFiscaisService, type NotaFiscalFormData, type NotaFiscalItemFormData } from '../fiscal/notasFiscaisService'
-import { calculoTributarioService } from '../fiscal/calculoTributarioService'
 import { supabase } from '../../lib/supabase'
 
 export default function EmissaoNotasFiscais() {

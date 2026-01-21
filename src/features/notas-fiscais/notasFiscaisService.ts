@@ -139,6 +139,7 @@ export const notasFiscaisService = {
       const impostos = await aplicarMotorFiscalNoItem(item, {
         empresaId: dados.cliente_id ? Number(dados.cliente_id) : 1,
         tipoOperacao: dados.natureza_operacao || 'VENDA',
+        tipoDocumento: 'NFE',
         ufOrigem: 'SP',
         ufDestino: dados.destinatario_uf || 'SP'
       })

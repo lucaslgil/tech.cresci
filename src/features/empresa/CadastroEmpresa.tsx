@@ -245,7 +245,7 @@ export const CadastroEmpresa: React.FC = () => {
     return `EMP${String(ultimoCodigo + 1).padStart(3, '0')}`
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     let formattedValue = value
 
@@ -277,8 +277,29 @@ export const CadastroEmpresa: React.FC = () => {
       cep: '',
       endereco: '',
       numero: '',
+      bairro: '',
+      complemento: '',
       cidade: '',
       estado: '',
+      codigo_municipio: '',
+      inscricao_estadual: '',
+      inscricao_municipal: '',
+      inscricao_suframa: '',
+      regime_tributario: 'SIMPLES' as 'SIMPLES' | 'PRESUMIDO' | 'REAL',
+      crt: '1' as '1' | '2' | '3',
+      cnae_principal: '',
+      emite_nfe: false,
+      serie_nfe: '1',
+      ultimo_numero_nfe: 0,
+      ambiente_nfe: 'HOMOLOGACAO' as 'PRODUCAO' | 'HOMOLOGACAO',
+      contador_nome: '',
+      contador_cpf: '',
+      contador_cnpj: '',
+      contador_crc: '',
+      contador_telefone: '',
+      contador_email: '',
+      ativo: true,
+      matriz: false,
       observacoes: ''
     })
     setEditingEmpresa(null)

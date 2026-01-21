@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { operacoesFiscaisService, cfopService } from './services'
+import { operacoesFiscaisService } from './services'
 import type { OperacaoFiscal } from './types'
 import { Toast } from '../../shared/components/Toast'
 
@@ -64,7 +64,7 @@ export default function CadastroOperacoesFiscais() {
   const salvar = async () => {
     try {
       if (editing) {
-        const res = await operacoesFiscaisService.atualizar(editing.id, form)
+        const res = await operacoesFiscaisService.atualizar(editing.id, form as any)
         if (!res.sucesso) throw new Error(res.mensagem)
         setToast({ tipo: 'success', mensagem: res.mensagem })
       } else {

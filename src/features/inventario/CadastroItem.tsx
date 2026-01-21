@@ -114,7 +114,8 @@ export const CadastroItem: React.FC = () => {
   const [uploadingFiles, setUploadingFiles] = useState<boolean>(false)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [showAnexosModal, setShowAnexosModal] = useState(false)
-  const [itemAnexos, setItemAnexos] = useState<Item | null>(null)
+  const [itemAnexos, setItemAnexos] = useState<Anexo[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Estados para redimensionamento de colunas
   const [columnWidths, setColumnWidths] = useState(() => {
@@ -859,7 +860,13 @@ export const CadastroItem: React.FC = () => {
     }
   }
 
-  const deleteAnexo = async (item: Item, anexo: Anexo) => {
+  const deleteAnexo = async (itemId: string, anexoId: string) => {
+    const item = itens.find(i => i.id === itemId)
+    if (!item) return
+    
+    const anexo = (item.anexos || []).find(a => a.id === anexoId)
+    if (!anexo) return
+    
     if (!confirm(`Tem certeza que deseja excluir o anexo "${anexo.nome}"?`)) {
       return
     }
@@ -885,10 +892,8 @@ export const CadastroItem: React.FC = () => {
       setToast({ message: 'Anexo excluído com sucesso!', type: 'success' })
       await fetchItens()
 
-      // Atualizar modal se estiver aberto
-      if (itemAnexos && itemAnexos.id === item.id) {
-        setItemAnexos({ ...item, anexos: anexosAtualizados })
-      }
+      // Atualizar itemAnexos se o modal estiver aberto
+      setItemAnexos(anexosAtualizados)
     } catch (error: any) {
       setToast({ message: error.message || 'Erro ao excluir anexo', type: 'error' })
     }
@@ -1713,7 +1718,7 @@ export const CadastroItem: React.FC = () => {
                             </button>
                             <button
                               type="button"
-                              onClick={() => deleteAnexo(editingItem, anexo)}
+                              onClick={() => deleteAnexo(editingItem?.id || '', anexo.id)}
                               className="p-1 text-red-600 hover:text-red-800"
                               title="Excluir"
                             >
@@ -2099,7 +2104,7 @@ export const CadastroItem: React.FC = () => {
                   onClick={() => {
                     setShowAnexosModal(false)
                     setSelectedFiles([])
-                    setItemAnexos([])
+                    setItemAnexos([] as Anexo[])
                   }}
                   className="text-gray-400 hover:text-gray-600"
                 >
@@ -2150,7 +2155,7 @@ export const CadastroItem: React.FC = () => {
                           </svg>
                         </button>
                         <button
-                          onClick={() => deleteAnexo(anexo.id, anexo.url)}
+                          onClick={() => deleteAnexo(editingItem?.id || '', anexo.id)}
                           className="p-1.5 text-red-600 hover:bg-red-50 rounded"
                           title="Excluir"
                         >
@@ -2239,7 +2244,7 @@ export const CadastroItem: React.FC = () => {
                 onClick={() => {
                   setShowAnexosModal(false)
                   setSelectedFiles([])
-                  setItemAnexos([])
+                  setItemAnexos([] as Anexo[])
                 }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border rounded-md hover:bg-gray-50"
                 style={{ borderColor: '#C9C4B5' }}
