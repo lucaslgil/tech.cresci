@@ -3,6 +3,7 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase'
 import TermoResponsabilidade from './TermoResponsabilidade'
 import * as XLSX from 'xlsx'
 import { Toast } from '../../shared/components/Toast'
+import { Package, Users, AlertCircle } from 'lucide-react'
 
 
 interface Anexo {
@@ -997,6 +998,58 @@ export const CadastroItem: React.FC = () => {
               </svg>
               Importar
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Dashboard Compacto */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        {/* Total de Itens */}
+        <div className="group bg-gradient-to-br from-blue-50 to-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-blue-100 hover:border-blue-200 overflow-hidden">
+          <div className="p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex-shrink-0 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-2 shadow-md group-hover:scale-105 transition-transform duration-300">
+                <Package className="h-5 w-5 text-white" />
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Total de Itens</p>
+                <p className="text-2xl font-bold text-gray-900 mt-0.5">{filteredItens.length}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Atribuídos */}
+        <div className="group bg-gradient-to-br from-green-50 to-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-green-100 hover:border-green-200 overflow-hidden">
+          <div className="p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex-shrink-0 bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-2 shadow-md group-hover:scale-105 transition-transform duration-300">
+                <Users className="h-5 w-5 text-white" />
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-semibold text-green-600 uppercase tracking-wider">Atribuídos</p>
+                <p className="text-2xl font-bold text-gray-900 mt-0.5">
+                  {filteredItens.filter(item => item.responsavel_id).length}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Não Atribuídos */}
+        <div className="group bg-gradient-to-br from-amber-50 to-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-amber-100 hover:border-amber-200 overflow-hidden">
+          <div className="p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex-shrink-0 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg p-2 shadow-md group-hover:scale-105 transition-transform duration-300">
+                <AlertCircle className="h-5 w-5 text-white" />
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Não Atribuídos</p>
+                <p className="text-2xl font-bold text-gray-900 mt-0.5">
+                  {filteredItens.filter(item => !item.responsavel_id).length}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

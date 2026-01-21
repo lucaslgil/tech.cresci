@@ -89,6 +89,10 @@ export default function EmitirNotaFiscal() {
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null)
 
+  // Controle de numeração
+  const [proximoNumero, setProximoNumero] = useState<number | null>(null)
+  const [carregandoNumero, setCarregandoNumero] = useState(false)
+
   const [formData, setFormData] = useState<NotaFiscalFormData>({
     tipo_nota: 'NFE',
     serie: 1,
@@ -110,6 +114,13 @@ export default function EmitirNotaFiscal() {
     valor_unitario_comercial: 0
   })
   
+  // Carregar próximo número quando empresa ou tipo de nota mudar
+  useEffect(() => {
+    if (formData.empresa_id && formData.tipo_nota && formData.serie) {
+      carregarProximoNumero()
+    }
+  }, [formData.empresa_id, formData.tipo_nota, formData.serie])
+
   // Carregar empresas emissoras e clientes ao montar
   useEffect(() => {
     carregarEmpresasEmissoras()
@@ -129,6 +140,47 @@ export default function EmitirNotaFiscal() {
       console.log('⏳ Aguardando carregamento das empresas...')
     }
   }, [vendaRecebida, empresas])
+
+  const carregarProximoNumero = async () => {
+    try {
+      setCarregandoNumero(true)
+      console.log('🔢 Buscando próximo número...')
+      
+      const { data, error } = await supabase
+        .rpc('get_proximo_numero_nota', {
+          p_tipo_nota: formData.tipo_nota,
+          p_serie: formData.serie,
+          p_ambiente: 'HOMOLOGACAO' // TODO: Buscar da empresa
+        })
+
+      if (error) {
+        console.error('❌ Erro ao buscar próximo número:', error)
+        // Se não existir registro, buscar último número das notas fiscais
+        const { data: ultimaNota } = await supabase
+          .from('notas_fiscais')
+          .select('numero')
+          .eq('tipo_nota', formData.tipo_nota)
+          .eq('serie', formData.serie)
+          .order('numero', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        
+        const proximo = ultimaNota ? ultimaNota.numero + 1 : 1
+        setProximoNumero(proximo)
+        console.log(`✅ Próximo número (calculado): ${proximo}`)
+      } else {
+        // Somar 1 ao último número para obter o próximo
+        const proximo = (data as number) + 1
+        setProximoNumero(proximo)
+        console.log(`✅ Próximo número: ${proximo}`)
+      }
+    } catch (error) {
+      console.error('❌ Erro ao carregar próximo número:', error)
+      setProximoNumero(1)
+    } finally {
+      setCarregandoNumero(false)
+    }
+  }
 
   const carregarEmpresasEmissoras = async () => {
     try {
@@ -343,18 +395,18 @@ export default function EmitirNotaFiscal() {
       // Converter itens da venda para itens da nota fiscal
       const itensNota: NotaFiscalItemFormData[] = await Promise.all(
         (vendaCompleta.vendas_itens || []).map(async (itemVenda: any) => {
-          // Buscar dados do produto para pegar NCM
+          // Buscar dados do produto para pegar NCM e código interno
           const { data: produto } = await supabase
             .from('produtos')
-            .select('ncm, cfop_padrao')
+            .select('ncm, cfop_saida, codigo_interno')
             .eq('id', itemVenda.produto_id)
             .single()
 
           const itemBase: NotaFiscalItemFormData = {
-            codigo_produto: itemVenda.codigo_produto || String(itemVenda.produto_id),
+            codigo_produto: produto?.codigo_interno || itemVenda.codigo_produto || String(itemVenda.produto_id),
             descricao: itemVenda.descricao,
             ncm: produto?.ncm || '00000000',
-            cfop: produto?.cfop_padrao || '5102',
+            cfop: produto?.cfop_saida || '5102',
             unidade_comercial: itemVenda.unidade || 'UN',
             quantidade_comercial: itemVenda.quantidade,
             valor_unitario_comercial: itemVenda.valor_unitario,
@@ -501,6 +553,44 @@ export default function EmitirNotaFiscal() {
     return true
   }
 
+  const handleSalvarRascunho = async () => {
+    if (formData.itens.length === 0) {
+      setToast({ tipo: 'error', mensagem: 'Adicione pelo menos um item' })
+      return
+    }
+
+    if (!formData.destinatario_cpf_cnpj || !formData.destinatario_nome) {
+      setToast({ tipo: 'error', mensagem: 'Preencha os dados do destinatário' })
+      return
+    }
+
+    setCarregando(true)
+    try {
+      const nota = await notasFiscaisService.criarRascunho(formData)
+      setToast({ 
+        tipo: 'success', 
+        mensagem: `Rascunho salvo com sucesso! Número reservado: ${nota.numero}/${nota.serie}` 
+      })
+      
+      // Resetar formulário
+      setFormData({
+        tipo_nota: 'NFE',
+        serie: 1,
+        natureza_operacao: 'Venda de mercadoria',
+        finalidade: '1',
+        modalidade_frete: '9',
+        forma_pagamento: '0',
+        itens: [],
+        empresa_id: undefined
+      })
+      setEtapaAtual(1)
+    } catch (error) {
+      setToast({ tipo: 'error', mensagem: error instanceof Error ? error.message : 'Erro ao salvar rascunho' })
+    } finally {
+      setCarregando(false)
+    }
+  }
+
   const handleSubmit = async () => {
     if (formData.itens.length === 0) {
       setToast({ tipo: 'error', mensagem: 'Adicione pelo menos um item' })
@@ -527,7 +617,8 @@ export default function EmitirNotaFiscal() {
           finalidade: '1',
           modalidade_frete: '9',
           forma_pagamento: '0',
-          itens: []
+          itens: [],
+          empresa_id: undefined
         })
         setEtapaAtual(1)
       } else {
@@ -544,10 +635,39 @@ export default function EmitirNotaFiscal() {
     <div className="min-h-screen bg-slate-50 p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-slate-800">Emitir Nota Fiscal</h1>
-        <p className="text-slate-600 mt-2">
-          Emissão de NF-e (modelo 55) e NFC-e (modelo 65)
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-800">Emitir Nota Fiscal</h1>
+            <p className="text-slate-600 mt-2">
+              Emissão de NF-e (modelo 55) e NFC-e (modelo 65)
+            </p>
+          </div>
+          
+          {/* Exibir número da nota */}
+          {proximoNumero !== null && formData.empresa_id && (
+            <div className="bg-[#394353] text-white px-6 py-4 rounded-lg shadow-lg">
+              <div className="text-xs font-medium text-slate-300 mb-1">Próxima Nota</div>
+              <div className="flex items-center gap-2">
+                <div className="text-3xl font-bold">
+                  {String(proximoNumero).padStart(6, '0')}
+                </div>
+                <div className="text-sm">
+                  <div className="font-semibold">{formData.tipo_nota}</div>
+                  <div className="text-slate-300 text-xs">Série {formData.serie}</div>
+                </div>
+              </div>
+              {carregandoNumero && (
+                <div className="text-xs text-slate-300 mt-1 flex items-center gap-1">
+                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Atualizando...
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Steps */}
@@ -674,7 +794,30 @@ export default function EmitirNotaFiscal() {
               />
             </div>
 
-            <div className="flex justify-end mt-6">
+            <div className="flex justify-between mt-6">
+              <button
+                onClick={handleSalvarRascunho}
+                disabled={carregando}
+                className="px-6 py-2 bg-[#394353] text-white text-sm font-semibold rounded-md hover:opacity-90 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center gap-2"
+                title="Salvar rascunho e reservar o número da nota"
+              >
+                {carregando ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                    Salvar Rascunho
+                  </>
+                )}
+              </button>
               <button
                 onClick={() => {
                   if (validarEtapa1()) {
@@ -859,12 +1002,37 @@ export default function EmitirNotaFiscal() {
               >
                 Voltar
               </button>
-              <button
-                onClick={() => setEtapaAtual(3)}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Próximo
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSalvarRascunho}
+                  disabled={carregando}
+                  className="px-6 py-2 bg-[#394353] text-white text-sm font-semibold rounded-md hover:opacity-90 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center gap-2"
+                  title="Salvar rascunho e reservar o número da nota"
+                >
+                  {carregando ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                      </svg>
+                      Salvar Rascunho
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setEtapaAtual(3)}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Próximo
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1142,13 +1310,38 @@ export default function EmitirNotaFiscal() {
               >
                 Voltar
               </button>
-              <button
-                onClick={() => setEtapaAtual(4)}
-                disabled={formData.itens.length === 0}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
-              >
-                Próximo
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSalvarRascunho}
+                  disabled={carregando}
+                  className="px-6 py-2 bg-[#394353] text-white text-sm font-semibold rounded-md hover:opacity-90 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center gap-2"
+                  title="Salvar rascunho e reservar o número da nota"
+                >
+                  {carregando ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                      </svg>
+                      Salvar Rascunho
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setEtapaAtual(4)}
+                  disabled={formData.itens.length === 0}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                >
+                  Próximo
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1241,12 +1434,37 @@ export default function EmitirNotaFiscal() {
               >
                 Voltar
               </button>
-              <button
-                onClick={() => setEtapaAtual(5)}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Revisar
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSalvarRascunho}
+                  disabled={carregando}
+                  className="px-6 py-2 bg-[#394353] text-white text-sm font-semibold rounded-md hover:opacity-90 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center gap-2"
+                  title="Salvar rascunho e reservar o número da nota"
+                >
+                  {carregando ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                      </svg>
+                      Salvar Rascunho
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setEtapaAtual(5)}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Revisar
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1287,23 +1505,48 @@ export default function EmitirNotaFiscal() {
               >
                 Voltar
               </button>
-              <button
-                onClick={handleSubmit}
-                disabled={carregando}
-                className="px-8 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {carregando ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Emitindo...
-                  </>
-                ) : (
-                  'Emitir Nota Fiscal'
-                )}
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSalvarRascunho}
+                  disabled={carregando}
+                  className="px-6 py-2 bg-[#394353] text-white text-sm font-semibold rounded-md hover:opacity-90 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center gap-2"
+                  title="Salvar rascunho e reservar o número da nota para concluir depois"
+                >
+                  {carregando ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                      </svg>
+                      Salvar Rascunho
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={carregando}
+                  className="px-8 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {carregando ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Emitindo...
+                    </>
+                  ) : (
+                    'Emitir Nota Fiscal'
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}

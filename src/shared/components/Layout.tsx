@@ -354,7 +354,7 @@ export const Layout: React.FC = () => {
                     onClick={() => { tabs.cadastroItem(); closeMobileMenu(); }}
                     className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
                   >
-                    Cadastrar Item
+                    Cadastro de Itens
                   </button>
                   )}
 

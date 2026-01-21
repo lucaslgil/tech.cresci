@@ -449,13 +449,13 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
           <div>
             <div><span class="bold">Código:</span> ${item.codigo}</div>
             <div><span class="bold">Item:</span> ${item.item}</div>
-            <div><span class="bold">Detalhes:</span> ${item.modelo || '-'}</div>
+            <div><span class="bold">Detalhes:</span> ${item.detalhes || '-'}</div>
             <div><span class="bold">Número de Série:</span> ${item.numero_serie || '-'}</div>
           </div>
           <div>
-            <div><span class="bold">Numero:</span> ${colaborador.telefone || '-'}</div>
-            <div><span class="bold">Tipo:</span> ${colaborador.telefone_comercial?.tipo || '-'}</div>
-            <div><span class="bold">Operadora:</span> ${colaborador.telefone_comercial?.operadora || '-'}</div>
+            <div><span class="bold">Numero:</span> ${colaborador.telefone_comercial?.numero_linha || '-'}</div>
+            <div><span class="bold">Tipo:</span> ${colaborador.telefone_comercial?.tipo || 'eSIM'}</div>
+            <div><span class="bold">Operadora:</span> ${colaborador.telefone_comercial?.operadora || 'Claro'}</div>
           </div>
         </div>
       </li>

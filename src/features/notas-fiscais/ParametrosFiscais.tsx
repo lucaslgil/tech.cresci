@@ -34,6 +34,11 @@ export default function ParametrosFiscais() {
   const [modalAberto, setModalAberto] = useState<'ncm' | 'cfop' | 'operacoes' | 'unidades' | 'icmsst' | 'tipos-contribuinte' | null>(null)
   const [empresaId, setEmpresaId] = useState<number | null>(null)
 
+  // Estados para controle de numeração
+  const [numeracaoNfe, setNumeracaoNfe] = useState({ serie: 1, ultimo_numero: 0, automatico: true })
+  const [numeracaoNfce, setNumeracaoNfce] = useState({ serie: 1, ultimo_numero: 0, automatico: true })
+  const [carregandoNumeracao, setCarregandoNumeracao] = useState(false)
+
   const [parametros, setParametros] = useState<ParametrosFiscais>({
     cnpj: '',
     inscricao_estadual: '',
@@ -102,7 +107,94 @@ export default function ParametrosFiscais() {
   // Carregar parâmetros
   useEffect(() => {
     carregarParametros()
+    carregarNumeracao()
   }, [])
+
+  const carregarNumeracao = async () => {
+    try {
+      setCarregandoNumeracao(true)
+      
+      // Buscar numeração NFe
+      const { data: nfe } = await supabase
+        .from('notas_fiscais_numeracao')
+        .select('*')
+        .eq('tipo_nota', 'NFE')
+        .eq('serie', 1)
+        .eq('ambiente', 'HOMOLOGACAO')
+        .maybeSingle()
+      
+      if (nfe) {
+        setNumeracaoNfe({
+          serie: nfe.serie,
+          ultimo_numero: nfe.ultimo_numero,
+          automatico: nfe.ativo
+        })
+      }
+
+      // Buscar numeração NFCe
+      const { data: nfce } = await supabase
+        .from('notas_fiscais_numeracao')
+        .select('*')
+        .eq('tipo_nota', 'NFCE')
+        .eq('serie', 1)
+        .eq('ambiente', 'HOMOLOGACAO')
+        .maybeSingle()
+      
+      if (nfce) {
+        setNumeracaoNfce({
+          serie: nfce.serie,
+          ultimo_numero: nfce.ultimo_numero,
+          automatico: nfce.ativo
+        })
+      }
+    } catch (error) {
+      console.error('Erro ao carregar numeração:', error)
+    } finally {
+      setCarregandoNumeracao(false)
+    }
+  }
+
+  const salvarNumeracao = async () => {
+    try {
+      setCarregando(true)
+
+      // Atualizar NFe
+      const { error: erroNfe } = await supabase
+        .from('notas_fiscais_numeracao')
+        .update({
+          ultimo_numero: numeracaoNfe.ultimo_numero,
+          ativo: numeracaoNfe.automatico,
+          updated_at: new Date().toISOString()
+        })
+        .eq('tipo_nota', 'NFE')
+        .eq('serie', numeracaoNfe.serie)
+        .eq('ambiente', 'HOMOLOGACAO')
+
+      if (erroNfe) throw erroNfe
+
+      // Atualizar NFCe
+      const { error: erroNfce } = await supabase
+        .from('notas_fiscais_numeracao')
+        .update({
+          ultimo_numero: numeracaoNfce.ultimo_numero,
+          ativo: numeracaoNfce.automatico,
+          updated_at: new Date().toISOString()
+        })
+        .eq('tipo_nota', 'NFCE')
+        .eq('serie', numeracaoNfce.serie)
+        .eq('ambiente', 'HOMOLOGACAO')
+
+      if (erroNfce) throw erroNfce
+
+      setToast({ tipo: 'success', mensagem: 'Numeração atualizada com sucesso!' })
+      await carregarNumeracao()
+    } catch (error) {
+      console.error('Erro ao salvar numeração:', error)
+      setToast({ tipo: 'error', mensagem: 'Erro ao salvar numeração' })
+    } finally {
+      setCarregando(false)
+    }
+  }
 
   const carregarParametros = async () => {
     try {
@@ -362,73 +454,198 @@ export default function ParametrosFiscais() {
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-slate-800 mb-4">Configuração de Numeração</h2>
 
-              <div className="grid grid-cols-2 gap-6">
-                <div className="bg-slate-50 p-4 rounded-md border border-slate-200">
-                  <h3 className="font-semibold text-slate-700 mb-3">NF-e (Modelo 55)</h3>
-                  
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Série NF-e
-                      </label>
-                      <input
-                        type="number"
-                        value={parametros.serie_nfe}
-                        onChange={(e) => setParametros({ ...parametros, serie_nfe: parseInt(e.target.value) })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                        min="1"
-                        max="999"
-                      />
+              {carregandoNumeracao ? (
+                <div className="text-center py-12">
+                  <p className="text-slate-600">Carregando numeração...</p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-6">
+                    {/* NF-e */}
+                    <div className="bg-slate-50 p-4 rounded-md border border-[#C9C4B5]">
+                      <h3 className="font-semibold text-slate-700 mb-3">NF-e (Modelo 55)</h3>
+                      
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Série NF-e
+                          </label>
+                          <input
+                            type="number"
+                            value={numeracaoNfe.serie}
+                            onChange={(e) => setNumeracaoNfe({ ...numeracaoNfe, serie: parseInt(e.target.value) })}
+                            className="w-full px-3 py-2 text-sm border border-[#C9C4B5] rounded-md focus:ring-2 focus:ring-[#394353]"
+                            min="1"
+                            max="999"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Controle de Numeração
+                          </label>
+                          <div className="flex items-center gap-3 p-3 bg-white rounded-md border border-[#C9C4B5]">
+                            <button
+                              onClick={() => setNumeracaoNfe({ ...numeracaoNfe, automatico: !numeracaoNfe.automatico })}
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                numeracaoNfe.automatico ? 'bg-green-600' : 'bg-slate-300'
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                  numeracaoNfe.automatico ? 'translate-x-6' : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                            <div>
+                              <div className="text-sm font-semibold text-slate-700">
+                                {numeracaoNfe.automatico ? 'Automático' : 'Manual'}
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                {numeracaoNfe.automatico 
+                                  ? 'Sistema incrementa automaticamente' 
+                                  : 'Permite alterar manualmente'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Último Número Emitido
+                          </label>
+                          <input
+                            type="number"
+                            value={numeracaoNfe.ultimo_numero}
+                            onChange={(e) => setNumeracaoNfe({ ...numeracaoNfe, ultimo_numero: parseInt(e.target.value) || 0 })}
+                            disabled={numeracaoNfe.automatico}
+                            className={`w-full px-3 py-2 text-sm border border-[#C9C4B5] rounded-md focus:ring-2 focus:ring-[#394353] ${
+                              numeracaoNfe.automatico ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'
+                            }`}
+                            min="0"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">
+                            Próximo número: <strong className="text-[#394353]">{numeracaoNfe.ultimo_numero + 1}</strong>
+                          </p>
+                        </div>
+
+                        {!numeracaoNfe.automatico && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                            <div className="flex gap-2">
+                              <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                              <div className="text-xs text-amber-800">
+                                <strong>Atenção:</strong> Altere este número apenas se necessário. Números duplicados podem causar rejeição pela SEFAZ.
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Próximo Número
-                      </label>
-                      <input
-                        type="number"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md bg-slate-100"
-                        disabled
-                        placeholder="Será obtido automaticamente"
-                      />
-                      <p className="text-xs text-slate-500 mt-1">Controlado automaticamente pelo sistema</p>
+                    {/* NFC-e */}
+                    <div className="bg-slate-50 p-4 rounded-md border border-[#C9C4B5]">
+                      <h3 className="font-semibold text-slate-700 mb-3">NFC-e (Modelo 65)</h3>
+                      
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Série NFC-e
+                          </label>
+                          <input
+                            type="number"
+                            value={numeracaoNfce.serie}
+                            onChange={(e) => setNumeracaoNfce({ ...numeracaoNfce, serie: parseInt(e.target.value) })}
+                            className="w-full px-3 py-2 text-sm border border-[#C9C4B5] rounded-md focus:ring-2 focus:ring-[#394353]"
+                            min="1"
+                            max="999"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Controle de Numeração
+                          </label>
+                          <div className="flex items-center gap-3 p-3 bg-white rounded-md border border-[#C9C4B5]">
+                            <button
+                              onClick={() => setNumeracaoNfce({ ...numeracaoNfce, automatico: !numeracaoNfce.automatico })}
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                numeracaoNfce.automatico ? 'bg-green-600' : 'bg-slate-300'
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                  numeracaoNfce.automatico ? 'translate-x-6' : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                            <div>
+                              <div className="text-sm font-semibold text-slate-700">
+                                {numeracaoNfce.automatico ? 'Automático' : 'Manual'}
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                {numeracaoNfce.automatico 
+                                  ? 'Sistema incrementa automaticamente' 
+                                  : 'Permite alterar manualmente'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Último Número Emitido
+                          </label>
+                          <input
+                            type="number"
+                            value={numeracaoNfce.ultimo_numero}
+                            onChange={(e) => setNumeracaoNfce({ ...numeracaoNfce, ultimo_numero: parseInt(e.target.value) || 0 })}
+                            disabled={numeracaoNfce.automatico}
+                            className={`w-full px-3 py-2 text-sm border border-[#C9C4B5] rounded-md focus:ring-2 focus:ring-[#394353] ${
+                              numeracaoNfce.automatico ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'
+                            }`}
+                            min="0"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">
+                            Próximo número: <strong className="text-[#394353]">{numeracaoNfce.ultimo_numero + 1}</strong>
+                          </p>
+                        </div>
+
+                        {!numeracaoNfce.automatico && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                            <div className="flex gap-2">
+                              <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                              <div className="text-xs text-amber-800">
+                                <strong>Atenção:</strong> Altere este número apenas se necessário. Números duplicados podem causar rejeição pela SEFAZ.
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="bg-slate-50 p-4 rounded-md border border-slate-200">
-                  <h3 className="font-semibold text-slate-700 mb-3">NFC-e (Modelo 65)</h3>
-                  
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Série NFC-e
-                      </label>
-                      <input
-                        type="number"
-                        value={parametros.serie_nfce}
-                        onChange={(e) => setParametros({ ...parametros, serie_nfce: parseInt(e.target.value) })}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                        min="1"
-                        max="999"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Próximo Número
-                      </label>
-                      <input
-                        type="number"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-md bg-slate-100"
-                        disabled
-                        placeholder="Será obtido automaticamente"
-                      />
-                      <p className="text-xs text-slate-500 mt-1">Controlado automaticamente pelo sistema</p>
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mt-6">
+                    <div className="flex gap-3">
+                      <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                      <div className="text-xs text-blue-800">
+                        <p className="font-semibold mb-1">Como funciona o controle de numeração:</p>
+                        <ul className="list-disc list-inside space-y-1">
+                          <li><strong>Automático:</strong> O sistema incrementa o número automaticamente a cada emissão</li>
+                          <li><strong>Manual:</strong> Permite alterar o último número emitido caso precise reiniciar ou ajustar a sequência</li>
+                          <li>Útil para migração de outros sistemas ou correção de sequência</li>
+                          <li>O próximo número sempre será o último número + 1</li>
+                        </ul>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                </>
+              )}
 
               <div className="bg-slate-50 p-4 rounded-md border border-slate-200 mt-6">
                 <h3 className="font-semibold text-slate-700 mb-3">CSC - Código de Segurança do Contribuinte</h3>
@@ -490,9 +707,9 @@ export default function ParametrosFiscais() {
 
               <div className="flex justify-end mt-6">
                 <button
-                  onClick={salvarParametros}
+                  onClick={salvarNumeracao}
                   disabled={carregando}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-slate-400"
+                  className="px-6 py-2 bg-[#394353] text-white text-sm font-semibold rounded-md hover:opacity-90 disabled:bg-slate-400"
                 >
                   {carregando ? 'Salvando...' : 'Salvar Configurações'}
                 </button>
