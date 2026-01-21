@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react'
 import { FileText, Plus, DollarSign, AlertCircle, CheckCircle, XCircle, Loader } from 'lucide-react'
 import { notasFiscaisService, type NotaFiscalFormData, type NotaFiscalItemFormData } from '../fiscal/notasFiscaisService'
+import { aplicarMotorFiscalNoItem } from '../notas-fiscais/fiscalEngine'
 import { supabase } from '../../lib/supabase'
 
 export default function EmissaoNotasFiscais() {
@@ -82,22 +83,53 @@ export default function EmissaoNotasFiscais() {
   }
 
   // Atualizar item
-  function atualizarItem(index: number, campo: string, valor: any) {
+  async function atualizarItem(index: number, campo: string, valor: any) {
     const novosItens = [...itens]
     novosItens[index] = { ...novosItens[index], [campo]: valor }
+    
+    // Se alterou quantidade ou valor, recalcular impostos
+    if (campo === 'quantidade_comercial' || campo === 'valor_unitario_comercial' || campo === 'ncm' || campo === 'cfop') {
+      const item = novosItens[index]
+      if (item.ncm && item.cfop && item.quantidade_comercial > 0 && item.valor_unitario_comercial > 0) {
+        try {
+          const impostos = await aplicarMotorFiscalNoItem(item, {
+            empresaId: formData.empresa_id || 1,
+            tipoDocumento: tipoNota,
+            tipoOperacao: 'VENDA',
+            ufOrigem: 'SP',
+            ufDestino: 'SP',
+            regimeEmitente: 'SIMPLES'
+          })
+          novosItens[index] = { ...novosItens[index], ...impostos }
+        } catch (error) {
+          console.error('Erro ao calcular impostos:', error)
+        }
+      }
+    }
+    
     setItens(novosItens)
   }
 
   // Calcular totais
   function calcularTotais() {
     let totalProdutos = 0
-    let totalTributos = 0
+    let totalICMS = 0
+    let totalST = 0
+    let totalIPI = 0
+    let totalPIS = 0
+    let totalCOFINS = 0
 
     itens.forEach(item => {
       const valorItem = item.quantidade_comercial * item.valor_unitario_comercial
       totalProdutos += valorItem
+      totalICMS += item.valor_icms || 0
+      totalST += item.valor_icms_st || 0
+      totalIPI += item.valor_ipi || 0
+      totalPIS += item.valor_pis || 0
+      totalCOFINS += item.valor_cofins || 0
     })
 
+    const totalTributos = totalICMS + totalST + totalIPI + totalPIS + totalCOFINS
     const valorFrete = formData.valor_frete || 0
     const valorDesconto = formData.valor_desconto || 0
     const valorOutrasDespesas = formData.valor_outras_despesas || 0
@@ -105,6 +137,11 @@ export default function EmissaoNotasFiscais() {
 
     return {
       totalProdutos,
+      totalICMS,
+      totalST,
+      totalIPI,
+      totalPIS,
+      totalCOFINS,
       totalTributos,
       valorTotal
     }
@@ -574,17 +611,40 @@ export default function EmissaoNotasFiscais() {
       {/* Totalizadores */}
       <div className="bg-white p-4 rounded-lg shadow mb-4">
         <h2 className="text-sm font-semibold mb-3">Totais da Nota Fiscal</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="text-center p-3 bg-gray-50 rounded-md">
-            <div className="text-xs text-gray-600 mb-1">Total Produtos</div>
-            <div className="text-base font-semibold">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+          <div className="text-center p-2 bg-blue-50 rounded-md border border-blue-200">
+            <div className="text-xs text-blue-600 mb-1 font-medium">Total Produtos</div>
+            <div className="text-sm font-semibold text-blue-900">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totais.totalProdutos)}
             </div>
           </div>
 
-          <div className="text-center p-3 bg-gray-50 rounded-md">
-            <div className="text-xs text-gray-600 mb-1">Total Tributos (Est.)</div>
-            <div className="text-base font-semibold text-orange-600">
+          <div className="text-center p-2 bg-green-50 rounded-md border border-green-200">
+            <div className="text-xs text-green-600 mb-1 font-medium">Total ICMS</div>
+            <div className="text-sm font-semibold text-green-900">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totais.totalICMS)}
+            </div>
+          </div>
+
+          <div className="text-center p-2 bg-purple-50 rounded-md border border-purple-200">
+            <div className="text-xs text-purple-600 mb-1 font-medium">Total ST</div>
+            <div className="text-sm font-semibold text-purple-900">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totais.totalST)}
+            </div>
+          </div>
+
+          <div className="text-center p-2 bg-amber-50 rounded-md border border-amber-200">
+            <div className="text-xs text-amber-600 mb-1 font-medium">PIS + COFINS</div>
+            <div className="text-sm font-semibold text-amber-900">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totais.totalPIS + totais.totalCOFINS)}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="text-center p-3 bg-orange-50 rounded-md border border-orange-200">
+            <div className="text-xs text-orange-600 mb-1 font-medium">Total Tributos</div>
+            <div className="text-base font-bold text-orange-900">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totais.totalTributos)}
             </div>
           </div>
@@ -601,8 +661,8 @@ export default function EmissaoNotasFiscais() {
           <div className="flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
             <div className="text-xs text-blue-800">
-              <strong>Reforma Tributária 2026:</strong> Esta nota será emitida considerando o período de transição.
-              O sistema calculará automaticamente ICMS/PIS/COFINS (reduzidos) e IBS/CBS (proporcionais).
+              <strong>Motor Fiscal Ativo:</strong> Os impostos são calculados automaticamente com base nas regras de tributação cadastradas.
+              Verifique se o NCM e CFOP estão corretos para garantir o cálculo preciso.
             </div>
           </div>
         </div>
