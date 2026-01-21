@@ -122,11 +122,13 @@ export default function EmissaoNotasFiscais() {
     itens.forEach(item => {
       const valorItem = item.quantidade_comercial * item.valor_unitario_comercial
       totalProdutos += valorItem
-      totalICMS += item.valor_icms || 0
-      totalST += item.valor_icms_st || 0
-      totalIPI += item.valor_ipi || 0
-      totalPIS += item.valor_pis || 0
-      totalCOFINS += item.valor_cofins || 0
+      // Usar any para acessar campos de impostos calculados dinamicamente
+      const itemComImpostos = item as any
+      totalICMS += itemComImpostos.valor_icms || 0
+      totalST += itemComImpostos.valor_icms_st || 0
+      totalIPI += itemComImpostos.valor_ipi || 0
+      totalPIS += itemComImpostos.valor_pis || 0
+      totalCOFINS += itemComImpostos.valor_cofins || 0
     })
 
     const totalTributos = totalICMS + totalST + totalIPI + totalPIS + totalCOFINS
