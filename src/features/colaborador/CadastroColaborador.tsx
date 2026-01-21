@@ -107,6 +107,10 @@ export const CadastroColaborador: React.FC = () => {
     status: '',
     empresa_id: ''
   })
+  
+  // Estado para controle de colaboradores sem itens
+  const [mostrarSemItens, setMostrarSemItens] = useState(false)
+  const [colaboradoresSemItens, setColaboradoresSemItens] = useState<string[]>([])
 
   // Função para buscar setores
   const fetchSetores = async () => {
@@ -314,7 +318,46 @@ export const CadastroColaborador: React.FC = () => {
     fetchColaboradores()
     fetchSetores()
     fetchCargos()
+    fetchColaboradoresSemItens()
   }, [])
+
+  // Função para buscar colaboradores sem itens vinculados
+  const fetchColaboradoresSemItens = async () => {
+    if (!isSupabaseConfigured) {
+      setColaboradoresSemItens([])
+      return
+    }
+
+    try {
+      // Buscar todos os IDs de colaboradores que têm itens vinculados
+      const { data: itensData, error: itensError } = await supabase
+        .from('itens')
+        .select('responsavel_id')
+        .not('responsavel_id', 'is', null)
+
+      if (itensError) throw itensError
+
+      // Extrair IDs únicos de colaboradores com itens
+      const idsComItens = [...new Set((itensData || []).map(item => item.responsavel_id))]
+
+      // Buscar colaboradores que NÃO estão na lista de IDs com itens
+      const { data: colaboradoresData, error: colaboradoresError } = await supabase
+        .from('colaboradores')
+        .select('id')
+
+      if (colaboradoresError) throw colaboradoresError
+
+      // Filtrar colaboradores sem itens
+      const semItens = (colaboradoresData || [])
+        .filter(colab => !idsComItens.includes(colab.id))
+        .map(colab => colab.id)
+
+      setColaboradoresSemItens(semItens)
+    } catch (error) {
+      console.error('Erro ao buscar colaboradores sem itens:', error)
+      setColaboradoresSemItens([])
+    }
+  }
 
   // Funções não utilizadas no momento (campos convertidos para input livre)
   // @ts-ignore
@@ -789,8 +832,11 @@ export const CadastroColaborador: React.FC = () => {
     const matchCargo = !filters.cargo || colaborador.cargo === filters.cargo
     const matchStatus = !filters.status || colaborador.status === filters.status
     const matchEmpresa = !filters.empresa_id || colaborador.empresa_id === filters.empresa_id
+    
+    // Filtro especial para colaboradores sem itens
+    const matchSemItens = !mostrarSemItens || colaboradoresSemItens.includes(colaborador.id)
 
-    return matchSearch && matchSetor && matchCargo && matchStatus && matchEmpresa
+    return matchSearch && matchSetor && matchCargo && matchStatus && matchEmpresa && matchSemItens
   })
 
   // Obter valores únicos para filtros
@@ -913,7 +959,7 @@ export const CadastroColaborador: React.FC = () => {
       </div>
 
       {/* Dashboard Compacto */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
         {/* Total de Colaboradores */}
         <div className="group bg-gradient-to-br from-blue-50 to-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-blue-100 hover:border-blue-200 overflow-hidden">
           <div className="p-3">
@@ -960,6 +1006,48 @@ export const CadastroColaborador: React.FC = () => {
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Colaboradores Sem Itens - Clicável */}
+        <div 
+          onClick={() => {
+            setMostrarSemItens(!mostrarSemItens)
+            if (!mostrarSemItens) {
+              // Limpar outros filtros ao ativar o filtro de sem itens
+              setFilters({
+                setor: '',
+                cargo: '',
+                status: '',
+                empresa_id: ''
+              })
+            }
+          }}
+          className={`group bg-gradient-to-br rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border overflow-hidden cursor-pointer ${
+            mostrarSemItens 
+              ? 'from-purple-100 to-purple-50 border-purple-300 ring-2 ring-purple-400' 
+              : 'from-purple-50 to-white border-purple-100 hover:border-purple-200'
+          }`}
+        >
+          <div className="p-3">
+            <div className="flex items-center justify-between">
+              <div className={`flex-shrink-0 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-2 shadow-md transition-transform duration-300 ${
+                mostrarSemItens ? 'scale-110' : 'group-hover:scale-105'
+              }`}>
+                <Package className="h-5 w-5 text-white" />
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-semibold text-purple-600 uppercase tracking-wider">Sem Itens</p>
+                <p className="text-2xl font-bold text-gray-900 mt-0.5">
+                  {colaboradoresSemItens.length}
+                </p>
+              </div>
+            </div>
+            {mostrarSemItens && (
+              <div className="mt-2 pt-2 border-t border-purple-200">
+                <p className="text-xs text-purple-600 font-medium">✓ Filtro ativo</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
