@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase, isSupabaseConfigured } from '../../lib/supabase'
-import { Edit, Trash2, Mail, Phone, FileText, Building, Package } from 'lucide-react'
+import { Edit, Trash2, Mail, Phone, FileText, Building, Package, Users, UserCheck, UserX } from 'lucide-react'
 import VincularItens from './VincularItens'
 import * as XLSX from 'xlsx'
 import { Toast } from '../../shared/components/Toast'
@@ -99,10 +99,14 @@ export const CadastroColaborador: React.FC = () => {
 
   const [setores, setSetores] = useState<string[]>([])
   const [cargos, setCargos] = useState<string[]>([])
-  
-  // Estados para o dashboard
-  const [totalEquipamentos, setTotalEquipamentos] = useState(0)
-  const [loadingStats, setLoadingStats] = useState(true)
+
+  // Estados para filtros
+  const [filters, setFilters] = useState({
+    setor: '',
+    cargo: '',
+    status: '',
+    empresa_id: ''
+  })
 
   // Função para buscar setores
   const fetchSetores = async () => {
@@ -310,33 +314,7 @@ export const CadastroColaborador: React.FC = () => {
     fetchColaboradores()
     fetchSetores()
     fetchCargos()
-    fetchEquipamentosStats()
   }, [])
-  
-  // Função para buscar estatísticas de equipamentos
-  const fetchEquipamentosStats = async () => {
-    if (!isSupabaseConfigured) {
-      setTotalEquipamentos(5) // Valor demo
-      setLoadingStats(false)
-      return
-    }
-
-    try {
-      const { count, error } = await supabase
-        .from('itens')
-        .select('*', { count: 'exact', head: true })
-        .not('responsavel_id', 'is', null)
-
-      if (error) throw error
-      
-      setTotalEquipamentos(count || 0)
-    } catch (error) {
-      console.error('Erro ao carregar estatísticas:', error)
-      setTotalEquipamentos(0)
-    } finally {
-      setLoadingStats(false)
-    }
-  }
 
   // Funções não utilizadas no momento (campos convertidos para input livre)
   // @ts-ignore
@@ -797,15 +775,28 @@ export const CadastroColaborador: React.FC = () => {
   }
 
   // Filtrar colaboradores
-  const filteredColaboradores = colaboradores.filter(colaborador =>
-    colaborador.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    colaborador.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    colaborador.setor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    colaborador.cargo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (colaborador.cpf && colaborador.cpf.includes(searchTerm)) ||
-    (colaborador.cnpj && colaborador.cnpj.includes(searchTerm)) ||
-    (colaborador.empresas?.razao_social && colaborador.empresas.razao_social.toLowerCase().includes(searchTerm.toLowerCase()))
-  )
+  const filteredColaboradores = colaboradores.filter(colaborador => {
+    const matchSearch = 
+      colaborador.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      colaborador.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      colaborador.setor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      colaborador.cargo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (colaborador.cpf && colaborador.cpf.includes(searchTerm)) ||
+      (colaborador.cnpj && colaborador.cnpj.includes(searchTerm)) ||
+      (colaborador.empresas?.razao_social && colaborador.empresas.razao_social.toLowerCase().includes(searchTerm.toLowerCase()))
+
+    const matchSetor = !filters.setor || colaborador.setor === filters.setor
+    const matchCargo = !filters.cargo || colaborador.cargo === filters.cargo
+    const matchStatus = !filters.status || colaborador.status === filters.status
+    const matchEmpresa = !filters.empresa_id || colaborador.empresa_id === filters.empresa_id
+
+    return matchSearch && matchSetor && matchCargo && matchStatus && matchEmpresa
+  })
+
+  // Obter valores únicos para filtros
+  const uniqueSetores = Array.from(new Set(colaboradores.map(c => c.setor))).filter(Boolean).sort()
+  const uniqueCargos = Array.from(new Set(colaboradores.map(c => c.cargo))).filter(Boolean).sort()
+  const uniqueStatus = Array.from(new Set(colaboradores.map(c => c.status))).filter(Boolean).sort()
 
   if (loadingColaboradores || loadingEmpresas) {
     return (
@@ -818,53 +809,6 @@ export const CadastroColaborador: React.FC = () => {
 
   return (
     <div className="p-3 sm:p-4 md:p-6 max-w-full overflow-x-hidden">
-      {/* Dashboard de Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {/* Card: Colaboradores Ativos */}
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-100 text-sm font-medium mb-1">Colaboradores Ativos</p>
-              {loadingStats ? (
-                <div className="animate-pulse h-10 w-20 bg-blue-400 rounded"></div>
-              ) : (
-                <p className="text-4xl font-bold">
-                  {colaboradores.filter(c => c.status === 'Ativo').length}
-                </p>
-              )}
-              <p className="text-blue-100 text-xs mt-2">
-                Total de {colaboradores.length} cadastrados
-              </p>
-            </div>
-            <div className="bg-blue-400/30 p-4 rounded-full">
-              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        {/* Card: Equipamentos Vinculados */}
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-100 text-sm font-medium mb-1">Equipamentos Vinculados</p>
-              {loadingStats ? (
-                <div className="animate-pulse h-10 w-20 bg-purple-400 rounded"></div>
-              ) : (
-                <p className="text-4xl font-bold">{totalEquipamentos}</p>
-              )}
-              <p className="text-purple-100 text-xs mt-2">
-                Itens sob responsabilidade
-              </p>
-            </div>
-            <div className="bg-purple-400/30 p-4 rounded-full">
-              <Package className="w-12 h-12 text-white" />
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Cabeçalho com botões */}
       <div className="bg-white shadow rounded-lg mb-4 sm:mb-6">
         <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
@@ -964,6 +908,119 @@ export const CadastroColaborador: React.FC = () => {
                 <span className="hidden sm:inline">Cards</span>
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Dashboard Compacto */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        {/* Total de Colaboradores */}
+        <div className="group bg-gradient-to-br from-blue-50 to-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-blue-100 hover:border-blue-200 overflow-hidden">
+          <div className="p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex-shrink-0 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-2 shadow-md group-hover:scale-105 transition-transform duration-300">
+                <Users className="h-5 w-5 text-white" />
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Total</p>
+                <p className="text-2xl font-bold text-gray-900 mt-0.5">{filteredColaboradores.length}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Colaboradores Ativos */}
+        <div className="group bg-gradient-to-br from-green-50 to-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-green-100 hover:border-green-200 overflow-hidden">
+          <div className="p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex-shrink-0 bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-2 shadow-md group-hover:scale-105 transition-transform duration-300">
+                <UserCheck className="h-5 w-5 text-white" />
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-semibold text-green-600 uppercase tracking-wider">Ativos</p>
+                <p className="text-2xl font-bold text-gray-900 mt-0.5">
+                  {filteredColaboradores.filter(c => c.status === 'Ativo').length}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Colaboradores Inativos */}
+        <div className="group bg-gradient-to-br from-amber-50 to-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-amber-100 hover:border-amber-200 overflow-hidden">
+          <div className="p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex-shrink-0 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg p-2 shadow-md group-hover:scale-105 transition-transform duration-300">
+                <UserX className="h-5 w-5 text-white" />
+              </div>
+              <div className="text-right">
+                <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Inativos</p>
+                <p className="text-2xl font-bold text-gray-900 mt-0.5">
+                  {filteredColaboradores.filter(c => c.status !== 'Ativo').length}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div className="bg-white rounded-lg border border-[#C9C4B5] p-3 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Setor</label>
+            <select
+              value={filters.setor}
+              onChange={(e) => setFilters({ ...filters, setor: e.target.value })}
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md"
+            >
+              <option value="">Todos</option>
+              {uniqueSetores.map((setor) => (
+                <option key={setor} value={setor}>{setor}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Cargo</label>
+            <select
+              value={filters.cargo}
+              onChange={(e) => setFilters({ ...filters, cargo: e.target.value })}
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md"
+            >
+              <option value="">Todos</option>
+              {uniqueCargos.map((cargo) => (
+                <option key={cargo} value={cargo}>{cargo}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md"
+            >
+              <option value="">Todos</option>
+              {uniqueStatus.map((status) => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Empresa</label>
+            <select
+              value={filters.empresa_id}
+              onChange={(e) => setFilters({ ...filters, empresa_id: e.target.value })}
+              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md"
+            >
+              <option value="">Todas</option>
+              {empresas.map((empresa) => (
+                <option key={empresa.id} value={empresa.id}>{empresa.razao_social}</option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
