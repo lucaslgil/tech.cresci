@@ -1,8 +1,9 @@
 // =====================================================
 // COMPONENTE - EMITIR NOTA FISCAL
 // Tela para emissão de NF-e e NFC-e
-// Data: 01/12/2025
+// Data: 23/01/2026
 // FASE 1: Unidade Emissora + Pré-preenchimento Venda + Motor Fiscal
+// FASE 2: Documentos (XML, Espelho, DANFE)
 // =====================================================
 
 import { useState, useEffect } from 'react'
@@ -10,6 +11,7 @@ import { useLocation } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { notasFiscaisService } from './notasFiscaisService'
 import { aplicarMotorFiscalNoItem } from './fiscalEngine'
+import { baixarXMLLocal, baixarEspelhoNFe, baixarDANFe } from './documentosService'
 import type { NotaFiscalFormData, NotaFiscalItemFormData } from './types'
 import { FINALIDADES_NOTA, MODALIDADES_FRETE, FORMAS_PAGAMENTO, MEIOS_PAGAMENTO } from './types'
 import { Toast } from '../../shared/components/Toast'
@@ -21,8 +23,12 @@ interface Empresa {
   nome_fantasia: string
   cnpj: string
   emite_nfe: boolean
+  empresa_padrao_nfe?: boolean
   serie_nfe: number
   ambiente_nfe: string
+  estado?: string
+  codigo_municipio?: string
+  regime_tributario?: 'SIMPLES' | 'PRESUMIDO' | 'REAL'
 }
 
 interface Cliente {
@@ -188,9 +194,10 @@ export default function EmitirNotaFiscal() {
       
       const { data, error } = await supabase
         .from('empresas')
-        .select('id, codigo, razao_social, nome_fantasia, cnpj, emite_nfe, serie_nfe, ambiente_nfe')
+        .select('id, codigo, razao_social, nome_fantasia, cnpj, emite_nfe, empresa_padrao_nfe, serie_nfe, ambiente_nfe, estado, codigo_municipio, regime_tributario')
         .eq('ativo', true)
         .eq('emite_nfe', true)
+        .order('empresa_padrao_nfe', { ascending: false })
         .order('razao_social')
 
       if (error) {
@@ -203,8 +210,15 @@ export default function EmitirNotaFiscal() {
       
       setEmpresas(data || [])
       
-      // Selecionar primeira empresa automaticamente se houver apenas uma
-      if (data && data.length === 1) {
+      // Buscar empresa padrão primeiro
+      const empresaPadrao = data?.find(e => e.empresa_padrao_nfe === true)
+      
+      if (empresaPadrao) {
+        console.log('🎯 Empresa padrão encontrada:', empresaPadrao.nome_fantasia)
+        setEmpresaSelecionada(empresaPadrao)
+        setFormData(prev => ({ ...prev, empresa_id: empresaPadrao.id, serie: empresaPadrao.serie_nfe || 1 }))
+      } else if (data && data.length === 1) {
+        // Se houver apenas uma empresa, selecionar automaticamente
         console.log('🎯 Selecionando única empresa automaticamente')
         setEmpresaSelecionada(data[0])
         setFormData(prev => ({ ...prev, empresa_id: data[0].id, serie: data[0].serie_nfe || 1 }))
@@ -214,6 +228,8 @@ export default function EmitirNotaFiscal() {
           tipo: 'error', 
           mensagem: 'Nenhuma empresa configurada para emitir NF-e. Configure uma empresa em Cadastros > Empresa.' 
         })
+      } else {
+        console.log(`ℹ️ ${data.length} empresas disponíveis. Defina uma empresa padrão em Cadastros > Empresa.`)
       }
     } catch (error) {
       console.error('❌ Erro ao carregar empresas:', error)
@@ -398,7 +414,7 @@ export default function EmitirNotaFiscal() {
           // Buscar dados do produto para pegar NCM e código interno
           const { data: produto } = await supabase
             .from('produtos')
-            .select('ncm, cfop_saida, codigo_interno')
+            .select('ncm, cfop_saida, codigo_interno, cest')
             .eq('id', itemVenda.produto_id)
             .single()
 
@@ -406,6 +422,7 @@ export default function EmitirNotaFiscal() {
             codigo_produto: produto?.codigo_interno || itemVenda.codigo_produto || String(itemVenda.produto_id),
             descricao: itemVenda.descricao,
             ncm: produto?.ncm || '00000000',
+            cest: produto?.cest,
             cfop: produto?.cfop_saida || '5102',
             unidade_comercial: itemVenda.unidade || 'UN',
             quantidade_comercial: itemVenda.quantidade,
@@ -413,14 +430,18 @@ export default function EmitirNotaFiscal() {
             valor_desconto: itemVenda.desconto || 0
           }
 
-          // Aplicar motor fiscal automaticamente
+          // Aplicar motor fiscal automaticamente com dados da empresa
           try {
+            const empresaVenda = empresas.find(e => e.id === vendaCompleta.empresa_id)
+            
             const tributosCalculados = await aplicarMotorFiscalNoItem(itemBase, {
               empresaId: vendaCompleta.empresa_id,
               tipoDocumento: 'NFE',
               tipoOperacao: 'SAIDA',
-              ufOrigem: 'SP', // TODO: Pegar da empresa
-              ufDestino: cliente.estado
+              ufOrigem: empresaVenda?.estado || 'SP',
+              ufDestino: cliente.estado || 'SP',
+              regimeEmitente: empresaVenda?.regime_tributario || 'SIMPLES',
+              cfop: itemBase.cfop
             })
 
             return {
@@ -477,14 +498,18 @@ export default function EmitirNotaFiscal() {
         empresaId: formData.empresa_id,
         tipoDocumento: 'NFE',
         tipoOperacao: 'SAIDA',
-        ufOrigem: 'SP', // TODO: Pegar da empresa selecionada
-        ufDestino: formData.destinatario_uf || 'SP'
+        ufOrigem: empresaSelecionada?.estado || 'SP',
+        ufDestino: formData.destinatario_uf || empresaSelecionada?.estado || 'SP',
+        regimeEmitente: empresaSelecionada?.regime_tributario || 'SIMPLES',
+        cfop: itemAtual.cfop
       })
 
       const itemComImpostos = {
         ...itemAtual,
         ...tributosCalculados
       }
+      
+      console.log('✅ Item calculado com impostos:', itemComImpostos)
 
       setFormData(prev => ({
         ...prev,
@@ -1498,6 +1523,62 @@ export default function EmitirNotaFiscal() {
               </p>
             </div>
 
+            {/* SEÇÃO DE DOCUMENTOS */}
+            <div className="border border-[#C9C4B5] rounded-md p-4 bg-white">
+              <h3 className="text-base font-semibold text-slate-800 mb-3">📄 Documentos</h3>
+              <p className="text-sm text-slate-600 mb-4">
+                Antes de transmitir, você pode conferir os documentos gerados:
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Baixar XML (Pré-visualização) */}
+                <button
+                  onClick={() => baixarXMLLocal(formData)}
+                  className="flex items-center gap-3 p-3 border border-slate-300 rounded-md hover:bg-slate-50 transition-colors text-left"
+                >
+                  <svg className="w-10 h-10 text-orange-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-slate-800">Baixar XML</p>
+                    <p className="text-xs text-slate-500">Arquivo XML para validação técnica</p>
+                  </div>
+                  <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </button>
+
+                {/* Baixar Espelho (SEM validade fiscal) */}
+                <button
+                  onClick={() => baixarEspelhoNFe(formData)}
+                  className="flex items-center gap-3 p-3 border border-slate-300 rounded-md hover:bg-slate-50 transition-colors text-left"
+                >
+                  <svg className="w-10 h-10 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-slate-800">Baixar Espelho</p>
+                    <p className="text-xs text-slate-500">PDF para conferência (SEM validade fiscal)</p>
+                  </div>
+                  <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">Atenção</p>
+                    <p className="text-xs text-amber-800">Estes documentos são apenas para conferência. Após a autorização da SEFAZ, a DANFE oficial será disponibilizada.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="flex justify-between">
               <button
                 onClick={() => setEtapaAtual(4)}
@@ -1532,7 +1613,7 @@ export default function EmitirNotaFiscal() {
                 <button
                   onClick={handleSubmit}
                   disabled={carregando}
-                  className="px-8 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-8 py-2 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {carregando ? (
                     <>
@@ -1540,10 +1621,15 @@ export default function EmitirNotaFiscal() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      Emitindo...
+                      Transmitindo...
                     </>
                   ) : (
-                    'Emitir Nota Fiscal'
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Transmitir para SEFAZ
+                    </>
                   )}
                 </button>
               </div>

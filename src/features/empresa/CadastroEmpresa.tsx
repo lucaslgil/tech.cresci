@@ -38,6 +38,7 @@ interface Empresa {
   
   // NF-e
   emite_nfe?: boolean
+  empresa_padrao_nfe?: boolean
   serie_nfe?: string
   ultimo_numero_nfe?: number
   ambiente_nfe?: 'PRODUCAO' | 'HOMOLOGACAO'
@@ -121,6 +122,7 @@ export const CadastroEmpresa: React.FC = () => {
     
     // NF-e
     emite_nfe: false,
+    empresa_padrao_nfe: false,
     serie_nfe: '1',
     ultimo_numero_nfe: 0,
     ambiente_nfe: 'HOMOLOGACAO' as 'PRODUCAO' | 'HOMOLOGACAO',
@@ -289,6 +291,7 @@ export const CadastroEmpresa: React.FC = () => {
       crt: '1' as '1' | '2' | '3',
       cnae_principal: '',
       emite_nfe: false,
+      empresa_padrao_nfe: false,
       serie_nfe: '1',
       ultimo_numero_nfe: 0,
       ambiente_nfe: 'HOMOLOGACAO' as 'PRODUCAO' | 'HOMOLOGACAO',
@@ -945,6 +948,24 @@ export const CadastroEmpresa: React.FC = () => {
                     Emite NF-e
                   </label>
                 </div>
+
+                {formData.emite_nfe && (
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      name="empresa_padrao_nfe"
+                      id="empresa_padrao_nfe"
+                      checked={formData.empresa_padrao_nfe}
+                      onChange={(e) => setFormData({ ...formData, empresa_padrao_nfe: e.target.checked })}
+                      className="w-4 h-4 mr-2"
+                      style={{ accentColor: '#394353' }}
+                    />
+                    <label htmlFor="empresa_padrao_nfe" className="text-sm font-medium text-gray-700">
+                      ⭐ Empresa Padrão NF-e
+                    </label>
+                    <span className="ml-2 text-xs text-gray-500">(Pré-selecionada na emissão)</span>
+                  </div>
+                )}
 
                 {/* SEPARADOR - CONTADOR */}
                 <div className="md:col-span-3 mt-4 pt-4" style={{ borderTopWidth: '2px', borderTopColor: '#C9C4B5' }}>

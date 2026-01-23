@@ -270,6 +270,9 @@ export interface NotaFiscalItemFormData {
   aliquota_iss?: number
   item_lista_servico?: string
   
+  // Vínculo direto com regra de tributação (opcional)
+  regra_tributacao_id?: number
+  
   // Campos calculados pelo Motor Fiscal
   origem_mercadoria?: string
   

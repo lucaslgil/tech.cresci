@@ -33,6 +33,8 @@ export default function ParametrosFiscais() {
   const [toast, setToast] = useState<{ tipo: 'success' | 'error'; mensagem: string } | null>(null)
   const [modalAberto, setModalAberto] = useState<'ncm' | 'cfop' | 'operacoes' | 'unidades' | 'icmsst' | 'tipos-contribuinte' | null>(null)
   const [empresaId, setEmpresaId] = useState<number | null>(null)
+  const [empresas, setEmpresas] = useState<any[]>([])
+  const [empresaSelecionada, setEmpresaSelecionada] = useState<any | null>(null)
 
   // Estados para controle de numeração
   const [numeracaoNfe, setNumeracaoNfe] = useState({ serie: 1, ultimo_numero: 0, automatico: true })
@@ -58,49 +60,30 @@ export default function ParametrosFiscais() {
 
   const carregarEmpresa = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      // Carregar todas as empresas ativas
+      const { data: empresasData, error } = await supabase
+        .from('empresas')
+        .select('*')
+        .eq('ativo', true)
+        .order('empresa_padrao_nfe', { ascending: false })
+        .order('nome_fantasia')
 
-      // Buscar a primeira empresa do usuário através do email
-      const { data: colaborador } = await supabase
-        .from('colaboradores')
-        .select('empresa_id')
-        .eq('email', user.email)
-        .limit(1)
-        .single()
+      if (error) throw error
 
-      if (colaborador) {
-        setEmpresaId(colaborador.empresa_id)
-        console.log('Empresa ID carregado:', colaborador.empresa_id)
-      } else {
-        // Se não encontrou, pega a primeira empresa disponível
-        const { data: empresa } = await supabase
-          .from('empresas')
-          .select('id')
-          .limit(1)
-          .single()
-        
-        if (empresa) {
-          setEmpresaId(empresa.id)
-          console.log('Empresa ID carregado (fallback):', empresa.id)
-        }
+      setEmpresas(empresasData || [])
+
+      // Buscar empresa padrão ou primeira empresa
+      const empresaPadrao = empresasData?.find(e => e.empresa_padrao_nfe === true)
+      const empresaParaSelecionar = empresaPadrao || empresasData?.[0]
+
+      if (empresaParaSelecionar) {
+        setEmpresaId(empresaParaSelecionar.id)
+        setEmpresaSelecionada(empresaParaSelecionar)
+        console.log('Empresa selecionada:', empresaParaSelecionar.nome_fantasia)
       }
     } catch (error) {
-      console.error('Erro ao carregar empresa:', error)
-      // Em caso de erro, tenta pegar a primeira empresa
-      try {
-        const { data: empresa } = await supabase
-          .from('empresas')
-          .select('id')
-          .limit(1)
-          .single()
-        
-        if (empresa) {
-          setEmpresaId(empresa.id)
-        }
-      } catch (err) {
-        console.error('Erro ao carregar empresa fallback:', err)
-      }
+      console.error('Erro ao carregar empresas:', error)
+      setToast({ tipo: 'error', mensagem: 'Erro ao carregar empresas' })
     }
   }
 
@@ -270,120 +253,172 @@ export default function ParametrosFiscais() {
           {/* Aba: Dados da Empresa */}
           {abaAtiva === 'empresa' && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-slate-800 mb-4">Dados da Empresa</h2>
+              <h2 className="text-xl font-semibold text-slate-800 mb-4">Dados da Empresa Emissora</h2>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    CNPJ *
-                  </label>
-                  <input
-                    type="text"
-                    value={parametros.cnpj}
-                    onChange={(e) => setParametros({ ...parametros, cnpj: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                    maxLength={14}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Inscrição Estadual *
-                  </label>
-                  <input
-                    type="text"
-                    value={parametros.inscricao_estadual}
-                    onChange={(e) => setParametros({ ...parametros, inscricao_estadual: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Regime Tributário *
-                  </label>
-                  <select
-                    value={parametros.regime_tributario}
-                    onChange={(e) => setParametros({ ...parametros, regime_tributario: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="1">Simples Nacional</option>
-                    <option value="2">Simples Nacional - Excesso</option>
-                    <option value="3">Regime Normal</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    CRT - Código de Regime Tributário *
-                  </label>
-                  <select
-                    value={parametros.crt}
-                    onChange={(e) => setParametros({ ...parametros, crt: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="1">Simples Nacional</option>
-                    <option value="2">Simples Nacional - Excesso</option>
-                    <option value="3">Regime Normal</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    UF *
-                  </label>
-                  <input
-                    type="text"
-                    value={parametros.uf}
-                    onChange={(e) => setParametros({ ...parametros, uf: e.target.value.toUpperCase() })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                    maxLength={2}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Código IBGE do Município *
-                  </label>
-                  <input
-                    type="text"
-                    value={parametros.codigo_municipio}
-                    onChange={(e) => setParametros({ ...parametros, codigo_municipio: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                    maxLength={7}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Ambiente *
-                  </label>
-                  <select
-                    value={parametros.ambiente}
-                    onChange={(e) => setParametros({ ...parametros, ambiente: e.target.value as any })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="HOMOLOGACAO">Homologação</option>
-                    <option value="PRODUCAO">Produção</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mt-4">
-                <p className="text-sm text-yellow-800">
-                  <strong>Atenção:</strong> Estes dados serão utilizados para identificar o emitente nas notas fiscais. Certifique-se de que estão corretos.
+              {/* Seletor de Empresa */}
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-6">
+                <label className="block text-sm font-semibold text-blue-900 mb-2">
+                  🏢 Selecione a Empresa
+                </label>
+                <select
+                  value={empresaSelecionada?.id || ''}
+                  onChange={(e) => {
+                    const empresa = empresas.find(emp => emp.id === Number(e.target.value))
+                    setEmpresaSelecionada(empresa || null)
+                    setEmpresaId(empresa?.id || null)
+                  }}
+                  className="w-full px-3 py-2 border-2 border-blue-300 rounded-md focus:ring-2 focus:ring-blue-500 text-sm font-medium"
+                >
+                  <option value="">Selecione uma empresa...</option>
+                  {empresas.map(empresa => (
+                    <option key={empresa.id} value={empresa.id}>
+                      {empresa.empresa_padrao_nfe ? '⭐ ' : ''}{empresa.nome_fantasia || empresa.razao_social} - {empresa.cnpj}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-blue-700 mt-2">
+                  💡 A empresa com ⭐ é a padrão para emissão de NF-e
                 </p>
               </div>
 
-              <div className="flex justify-end mt-6">
-                <button
-                  onClick={salvarParametros}
-                  disabled={carregando}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-slate-400"
-                >
-                  {carregando ? 'Salvando...' : 'Salvar Parâmetros'}
-                </button>
-              </div>
+              {empresaSelecionada ? (
+                <>
+                  {/* Dados da Empresa (Modo Leitura) */}
+                  <div className="bg-white border-2 border-[#C9C4B5] rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-base font-semibold text-slate-800">Dados Cadastrais</h3>
+                      <a
+                        href="/cadastro/empresa"
+                        target="_blank"
+                        className="text-sm text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Editar no Cadastro
+                      </a>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Razão Social</label>
+                        <p className="text-sm font-semibold text-slate-900">{empresaSelecionada.razao_social}</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Nome Fantasia</label>
+                        <p className="text-sm font-semibold text-slate-900">{empresaSelecionada.nome_fantasia || '-'}</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">CNPJ</label>
+                        <p className="text-sm font-semibold text-slate-900">{empresaSelecionada.cnpj}</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Inscrição Estadual</label>
+                        <p className="text-sm font-semibold text-slate-900">{empresaSelecionada.inscricao_estadual || '-'}</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Regime Tributário</label>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {empresaSelecionada.regime_tributario === 'SIMPLES' ? 'Simples Nacional' :
+                           empresaSelecionada.regime_tributario === 'PRESUMIDO' ? 'Lucro Presumido' :
+                           empresaSelecionada.regime_tributario === 'REAL' ? 'Lucro Real' : '-'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">CRT</label>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {empresaSelecionada.crt === '1' ? '1 - Simples Nacional' :
+                           empresaSelecionada.crt === '2' ? '2 - Simples Excesso' :
+                           empresaSelecionada.crt === '3' ? '3 - Regime Normal' : '-'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">UF</label>
+                        <p className="text-sm font-semibold text-slate-900">{empresaSelecionada.estado || '-'}</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Código Município (IBGE)</label>
+                        <p className="text-sm font-semibold text-slate-900">{empresaSelecionada.codigo_municipio || '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status de NF-e */}
+                  <div className="bg-white border-2 border-[#C9C4B5] rounded-lg p-4">
+                    <h3 className="text-base font-semibold text-slate-800 mb-4">Configurações de NF-e</h3>
+                    
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Emite NF-e</label>
+                        <p className="text-sm font-semibold">
+                          {empresaSelecionada.emite_nfe ? (
+                            <span className="text-green-600">✅ Sim</span>
+                          ) : (
+                            <span className="text-red-600">❌ Não</span>
+                          )}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Empresa Padrão</label>
+                        <p className="text-sm font-semibold">
+                          {empresaSelecionada.empresa_padrao_nfe ? (
+                            <span className="text-amber-600">⭐ Sim</span>
+                          ) : (
+                            <span className="text-slate-600">Não</span>
+                          )}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Série NF-e</label>
+                        <p className="text-sm font-semibold text-slate-900">{empresaSelecionada.serie_nfe || '1'}</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-slate-500 mb-1">Ambiente</label>
+                        <p className="text-sm font-semibold">
+                          {empresaSelecionada.ambiente_nfe === 'PRODUCAO' ? (
+                            <span className="text-green-600">🟢 Produção</span>
+                          ) : (
+                            <span className="text-yellow-600">🟡 Homologação</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mt-4">
+                    <p className="text-sm text-yellow-800">
+                      <strong>💡 Dica:</strong> Para alterar os dados da empresa, clique em "Editar no Cadastro" acima. Essas informações são usadas como fonte única de verdade para emissão de notas fiscais.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-12 bg-slate-50 rounded-lg border-2 border-dashed border-slate-300">
+                  <svg className="w-16 h-16 text-slate-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <p className="text-sm text-slate-600 mb-4">Nenhuma empresa selecionada</p>
+                  <a
+                    href="/cadastro/empresa"
+                    target="_blank"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#394353] text-white text-sm font-semibold rounded-md hover:opacity-90"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Cadastrar Empresa
+                  </a>
+                </div>
+              )}
             </div>
           )}
 

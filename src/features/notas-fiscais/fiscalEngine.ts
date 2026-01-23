@@ -1,11 +1,20 @@
 // =====================================================
-// MOTOR FISCAL ATUALIZADO - VERSÃO 2.0
+// MOTOR FISCAL ATUALIZADO - VERSÃO 2.1
 // Suporta NF-e, NFC-e e NFS-e com validações completas
-// Data: 05/01/2026
+// Data: 23/01/2026 - Adicionado normalização NCM/CFOP
 // =====================================================
 
 import { regrasTributacaoService } from './regrasTributacaoService'
 import type { NotaFiscalItemFormData } from './types'
+
+/**
+ * Normaliza NCM ou CFOP removendo formatação (pontos, traços, etc)
+ * Exemplo: "0000.00.00" → "00000000"
+ */
+function normalizarCodigoFiscal(codigo: string | null | undefined): string {
+  if (!codigo) return ''
+  return codigo.replace(/[^0-9]/g, '')
+}
 
 interface ContextoFiscal {
   empresaId: number
@@ -150,6 +159,7 @@ export async function validarDocumentoFiscal(
 
 /**
  * Busca a regra de tributação mais específica para o item
+ * Prioriza vínculo direto, depois busca dinâmica
  */
 async function buscarRegraTributacao(
   item: NotaFiscalItemFormData,
@@ -162,6 +172,23 @@ async function buscarRegraTributacao(
       return null
     }
     
+    // 1️⃣ PRIORIDADE: Vínculo direto (regra_tributacao_id do produto)
+    if (item.regra_tributacao_id) {
+      const regraVinculada = regras.find(r => r.id === item.regra_tributacao_id && r.ativo)
+      if (regraVinculada) {
+        console.log('✅ Regra encontrada por vínculo direto:', regraVinculada.nome)
+        return regraVinculada
+      }
+    }
+    
+    // 2️⃣ FALLBACK: Busca dinâmica por NCM + CFOP + UF
+    console.log('🔍 Buscando regra dinamicamente...')
+    
+    // Normalizar códigos do item para comparação
+    const itemNCM = normalizarCodigoFiscal(item.ncm)
+    const itemCEST = normalizarCodigoFiscal(item.cest)
+    const contextoCFOP = normalizarCodigoFiscal(contexto.cfop)
+    
     // Filtrar regras aplicáveis
     const regrasAplicaveis = regras.filter(r => {
       if (!r.ativo) return false
@@ -169,18 +196,27 @@ async function buscarRegraTributacao(
       // Tipo de documento deve corresponder (ou ser genérico)
       if (r.tipo_documento && r.tipo_documento !== contexto.tipoDocumento) return false
       
-      // NCM (prioridade alta)
-      if (r.ncm && r.ncm !== item.ncm) return false
+      // NCM (prioridade alta) - COMPARAÇÃO NORMALIZADA
+      if (r.ncm) {
+        const regraNcm = normalizarCodigoFiscal(r.ncm)
+        if (regraNcm !== itemNCM) return false
+      }
       
-      // CEST
-      if (r.cest && r.cest !== item.cest) return false
+      // CEST - COMPARAÇÃO NORMALIZADA
+      if (r.cest) {
+        const regraCest = normalizarCodigoFiscal(r.cest)
+        if (regraCest !== itemCEST) return false
+      }
       
       // UF Origem/Destino
       if (r.uf_origem && r.uf_origem !== contexto.ufOrigem) return false
       if (r.uf_destino && r.uf_destino !== contexto.ufDestino) return false
       
-      // CFOP
-      if (r.cfop_saida && r.cfop_saida !== contexto.cfop) return false
+      // CFOP - COMPARAÇÃO NORMALIZADA
+      if (r.cfop_saida) {
+        const regraCfop = normalizarCodigoFiscal(r.cfop_saida)
+        if (regraCfop !== contextoCFOP) return false
+      }
       
       // Operação Fiscal
       if (r.operacao_fiscal && r.operacao_fiscal !== contexto.tipoOperacao) return false
