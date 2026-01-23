@@ -196,23 +196,6 @@ export default function ParametrosFiscais() {
     }
   }
 
-  const salvarParametros = async () => {
-    setCarregando(true)
-    try {
-      const { error } = await supabase
-        .from('parametros_fiscais')
-        .upsert(parametros)
-
-      if (error) throw error
-
-      setToast({ tipo: 'success', mensagem: 'Parâmetros salvos com sucesso!' })
-    } catch (error) {
-      setToast({ tipo: 'error', mensagem: error instanceof Error ? error.message : 'Erro ao salvar' })
-    } finally {
-      setCarregando(false)
-    }
-  }
-
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       {/* Header */}

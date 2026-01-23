@@ -333,6 +333,7 @@ export const CadastroEmpresa: React.FC = () => {
         crt: empresa.crt || '1',
         cnae_principal: empresa.cnae_principal || '',
         emite_nfe: empresa.emite_nfe || false,
+        empresa_padrao_nfe: empresa.empresa_padrao_nfe || false,
         serie_nfe: empresa.serie_nfe || '1',
         ultimo_numero_nfe: empresa.ultimo_numero_nfe || 0,
         ambiente_nfe: empresa.ambiente_nfe || 'HOMOLOGACAO',
