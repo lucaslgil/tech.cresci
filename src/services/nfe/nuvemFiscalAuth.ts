@@ -4,6 +4,7 @@
 // =====================================================
 
 import axios from 'axios'
+import { logger } from '../../utils/logger'
 
 interface TokenResponse {
   access_token: string
@@ -36,11 +37,11 @@ export class NuvemFiscalAuth {
   async getAccessToken(): Promise<string> {
     // Se token existe e ainda é válido, retorna do cache
     if (this.accessToken && Date.now() < this.tokenExpiry) {
-      console.log('🔑 Usando token em cache')
+      logger.debug('Usando token em cache')
       return this.accessToken
     }
 
-    console.log('🔄 Obtendo novo token de acesso...')
+    logger.debug('Obtendo novo token de acesso')
     
     try {
       // Montar corpo da requisição OAuth
@@ -69,14 +70,12 @@ export class NuvemFiscalAuth {
       const bufferMs = 5 * 60 * 1000 // 5 minutos
       this.tokenExpiry = Date.now() + expiresInMs - bufferMs
 
-      console.log('✅ Token obtido com sucesso')
-      console.log(`⏰ Token válido por ${response.data.expires_in} segundos`)
-      console.log(`📋 Escopos: ${response.data.scope}`)
+      logger.info('Token obtido com sucesso', { expiresIn: response.data.expires_in })
 
       return this.accessToken
 
     } catch (error: any) {
-      console.error('❌ Erro ao obter token:', error)
+      logger.error('Erro ao obter token OAuth', error)
       
       if (error.response) {
         throw new Error(
@@ -98,6 +97,6 @@ export class NuvemFiscalAuth {
   invalidateToken(): void {
     this.accessToken = null
     this.tokenExpiry = 0
-    console.log('🔄 Token invalidado - será renovado na próxima requisição')
+    logger.debug('Token invalidado - será renovado na próxima requisição')
   }
 }

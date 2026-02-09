@@ -18,6 +18,7 @@ import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { AlertTriangle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { logger } from '../../utils/logger'
 import { notasFiscaisService } from './notasFiscaisService'
 import { aplicarMotorFiscalNoItem } from './fiscalEngine'
 import { baixarXMLLocal, baixarEspelhoNFe } from './documentosService'
@@ -173,14 +174,14 @@ export default function EmitirNotaFiscal() {
       const dadosEdicaoStr = sessionStorage.getItem('nfe_edicao')
       
       if (!dadosEdicaoStr) {
-        console.log('ℹ️ Nenhum dado de edição encontrado no sessionStorage')
+        logger.debug('Nenhum dado de edição encontrado no sessionStorage')
         return
       }
 
-      console.log('📝 Carregando dados de edição do sessionStorage...')
+      logger.debug('Carregando dados de edição do sessionStorage')
       const dadosEdicao = JSON.parse(dadosEdicaoStr)
       
-      console.log('✅ Dados de edição recuperados:', dadosEdicao)
+      logger.info('Dados de edição recuperados')
 
       // Preencher dados do formulário com informações do destinatário
       setFormData(prev => ({
@@ -219,7 +220,7 @@ export default function EmitirNotaFiscal() {
           .then(({ data }) => {
             if (data) {
               setClienteSelecionado(data)
-              console.log('✅ Cliente selecionado:', data)
+              logger.debug('Cliente selecionado', { id: data?.id })
             }
           })
       }
@@ -232,10 +233,10 @@ export default function EmitirNotaFiscal() {
 
       // Limpar sessionStorage após carregar
       sessionStorage.removeItem('nfe_edicao')
-      console.log('🧹 SessionStorage limpo após carregar dados')
+      logger.debug('SessionStorage limpo após carregar dados')
 
     } catch (error) {
-      console.error('❌ Erro ao carregar dados de edição:', error)
+      logger.error('Erro ao carregar dados de edição', error)
       setToast({
         tipo: 'error',
         mensagem: 'Erro ao carregar dados da nota rejeitada'
@@ -267,27 +268,27 @@ export default function EmitirNotaFiscal() {
   // Recalcular CFOP quando UF do cliente mudar
   useEffect(() => {
     if (operacaoSelecionada && formData.destinatario_uf && empresaSelecionada) {
-      console.log('🔄 UF do cliente alterada, recalculando CFOP...')
+      logger.debug('UF do cliente alterada, recalculando CFOP')
       selecionarCFOPAutomatico(operacaoSelecionada)
     }
   }, [formData.destinatario_uf])
 
   // Pré-preencher dados quando vem de uma venda
   useEffect(() => {
-    console.log('🔍 Verificando venda recebida:', vendaRecebida)
-    console.log('🏢 Empresas carregadas:', empresas.length)
+    logger.debug('Verificando venda recebida', { vendaId: vendaRecebida?.id })
+    logger.debug('Empresas carregadas', { count: empresas.length })
     
     if (vendaRecebida && empresas.length > 0) {
-      console.log('✅ Iniciando preenchimento automático...')
+      logger.debug('Iniciando preenchimento automático')
       preencherDadosVenda(vendaRecebida)
     } else if (vendaRecebida && empresas.length === 0) {
-      console.log('⏳ Aguardando carregamento das empresas...')
+      logger.debug('Aguardando carregamento das empresas')
     }
   }, [vendaRecebida, empresas])
 
   const carregarProximoNumero = async () => {
     try {
-      console.log('🔢 Buscando próximo número...')
+      logger.debug('Buscando próximo número')
       
       // Buscar último número da tabela de numeração
       const { data, error } = await supabase
@@ -299,7 +300,7 @@ export default function EmitirNotaFiscal() {
         .maybeSingle()
 
       if (error || !data) {
-        console.warn('⚠️ Registro de numeração não encontrado, usando número 1')
+        logger.warn('Registro de numeração não encontrado, usando número 1')
         setProximoNumero(1)
         return
       }
@@ -307,16 +308,16 @@ export default function EmitirNotaFiscal() {
       // Próximo número = último + 1
       const proximo = data.ultimo_numero + 1
       setProximoNumero(proximo)
-      console.log(`✅ Último número usado: ${data.ultimo_numero}, Próximo: ${proximo}`)
+      logger.info('Próximo número carregado', { ultimo: data.ultimo_numero, proximo })
     } catch (error) {
-      console.error('❌ Erro ao carregar próximo número:', error)
+      logger.error('Erro ao carregar próximo número', error)
       setProximoNumero(1)
     }
   }
 
   const incrementarNumeroNoBanco = async () => {
     try {
-      console.log('➕ Incrementando número no banco...')
+      logger.debug('Incrementando número no banco')
       
       const { error } = await supabase
         .from('notas_fiscais_numeracao')
@@ -329,13 +330,13 @@ export default function EmitirNotaFiscal() {
         .eq('ambiente', 'HOMOLOGACAO')
 
       if (error) {
-        console.error('❌ Erro ao incrementar número:', error)
+        logger.error('Erro ao incrementar número', error)
         throw error
       }
 
-      console.log(`✅ Número incrementado para ${proximoNumero} no banco`)
+      logger.info('Número incrementado', { proximo: proximoNumero })
     } catch (error) {
-      console.error('❌ Erro ao incrementar numeração:', error)
+      logger.error('Erro ao incrementar numeração', error)
       throw error
     }
   }
@@ -343,7 +344,7 @@ export default function EmitirNotaFiscal() {
   const buscarVendasPendentes = async () => {
     try {
       setCarregandoVendas(true)
-      console.log('🔄 Buscando vendas pendentes de faturamento...')
+      logger.debug('Buscando vendas pendentes defaturamento')
       
       const { data, error } = await supabase
         .from('vendas')
@@ -357,14 +358,14 @@ export default function EmitirNotaFiscal() {
         .limit(100)
 
       if (error) {
-        console.error('❌ Erro ao buscar vendas:', error)
+        logger.error('Erro ao buscar vendas', error)
         throw error
       }
 
-      console.log(`✅ Vendas pendentes encontradas: ${data?.length || 0}`)
+      logger.info('Vendas pendentes encontradas', { count: data?.length || 0 })
       setVendasPendentes(data || [])
     } catch (error) {
-      console.error('❌ Erro ao buscar vendas:', error)
+      logger.error('Erro ao buscar vendas', error)
       setToast({ tipo: 'error', mensagem: 'Erro ao buscar vendas pendentes' })
     } finally {
       setCarregandoVendas(false)
@@ -373,7 +374,7 @@ export default function EmitirNotaFiscal() {
 
   const carregarEmpresasEmissoras = async () => {
     try {
-      console.log('🔄 Carregando empresas emissoras...')
+      logger.debug('Carregando empresas emissoras')
       
       const { data, error } = await supabase
         .from('empresas')
@@ -384,13 +385,11 @@ export default function EmitirNotaFiscal() {
         .order('razao_social')
 
       if (error) {
-        console.error('❌ Erro ao carregar empresas:', error)
-        console.error('❌ Detalhes do erro:', JSON.stringify(error, null, 2))
+        logger.error('Erro ao carregar empresas', error)
         throw error
       }
       
-      console.log('✅ Empresas carregadas:', data)
-      console.log(`📊 Total: ${data?.length || 0} empresas`)
+      logger.info('Empresas carregadas', { count: data?.length || 0 })
       
       setEmpresas(data || [])
       
@@ -398,53 +397,32 @@ export default function EmitirNotaFiscal() {
       const empresaPadrao = data?.find(e => e.empresa_padrao_nfe === true)
       
       if (empresaPadrao) {
-        console.log('🎯 Empresa padrão encontrada:', empresaPadrao.nome_fantasia)
-        console.log('📋 Dados completos da empresa:', {
-          id: empresaPadrao.id,
-          razao_social: empresaPadrao.razao_social,
-          cnpj: empresaPadrao.cnpj,
-          cidade: empresaPadrao.cidade,
-          estado: empresaPadrao.estado,
-          codigo_municipio: empresaPadrao.codigo_municipio,
-          inscricao_estadual: empresaPadrao.inscricao_estadual,
-          crt: empresaPadrao.crt,
-          tem_certificado: !!(empresaPadrao as any).certificado_digital
-        })
+        logger.info('Empresa padrão encontrada', { id: empresaPadrao.id, nome: empresaPadrao.nome_fantasia })
         setEmpresaSelecionada(empresaPadrao)
         setFormData(prev => ({ ...prev, empresa_id: empresaPadrao.id, serie: empresaPadrao.serie_nfe || 1 }))
       } else if (data && data.length === 1) {
         // Se houver apenas uma empresa, selecionar automaticamente
-        console.log('🎯 Selecionando única empresa automaticamente')
-        console.log('📋 Dados completos da empresa:', {
-          id: data[0].id,
-          razao_social: data[0].razao_social,
-          cnpj: data[0].cnpj,
-          cidade: data[0].cidade,
-          estado: data[0].estado,
-          codigo_municipio: data[0].codigo_municipio,
-          inscricao_estadual: data[0].inscricao_estadual,
-          crt: data[0].crt
-        })
+        logger.info('Única empresa selecionada automaticamente', { id: data[0].id })
         setEmpresaSelecionada(data[0])
         setFormData(prev => ({ ...prev, empresa_id: data[0].id, serie: data[0].serie_nfe || 1 }))
       } else if (!data || data.length === 0) {
-        console.warn('⚠️ Nenhuma empresa configurada para emitir NF-e!')
+        logger.warn('Nenhuma empresa configurada para emitir NF-e')
         setToast({ 
           tipo: 'error', 
           mensagem: 'Nenhuma empresa configurada para emitir NF-e. Configure uma empresa em Cadastros > Empresa.' 
         })
       } else {
-        console.log(`ℹ️ ${data.length} empresas disponíveis. Defina uma empresa padrão em Cadastros > Empresa.`)
+        logger.info('Múltiplas empresas disponíveis', { count: data.length })
       }
     } catch (error) {
-      console.error('❌ Erro ao carregar empresas:', error)
+      logger.error('Erro ao carregar empresas', error)
       setToast({ tipo: 'error', mensagem: 'Erro ao carregar empresas emissoras' })
     }
   }
 
-  const carregarClientes = async () => {
+const carregarClientes = async () => {
     try {
-      console.log('🔄 Carregando clientes...')
+      logger.debug('Carregando clientes')
       
       const { data, error } = await supabase
         .from('clientes')
@@ -458,14 +436,14 @@ export default function EmitirNotaFiscal() {
         .order('codigo')
 
       if (error) {
-        console.error('❌ Erro ao carregar clientes:', error)
+        logger.error('Erro ao carregar clientes', error)
         throw error
       }
       
-      console.log(`✅ Clientes carregados: ${data?.length || 0}`)
+      logger.info('Clientes carregados', { count: data?.length || 0 })
       setClientes(data || [])
     } catch (error) {
-      console.error('❌ Erro ao carregar clientes:', error)
+      logger.error('Erro ao carregar clientes', error)
       setToast({ tipo: 'error', mensagem: 'Erro ao carregar clientes' })
     }
   }
@@ -480,13 +458,13 @@ export default function EmitirNotaFiscal() {
 
       if (error) throw error
       
-      console.log(`✅ Operações fiscais carregadas: ${data?.length || 0}`)
+      logger.info('Operações fiscais carregadas', { count: data?.length || 0 })
       setOperacoesFiscais(data || [])
       
       // Auto-selecionar operação padrão
       const operacaoPadrao = data?.find(op => op.operacao_padrao === true)
       if (operacaoPadrao) {
-        console.log(`✅ Operação padrão encontrada: ${operacaoPadrao.codigo} - ${operacaoPadrao.nome}`)
+        logger.info('Operação padrão encontrada', { codigo: operacaoPadrao.codigo, nome: operacaoPadrao.nome })
         setOperacaoSelecionada(operacaoPadrao)
         setFormData(prev => ({ 
           ...prev, 
@@ -497,14 +475,14 @@ export default function EmitirNotaFiscal() {
         selecionarCFOPAutomatico(operacaoPadrao)
       }
     } catch (error) {
-      console.error('❌ Erro ao carregar operações fiscais:', error)
+      logger.error('Erro ao carregar operações fiscais', error)
       setToast({ tipo: 'error', mensagem: 'Erro ao carregar operações fiscais' })
     }
   }
 
   const preencherDadosCliente = async (cliente: Cliente) => {
     try {
-      console.log('📝 Preenchendo dados do cliente:', cliente)
+      logger.debug('Preenchendo dados do cliente', { id: cliente.id })
       
       // Buscar endereço principal do cliente
       const { data: endereco, error } = await supabase
@@ -515,11 +493,10 @@ export default function EmitirNotaFiscal() {
         .maybeSingle()
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Erro ao buscar endereço:', error)
+        logger.error('Erro ao buscar endereço', error)
       }
 
-      console.log('📍 Endereço principal do cliente:', endereco)
-      console.log('🏘️ Código do município no endereço:', endereco?.codigo_municipio)
+      logger.debug('Endereço principal do cliente carregado')
 
       // Buscar email e telefone
       const { data: contatos } = await supabase
@@ -549,9 +526,9 @@ export default function EmitirNotaFiscal() {
       }))
 
       setClienteSelecionado(cliente)
-      console.log('✅ Dados do cliente preenchidos com sucesso')
+      logger.info('Dados do cliente preenchidos com sucesso')
     } catch (error) {
-      console.error('❌ Erro ao preencher dados do cliente:', error)
+      logger.error('Erro ao preencher dados do cliente', error)
       setToast({ tipo: 'error', mensagem: 'Erro ao carregar dados do cliente' })
     }
   }
@@ -568,14 +545,14 @@ export default function EmitirNotaFiscal() {
         .order('nome')
 
       if (error) {
-        console.error('Erro ao carregar produtos:', error)
+        logger.error('Erro ao carregar produtos', error)
         return
       }
 
-      console.log('✅ Produtos carregados:', data?.length)
+      logger.info('Produtos carregados', { count: data?.length })
       setProdutos(data || [])
     } catch (error) {
-      console.error('❌ Erro ao carregar produtos:', error)
+      logger.error('Erro ao carregar produtos', error)
     }
   }
 
@@ -583,7 +560,7 @@ export default function EmitirNotaFiscal() {
    * Preencher dados do produto selecionado no itemAtual
    */
   const preencherDadosProduto = (produto: Produto) => {
-    console.log('📦 Preenchendo dados do produto:', produto)
+    logger.debug('Preenchendo dados do produto', { id: produto.id })
     
     setItemAtual({
       codigo_produto: produto.codigo_interno,
@@ -596,14 +573,14 @@ export default function EmitirNotaFiscal() {
     })
 
     setProdutoSelecionado(produto)
-    console.log('✅ Dados do produto preenchidos')
+    logger.debug('Dados do produto preenchidos')
   }
 
   const preencherDadosVenda = async (venda: any) => {
     try {
       setCarregando(true)
       
-      console.log('📦 Venda recebida:', venda)
+      logger.debug('Venda recebida', { id: venda?.id })
       
       // Buscar dados completos da venda com cliente e itens
       const { data: vendaCompleta, error } = await supabase
@@ -617,12 +594,11 @@ export default function EmitirNotaFiscal() {
         .single()
 
       if (error) {
-        console.error('❌ Erro ao buscar venda:', error)
+        logger.error('Erro ao buscar venda', error)
         throw error
       }
 
-      console.log('✅ Venda completa carregada:', vendaCompleta)
-      console.log('📋 Empresa ID da venda:', vendaCompleta.empresa_id)
+      logger.info('Venda completa carregada', { id: vendaCompleta.id, empresaId: vendaCompleta.empresa_id })
 
       const cliente = vendaCompleta.cliente
       
@@ -660,7 +636,7 @@ export default function EmitirNotaFiscal() {
       
       // Se não houver empresa na venda, usar a empresa padrão
       if (!empresaVenda) {
-        console.warn('⚠️ Venda sem empresa_id! Buscando empresa padrão...')
+        logger.warn('Venda sem empresa_id - buscando empresa padrão')
         empresaVenda = empresas.find(e => e.empresa_padrao_nfe === true) || empresas[0]
         
         if (!empresaVenda) {
@@ -668,9 +644,9 @@ export default function EmitirNotaFiscal() {
           throw new Error('Nenhuma empresa emissora disponível')
         }
         
-        console.log('✅ Usando empresa padrão:', empresaVenda.nome_fantasia)
+        logger.info('Usando empresa padrão', { id: empresaVenda.id })
       } else {
-        console.log('✅ Empresa da venda encontrada:', empresaVenda.nome_fantasia)
+        logger.info('Empresa da venda encontrada', { id: empresaVenda.id })
       }
       
       setEmpresaSelecionada(empresaVenda)
@@ -678,7 +654,7 @@ export default function EmitirNotaFiscal() {
       const ufOrigem = empresaVenda?.estado || 'SP'
       const ufDestino = endereco?.estado || cliente.estado || cliente.uf || ufOrigem
 
-      console.log(`📍 UF Origem: ${ufOrigem}, UF Destino: ${ufDestino}`)
+      logger.debug('UFs identificadas', { ufOrigem, ufDestino })
 
       // Converter itens da venda para itens da nota fiscal
       const itensNota: NotaFiscalItemFormData[] = await Promise.all(
@@ -735,22 +711,7 @@ export default function EmitirNotaFiscal() {
           }
 
           // Aplicar motor fiscal automaticamente com dados da empresa
-          console.log(`\n💰 ============ CALCULANDO IMPOSTOS VENDA ============`)
-          console.log(`📦 Item: ${itemBase.descricao}`)
-          console.log(`   - Código: ${itemBase.codigo_produto}`)
-          console.log(`   - NCM: ${itemBase.ncm}`)
-          console.log(`   - CFOP: ${itemBase.cfop}`)
-          console.log(`   - Quantidade: ${itemBase.quantidade_comercial || 0}`)
-          console.log(`   - Valor Unitário: R$ ${itemBase.valor_unitario_comercial || 0}`)
-          console.log(`   - Valor Total: R$ ${((itemBase.quantidade_comercial || 0) * (itemBase.valor_unitario_comercial || 0)).toFixed(2)}`)
-          console.log(`🏢 Dados da Empresa:`)
-          console.log(`   - Empresa ID: ${empresaVenda.id}`)
-          console.log(`   - Empresa: ${empresaVenda?.razao_social || 'NÃO ENCONTRADA'}`)
-          console.log(`   - Regime: ${empresaVenda?.regime_tributario || 'SIMPLES'}`)
-          console.log(`📍 UFs:`)
-          console.log(`   - Origem: ${ufOrigem}`)
-          console.log(`   - Destino: ${ufDestino}`)
-          console.log(`   - Operação: ${ufOrigem === ufDestino ? 'DENTRO DO ESTADO' : 'FORA DO ESTADO'}`)
+          logger.debug('Calculando impostos para item da venda', { codigo: itemBase.codigo_produto })
 
           try {
             const tributosCalculados = await aplicarMotorFiscalNoItem(itemBase, {
@@ -763,11 +724,7 @@ export default function EmitirNotaFiscal() {
               cfop: itemBase.cfop
             })
 
-            console.log(`✅ IMPOSTOS CALCULADOS:`)
-            console.log(`   - ICMS Valor: R$ ${tributosCalculados.valor_icms || 0}`)
-            console.log(`   - PIS Valor: R$ ${tributosCalculados.valor_pis || 0}`)
-            console.log(`   - COFINS Valor: R$ ${tributosCalculados.valor_cofins || 0}`)
-            console.log(`====================================================\n`)
+            logger.debug('Impostos calculados para item')
 
             // 🚫 VALIDAÇÃO: Verificar se há erro de regra não cadastrada
             if (tributosCalculados.mensagens_fiscais && tributosCalculados.mensagens_fiscais.length > 0) {
@@ -776,7 +733,7 @@ export default function EmitirNotaFiscal() {
               )
               
               if (temErroSemRegra) {
-                console.error(`🚫 ITEM REJEITADO: "${itemBase.descricao}" - SEM REGRA DE TRIBUTAÇÃO`)
+                logger.error('Item rejeitado: sem regra tributação', { descricao: itemBase.descricao, ncm: itemBase.ncm })
                 throw new Error(
                   `Produto "${itemBase.descricao}" (NCM: ${itemBase.ncm}) não possui regra de tributação cadastrada. ` +
                   `Cadastre a regra em Parâmetros Fiscais > Regras de Tributação antes de emitir a nota.`
@@ -797,26 +754,24 @@ export default function EmitirNotaFiscal() {
               valor_total
             }
 
-            console.log(`📋 Item completo retornado:`, itemComImpostos)
+            logger.debug('Item com impostos processado', { codigo: itemBase.codigo_produto })
 
             return itemComImpostos
           } catch (error) {
-            console.error(`❌ ERRO AO CALCULAR TRIBUTOS DO ITEM "${itemBase.descricao}":`, error)
-            console.error(`Detalhes:`, error instanceof Error ? error.message : error)
+            logger.error('Erro ao calcular tributos do item', error)
             
             // Se o erro for por falta de regra, propagar o erro para bloquear a emissão
             if (error instanceof Error && error.message.includes('não possui regra de tributação')) {
               throw error
             }
             
-            console.log(`⚠️ Retornando item SEM impostos`)
+            logger.warn('Retornando item sem impostos')
             return itemBase
           }
         })
       )
 
-      console.log(`📋 Total de itens processados: ${itensNota.length}`)
-      console.log('🧾 Itens com impostos:', itensNota)
+      logger.info('Itens com impostos processados', { count: itensNota.length })
 
       // Atualizar formData com TODOS os dados de uma vez
       setFormData({
@@ -843,7 +798,7 @@ export default function EmitirNotaFiscal() {
       setToast({ tipo: 'success', mensagem: `✅ Dados da venda carregados! ${itensNota.length} itens importados com impostos calculados.` })
       setEtapaAtual(3) // Pular para etapa de produtos, pois já tem tudo preenchido
     } catch (error) {
-      console.error('Erro ao preencher dados da venda:', error)
+      logger.error('Erro ao preencher dados da venda', error)
       setToast({ tipo: 'error', mensagem: 'Erro ao carregar dados da venda' })
     } finally {
       setCarregando(false)
@@ -855,7 +810,7 @@ export default function EmitirNotaFiscal() {
    */
   const verificarRascunhosPendentes = async () => {
     try {
-      console.log('🔍 Verificando rascunhos pendentes...')
+      logger.debug('Verificando rascunhos pendentes')
       
       const { data: rascunhos, error } = await supabase
         .from('notas_fiscais')
@@ -865,19 +820,19 @@ export default function EmitirNotaFiscal() {
         .limit(10)
 
       if (error) {
-        console.error('❌ Erro ao buscar rascunhos:', error)
+        logger.error('Erro ao buscar rascunhos', error)
         return
       }
 
       if (rascunhos && rascunhos.length > 0) {
-        console.log(`⚠️ Encontrados ${rascunhos.length} rascunho(s) pendente(s)`)
+        logger.info('Rascunhos pendentes encontrados', { count: rascunhos.length })
         setRascunhosPendentes(rascunhos)
         setMostrarAlertaRascunho(true)
       } else {
-        console.log('✅ Nenhum rascunho pendente')
+        logger.debug('Nenhum rascunho pendente')
       }
     } catch (error) {
-      console.error('❌ Erro ao verificar rascunhos:', error)
+      logger.error('Erro ao verificar rascunhos', error)
     }
   }
 
@@ -916,7 +871,7 @@ export default function EmitirNotaFiscal() {
         verificarRascunhosPendentes()
       }
     } catch (error) {
-      console.error('❌ Erro ao excluir rascunho:', error)
+      logger.error('Erro ao excluir rascunho', error)
       setToast({ 
         tipo: 'error', 
         mensagem: error instanceof Error ? error.message : 'Erro ao excluir rascunho' 
@@ -937,7 +892,7 @@ export default function EmitirNotaFiscal() {
     const ufCliente = formData.destinatario_uf?.toUpperCase()
     
     if (!ufEmpresa) {
-      console.warn('⚠️ UF da empresa não definida')
+      logger.warn('UF da empresa não definida')
       return
     }
 
@@ -959,10 +914,7 @@ export default function EmitirNotaFiscal() {
       origem = 'padrão (dentro do estado)'
     }
 
-    console.log(`🔍 CFOP Automático:`)
-    console.log(`   Empresa: ${ufEmpresa}`)
-    console.log(`   Cliente: ${ufCliente || 'não informado'}`)
-    console.log(`   CFOP Escolhido: ${cfopSelecionado} (${origem})`)
+    logger.debug('CFOP automático selecionado', { cfop: cfopSelecionado, origem, ufEmpresa, ufCliente })
 
     // Atualizar CFOP em todos os itens
     setFormData(prev => ({
@@ -1003,17 +955,7 @@ export default function EmitirNotaFiscal() {
       const ufOrigem = empresaSelecionada.estado || 'SP'
       const ufDestino = formData.destinatario_uf || empresaSelecionada.estado || 'SP'
       
-      console.log('📋 ADICIONANDO ITEM MANUAL - Dados para cálculo:')
-      console.log('   - Item:', itemAtual.descricao)
-      console.log('   - Empresa ID:', formData.empresa_id)
-      console.log('   - Empresa:', empresaSelecionada.razao_social)
-      console.log('   - Regime:', empresaSelecionada.regime_tributario || 'SIMPLES')
-      console.log('   - UF Origem:', ufOrigem)
-      console.log('   - UF Destino:', ufDestino)
-      console.log('   - CFOP:', itemAtual.cfop)
-      console.log('   - NCM:', itemAtual.ncm)
-      console.log('   - Valor:', itemAtual.valor_unitario_comercial)
-      console.log('   - Quantidade:', itemAtual.quantidade_comercial)
+      logger.debug('Adicionando item manual', { codigo: itemAtual.codigo_produto })
       
       const tributosCalculados = await aplicarMotorFiscalNoItem(itemAtual, {
         empresaId: formData.empresa_id,
@@ -1025,7 +967,7 @@ export default function EmitirNotaFiscal() {
         cfop: itemAtual.cfop
       })
 
-      console.log('💰 Impostos calculados:', tributosCalculados)
+      logger.debug('Impostos calculados para item manual')
 
       // 🚫 VALIDAÇÃO: Bloquear item sem regra de tributação
       if (tributosCalculados.mensagens_fiscais && tributosCalculados.mensagens_fiscais.length > 0) {
@@ -1057,7 +999,7 @@ export default function EmitirNotaFiscal() {
         valor_total
       }
       
-      console.log('✅ Item final com impostos:', itemComImpostos)
+      logger.debug('Item com impostos pronto para adição')
 
       setFormData(prev => ({
         ...prev,
@@ -1076,8 +1018,7 @@ export default function EmitirNotaFiscal() {
 
       setToast({ tipo: 'success', mensagem: '✅ Item adicionado com impostos calculados' })
     } catch (error) {
-      console.error('❌ ERRO AO CALCULAR TRIBUTOS:', error)
-      console.error('Detalhes do erro:', error instanceof Error ? error.message : error)
+      logger.error('Erro ao calcular tributos', error)
       setToast({ tipo: 'error', mensagem: `❌ Erro ao calcular impostos: ${error instanceof Error ? error.message : 'Erro desconhecido'}` })
       
       // Adicionar item mesmo sem tributos em caso de erro
@@ -1136,7 +1077,7 @@ export default function EmitirNotaFiscal() {
       
       // Se já existe uma nota salva (notaAtualId), ATUALIZAR ao invés de criar nova
       if (notaAtualId) {
-        console.log('📝 Atualizando rascunho existente, ID:', notaAtualId)
+        logger.debug('Atualizando rascunho existente', { id: notaAtualId })
         
         // Recalcular totais
         const totais = {
@@ -1221,7 +1162,7 @@ export default function EmitirNotaFiscal() {
         })
       } else {
         // Criar NOVA nota com NOVO número reservado
-        console.log('🆕 Criando novo rascunho com número reservado')
+        logger.debug('Criando novo rascunho com número reservado')
         nota = await notasFiscaisService.criarRascunho(formData)
         setNotaAtualId(nota.id)
         
@@ -1231,7 +1172,7 @@ export default function EmitirNotaFiscal() {
         })
       }
       
-      console.log('✅ Rascunho processado com ID:', nota.id, 'Número:', nota.numero)
+      logger.debug('Rascunho processado', { id: nota.id, numero: nota.numero })
       
       // NÃO resetar formulário - manter os dados para permitir edição/transmissão
     } catch (error) {
@@ -1447,7 +1388,7 @@ export default function EmitirNotaFiscal() {
         })
       }
     } catch (error: any) {
-      console.error('Erro ao emitir nota:', error)
+      logger.error('Erro ao emitir nota', error)
       setToast({ 
         tipo: 'error', 
         mensagem: `Erro ao emitir nota: ${error.message || 'Erro desconhecido'}` 

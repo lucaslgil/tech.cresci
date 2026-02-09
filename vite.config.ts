@@ -25,5 +25,9 @@ export default defineConfig({
     'process.platform': JSON.stringify('browser'),
     'process.version': JSON.stringify(''),
     global: 'globalThis',
+  },
+  // ✅ SEGURANÇA: Remover console.log em produção
+  esbuild: {
+    drop: ['console', 'debugger'],
   }
 })
