@@ -155,9 +155,16 @@ export default function ModalEditarNota({ notaId, onClose, onSucesso }: ModalEdi
 
       // Preparar dados para emissão
       const dadosNota = {
+        empresa_id: nota.empresa_id,
         numero: nota.numero,
         serie: nota.serie,
+        tipo_nota: (nota.tipo_nota as 'NFE' | 'NFCE') || 'NFE',
+        modelo: (nota.modelo as '55' | '65') || '55',
+        tipo_emissao: (nota.tipo_emissao as 'NORMAL' | 'CONTINGENCIA') || 'NORMAL',
+        ambiente: (nota.ambiente as 'PRODUCAO' | 'HOMOLOGACAO') || 'HOMOLOGACAO',
+        finalidade: (nota.finalidade as 'NORMAL' | 'COMPLEMENTAR' | 'AJUSTE' | 'DEVOLUCAO') || 'NORMAL',
         data_emissao: nota.data_emissao,
+        hora_emissao: new Date().toISOString(),
         emitente: {
           cnpj: empresa.cnpj,
           razao_social: empresa.razao_social,
@@ -230,7 +237,7 @@ export default function ModalEditarNota({ notaId, onClose, onSucesso }: ModalEdi
 
       // Criar serviço e emitir
       const nfeService = criarServicoNFe({ ambiente: 'HOMOLOGACAO' })
-      const resultado = await nfeService.emitir(dadosNota)
+      const resultado = await nfeService.emitir(dadosNota as any)
 
       if (resultado.sucesso) {
         setToast({ 
@@ -609,7 +616,7 @@ export default function ModalEditarNota({ notaId, onClose, onSucesso }: ModalEdi
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#C9C4B5]">
-                    {itens.map((item, index) => (
+                    {itens.map((item) => (
                       <tr key={item.id} className="hover:bg-gray-50">
                         <td className="px-2 py-2">{item.numero_item}</td>
                         <td className="px-2 py-2">{item.codigo_produto}</td>

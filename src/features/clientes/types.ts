@@ -270,6 +270,7 @@ export interface EnderecoFormData {
   bairro: string
   cidade: string
   estado: string
+  codigo_municipio?: string
   pais: string
   observacoes?: string
 }

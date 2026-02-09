@@ -20,6 +20,7 @@ function converterParaFormatoAPI(notaFiscal: NotaFiscalFormData, empresa: any): 
   else if (notaFiscal.finalidade === '4') finalidadeNota = 'DEVOLUCAO'
   
   return {
+    empresa_id: notaFiscal.empresa_id || 0,
     numero: 1, // Será definido no momento da transmissão
     serie: notaFiscal.serie || 1,
     tipo_nota: notaFiscal.tipo_nota === 'NFE' ? 'NFE' : 'NFCE',

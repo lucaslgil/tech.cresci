@@ -285,7 +285,7 @@ export class SefazClientDireto {
         status: 'PROCESSANDO',
         codigo_status: codigoStatus,
         mensagem: `Lote em processamento. Recibo: ${numeroRecibo}`,
-        numero_protocolo: numeroRecibo
+        numeroProtocolo: numeroRecibo
       }
     } else if (codigoStatus === '100') {
       // Autorizado
@@ -326,8 +326,8 @@ export class SefazClientDireto {
         status: 'AUTORIZADA',
         codigo_status: codigoStatus,
         mensagem: 'Autorizado o uso da NF-e',
-        chave_acesso: chaveMatch ? chaveMatch[1] : undefined,
-        numero_protocolo: protocoloMatch ? protocoloMatch[1] : undefined,
+        chaveAcesso: chaveMatch ? chaveMatch[1] : undefined,
+        numeroProtocolo: protocoloMatch ? protocoloMatch[1] : undefined,
         xml_autorizado: xml
       }
     } else {

@@ -14,6 +14,8 @@ interface NuvemFiscalConfig {
   ambiente: 'SANDBOX' | 'PRODUCAO'
 }
 
+/*
+// Interface temporária - será refatorada
 interface DadosNFe {
   natureza_operacao: string
   tipo_documento: number // 0=entrada, 1=saída
@@ -91,6 +93,7 @@ interface DadosNFe {
   }
   informacoes_adicionais_contribuinte?: string
 }
+*/
 
 /**
  * Cliente para integração com Nuvem Fiscal
@@ -137,7 +140,7 @@ export class NuvemFiscalClient {
   /**
    * Emitir NF-e através da Nuvem Fiscal
    */
-  async emitirNFe(dados: DadosNFe): Promise<RetornoSEFAZ> {
+  async emitirNFe(dados: any): Promise<RetornoSEFAZ> {
     try {
       // Validar estrutura
       if (!dados || !dados.infNFe) {

@@ -286,7 +286,7 @@ export class NuvemFiscalAdapter {
             imposto: {
               vTotTrib: 0,
               
-              ICMS: dados.emitente.crt === 1 || dados.emitente.crt === 2 ? {
+              ICMS: dados.emitente.crt === '1' || dados.emitente.crt === '2' ? {
                 // Simples Nacional: usar CSOSN ao invés de CST
                 ICMSSN102: {
                   orig: Number(item.impostos?.icms?.origem || 0),
@@ -345,7 +345,7 @@ export class NuvemFiscalAdapter {
             vIPIDevol: 0,
             vPIS: parseFloat(Number(dados.totais.valor_pis || 0).toFixed(2)),
             vCOFINS: parseFloat(Number(dados.totais.valor_cofins || 0).toFixed(2)),
-            vOutro: parseFloat(Number(dados.totais.outras_despesas || 0).toFixed(2)),
+            vOutro: parseFloat(Number(dados.totais.outras_despesas || dados.totais.valor_outras_despesas || 0).toFixed(2)),
             vNF: parseFloat(Number(dados.totais.valor_total).toFixed(2)),
             vTotTrib: 0
           }
@@ -382,7 +382,8 @@ export class NuvemFiscalAdapter {
     
     // EMITENTE
     console.log('\n📤 EMITENTE:')
-    console.log('  CNPJ:', payload.infNFe.emit.CNPJ, '✓')
+    const cnpjEmit = 'CNPJ' in payload.infNFe.emit ? payload.infNFe.emit.CNPJ : payload.infNFe.emit.CPF
+    console.log('  CNPJ:', cnpjEmit, '✓')
     console.log('  Razão Social:', payload.infNFe.emit.xNome, '✓')
     console.log('  IE:', payload.infNFe.emit.IE || '(não enviado)', payload.infNFe.emit.IE ? '✓' : '⚠️')
     console.log('  CRT:', payload.infNFe.emit.CRT, '✓')
@@ -390,7 +391,8 @@ export class NuvemFiscalAdapter {
     
     // DESTINATÁRIO
     console.log('\n📥 DESTINATÁRIO:')
-    console.log('  CNPJ/CPF:', payload.infNFe.dest.CNPJ || payload.infNFe.dest.CPF, '✓')
+    const cnpjDest = 'CNPJ' in payload.infNFe.dest ? payload.infNFe.dest.CNPJ : payload.infNFe.dest.CPF
+    console.log('  CNPJ/CPF:', cnpjDest, '✓')
     console.log('  Nome:', payload.infNFe.dest.xNome, '✓')
     const destIE = payload.infNFe.dest.IE
     const destIndIE = payload.infNFe.dest.indIEDest
@@ -413,7 +415,7 @@ export class NuvemFiscalAdapter {
     
     // ITENS
     console.log('\n📦 ITENS:', payload.infNFe.det.length)
-    payload.infNFe.det.forEach((item: any, idx: number) => {
+    payload.infNFe.det.forEach((item: any) => {
       console.log(`  Item ${item.nItem}:`)
       console.log(`    Código: ${item.prod.cProd} ✓`)
       console.log(`    Descrição: ${item.prod.xProd} ✓`)

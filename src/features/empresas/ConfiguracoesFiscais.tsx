@@ -4,10 +4,10 @@
 // Data: 06/02/2026
 // =====================================================
 
-import React, { useState, useEffect } from 'react'
-import { Save, AlertCircle, CheckCircle, Settings } from 'lucide-react'
-import { supabase } from '../../../lib/supabase'
-import { Toast } from '../../../shared/components/Toast'
+import { useState, useEffect } from 'react'
+import { Save, AlertCircle, Settings } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
+import { Toast } from '../../shared/components/Toast'
 
 interface ConfiguracaoFiscal {
   informacoes_complementares_padrao?: string

@@ -917,7 +917,7 @@ export const CadastroProdutos: React.FC = () => {
       {showImportModal && (
         <ModalImportacaoProdutos
           onClose={() => setShowImportModal(false)}
-          onImport={handleImportProdutos}
+          onImport={handleImportProdutos as (produtos: ProdutoFormData[]) => Promise<void>}
           onComplete={() => {
             fetchProdutos()
             setToast({ 

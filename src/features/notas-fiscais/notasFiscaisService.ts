@@ -174,9 +174,9 @@ export const notasFiscaisService = {
       unidade_comercial: item.unidade_comercial,
       quantidade_comercial: item.quantidade_comercial,
       valor_unitario_comercial: item.valor_unitario_comercial,
-      valor_bruto: item.quantidade_comercial * item.valor_unitario_comercial,
+      valor_bruto: (item.quantidade_comercial || 0) * (item.valor_unitario_comercial || 0),
       valor_desconto: item.valor_desconto || 0,
-      valor_total: (item.quantidade_comercial * item.valor_unitario_comercial) - (item.valor_desconto || 0),
+      valor_total: ((item.quantidade_comercial || 0) * (item.valor_unitario_comercial || 0)) - (item.valor_desconto || 0),
       unidade_tributavel: item.unidade_comercial,
       quantidade_tributavel: item.quantidade_comercial,
       valor_unitario_tributavel: item.valor_unitario_comercial,
@@ -426,7 +426,7 @@ export const notasFiscaisService = {
         throw new Error('Apenas notas autorizadas podem ser canceladas')
       }
 
-      if (nota.status === 'CANCELADA') {
+      if (nota.status === 'AUTORIZADA' || nota.status === 'CANCELADA') {
         throw new Error('Esta nota já foi cancelada')
       }
 
@@ -633,7 +633,7 @@ export const notasFiscaisService = {
 
 function calcularTotaisNota(itens: NotaFiscalFormData['itens']) {
   const valor_produtos = itens.reduce((sum, item) => 
-    sum + (item.quantidade_comercial * item.valor_unitario_comercial), 0
+    sum + ((item.quantidade_comercial || 0) * (item.valor_unitario_comercial || 0)), 0
   )
   const valor_desconto = itens.reduce((sum, item) => 
     sum + (item.valor_desconto || 0), 0

@@ -125,9 +125,9 @@ export class SefazClient {
       if (data.status === 'autorizado') {
         return {
           status: 'AUTORIZADA',
-          chave_acesso: data.chave_nfe,
-          numero_protocolo: data.protocolo,
-          data_autorizacao: data.data_emissao,
+          chaveAcesso: data.chave_nfe,
+          numeroProtocolo: data.protocolo,
+          dataHoraAutorizacao: data.data_emissao,
           codigo_status: data.codigo_status,
           mensagem: data.mensagem_sefaz || 'Nota fiscal autorizada com sucesso',
           xml_autorizado: data.caminho_xml_nota_fiscal ? 
@@ -187,9 +187,9 @@ export class SefazClient {
 
         return {
           status: this.mapearStatusFocus(data.status),
-          chave_acesso: data.chave_nfe,
-          numero_protocolo: data.protocolo,
-          data_autorizacao: data.data_emissao,
+          chaveAcesso: data.chave_nfe,
+          numeroProtocolo: data.protocolo,
+          dataHoraAutorizacao: data.data_emissao,
           mensagem: data.mensagem_sefaz || 'Consulta realizada',
           xml_autorizado: data.caminho_xml_nota_fiscal ?
             await this.baixarXML(data.caminho_xml_nota_fiscal) : undefined
@@ -219,8 +219,8 @@ export class SefazClient {
         if (data.status === 'cancelado') {
           return {
             status: 'CANCELADA',
-            chave_acesso: chaveAcesso,
-            numero_protocolo: data.protocolo,
+            chaveAcesso: chaveAcesso,
+            numeroProtocolo: data.protocolo,
             mensagem: 'Nota fiscal cancelada com sucesso'
           }
         }
@@ -256,7 +256,7 @@ export class SefazClient {
 
         return {
           status: 'AUTORIZADA',
-          numero_protocolo: data.protocolo,
+          numeroProtocolo: data.protocolo,
           mensagem: 'Números inutilizados com sucesso'
         }
       }

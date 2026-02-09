@@ -65,6 +65,7 @@ export interface NotaFiscalDados {
     valor_seguro: number
     valor_desconto: number
     valor_outras_despesas: number
+    outras_despesas?: number
     valor_total_tributos: number
     valor_total: number
     
