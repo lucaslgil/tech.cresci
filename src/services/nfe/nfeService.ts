@@ -6,6 +6,7 @@
 import { supabase } from '../../lib/supabase'
 import { NuvemFiscalAdapter } from './nuvemFiscalAdapter'
 import type { NotaFiscalDados, RetornoSEFAZ, ConfiguracaoNFe } from './types'
+import { logger } from '../../utils/logger'
 
 export class NFeService {
   // @ts-ignore - Configuração armazenada para uso futuro
@@ -15,7 +16,7 @@ export class NFeService {
   constructor(config: ConfiguracaoNFe) {
     this._config = config
     this.nuvemFiscal = new NuvemFiscalAdapter()
-    console.log('✅ NFeService configurado com Nuvem Fiscal')
+    logger.info('NFeService configurado com Nuvem Fiscal')
   }
 
   /**
@@ -27,7 +28,7 @@ export class NFeService {
     retorno: RetornoSEFAZ 
   }> {
     try {
-      console.log('🚀 Iniciando emissão de NF-e via Nuvem Fiscal...', dados)
+      logger.info('Iniciando emissão de NF-e via Nuvem Fiscal')
 
       // 1. Validar dados
       this.validarDados(dados)
@@ -36,7 +37,7 @@ export class NFeService {
       const notaId = await this.salvarRascunho(dados)
 
       // 3. Enviar para Nuvem Fiscal (que irá gerar XML, assinar e transmitir)
-      console.log('📤 Enviando para Nuvem Fiscal...')
+      logger.debug('Enviando para Nuvem Fiscal')
       const retorno = await this.nuvemFiscal.emitirNFe(dados)
 
       // 4. Atualizar nota com retorno
@@ -48,11 +49,11 @@ export class NFeService {
           const xml = await this.nuvemFiscal.baixarXML(retorno.nuvemFiscalId)
           await this.salvarXML(notaId, xml, 'ASSINADO')
         } catch (error) {
-          console.warn('⚠️ Não foi possível baixar XML:', error)
+          logger.warn('Não foi possível baixar XML', error)
         }
       }
 
-      console.log('✅ Emissão finalizada:', retorno)
+      logger.info('Emissão finalizada', { status: retorno.status })
 
       return {
         sucesso: retorno.status === 'AUTORIZADA',
@@ -60,7 +61,7 @@ export class NFeService {
         retorno
       }
     } catch (error: any) {
-      console.error('❌ Erro na emissão:', error)
+      logger.error('Erro na emissão', error)
       throw new Error(`Erro ao emitir nota fiscal: ${error.message}`)
     }
   }
@@ -77,7 +78,7 @@ export class NFeService {
    */
   async cancelar(notaId: number, justificativa: string): Promise<RetornoSEFAZ> {
     try {
-      console.log(`🔍 Buscando nota ${notaId} para cancelamento...`)
+      logger.info('Buscando nota para cancelamento', { notaId })
       
       // Buscar nota
       const { data: nota, error } = await supabase
@@ -90,10 +91,9 @@ export class NFeService {
         throw new Error('Nota fiscal não encontrada')
       }
 
-      console.log(`📋 Nota encontrada:`, {
+      logger.debug('Nota encontrada', {
         status: nota.status,
-        nuvem_fiscal_id: nota.nuvem_fiscal_id,
-        chave_acesso: nota.chave_acesso?.substring(0, 10) + '...'
+        hasNuvemFiscalId: !!nota.nuvem_fiscal_id
       })
 
       if (nota.status !== 'AUTORIZADA') {
@@ -108,16 +108,16 @@ export class NFeService {
         throw new Error('Justificativa deve ter no mínimo 15 caracteres')
       }
 
-      console.log(`🚫 Enviando cancelamento para Nuvem Fiscal...`)
+      logger.debug('Enviando cancelamento para Nuvem Fiscal')
       
       // Cancelar na Nuvem Fiscal
       const retorno = await this.nuvemFiscal.cancelarNFe(nota.nuvem_fiscal_id, justificativa)
 
-      console.log(`✅ Retorno do cancelamento:`, retorno)
+      logger.debug('Retorno do cancelamento', { status: retorno.status })
 
       // Atualizar nota
       if (retorno.status === 'CANCELADA') {
-        console.log(`💾 Atualizando status no banco de dados...`)
+        logger.debug('Atualizando status no banco de dados')
         
         await supabase
           .from('notas_fiscais')
@@ -128,12 +128,12 @@ export class NFeService {
           })
           .eq('id', notaId)
 
-        console.log(`✅ Nota cancelada com sucesso!`)
+        logger.info('Nota cancelada com sucesso', { notaId })
       }
 
       return retorno
     } catch (error: any) {
-      console.error(`❌ Erro no cancelamento:`, error)
+      logger.error('Erro no cancelamento', error)
       throw new Error(`Erro ao cancelar nota: ${error.message}`)
     }
   }
@@ -263,12 +263,12 @@ export class NFeService {
         data_emissao: new Date().toISOString()
       }
     
-    // Log para debug
-    console.log('🔍 Dados para inserir:', JSON.stringify(dadosParaInserir, null, 2))
-    console.log('📏 Tamanhos dos campos string:', Object.entries(dadosParaInserir)
-      .filter(([_k, v]) => typeof v === 'string')
-      .map(([k, v]) => `${k}: ${(v as string).length} chars`)
-      .join('\n'))
+    // Log apenas resumo
+    logger.debug('Salvando rascunho', {
+      hasEmitente: !!dados.emitente,
+      hasDestinatario: !!dados.destinatario,
+      qtdItens: dados.itens.length
+    })
     
     const { data, error } = await supabase
       .from('notas_fiscais')
@@ -277,11 +277,10 @@ export class NFeService {
       .single()
 
     if (error) {
-      console.error('Erro ao salvar rascunho:', error)
-      console.error('Código:', error.code)
-      console.error('Mensagem:', error.message)
-      console.error('Detalhes:', error.details)
-      console.error('Hint:', error.hint)
+      logger.error('Erro ao salvar rascunho', {
+        code: error.code,
+        message: error.message
+      })
       throw new Error(`Erro ao salvar nota no banco de dados: ${error.message}`)
     }
 
@@ -323,17 +322,16 @@ export class NFeService {
       valor_cofins: parseFloat(String(item.impostos.cofins.valor || 0))
     }))
 
-    console.log('💾 Salvando', itensParaSalvar.length, 'itens...')
-    console.log('📦 Itens:', JSON.stringify(itensParaSalvar, null, 2))
+    logger.debug('Salvando itens', { count: itensParaSalvar.length })
     
     const { error: itensError } = await supabase.from('notas_fiscais_itens').insert(itensParaSalvar)
     
     if (itensError) {
-      console.error('❌ Erro ao salvar itens:', itensError)
+      logger.error('Erro ao salvar itens', { message: itensError.message })
       throw new Error(`Erro ao salvar itens: ${itensError.message}`)
     }
     
-    console.log('✅ Itens salvos com sucesso')
+    logger.debug('Itens salvos com sucesso')
 
     return data.id
   }
@@ -377,7 +375,7 @@ export class NFeService {
       update.motivo_status = retorno.mensagem || null
     }
 
-    console.log('📝 Atualizando nota no banco:', update)
+    logger.debug('Atualizando nota no banco', { notaId, status: retorno.status })
 
     const { error } = await supabase
       .from('notas_fiscais')
@@ -385,7 +383,7 @@ export class NFeService {
       .eq('id', notaId)
 
     if (error) {
-      console.error('❌ Erro ao atualizar nota no banco:', error)
+      logger.error('Erro ao atualizar nota no banco', { message: error.message })
       throw new Error(`Erro ao atualizar nota: ${error.message}`)
     }
   }

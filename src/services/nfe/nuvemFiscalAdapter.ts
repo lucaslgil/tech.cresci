@@ -5,6 +5,7 @@
 
 import { NuvemFiscalClient } from './nuvemFiscalClient'
 import type { NotaFiscalDados, RetornoSEFAZ } from './types'
+import { logger } from '../../utils/logger'
 
 /**
  * Serviço que adapta os dados do sistema para a API Nuvem Fiscal
@@ -13,49 +14,49 @@ export class NuvemFiscalAdapter {
   private client: NuvemFiscalClient
 
   constructor() {
+    // ⚠️ ATENÇÃO: Este adapter ainda usa credenciais antigas (VITE_*)
+    // Para usar credenciais seguras, migre para: src/services/nuvemFiscalService.ts
+    // Ver documentação: docs/GUIA_MIGRACAO_CREDENCIAIS_SEGURAS.md
+    
     const ambiente = import.meta.env.VITE_NUVEM_FISCAL_AMBIENTE || 'SANDBOX'
     const clientId = import.meta.env.VITE_NUVEM_FISCAL_CLIENT_ID
     const clientSecret = import.meta.env.VITE_NUVEM_FISCAL_CLIENT_SECRET
 
-    console.log('🔍 Debug Nuvem Fiscal:')
-    console.log('- Ambiente:', ambiente)
-    console.log('- Client ID existe?', !!clientId)
-    console.log('- Client ID preview:', clientId ? `${clientId.substring(0, 10)}...` : 'NÃO ENCONTRADO')
-    console.log('- Client Secret existe?', !!clientSecret)
+    logger.info('NuvemFiscalAdapter modo legado', { ambiente, hasClientId: !!clientId, hasClientSecret: !!clientSecret })
 
-    if (!clientId || !clientSecret) {
-      throw new Error(
-        'Credenciais Nuvem Fiscal não configuradas!\n' +
-        'Configure VITE_NUVEM_FISCAL_CLIENT_ID e VITE_NUVEM_FISCAL_CLIENT_SECRET no arquivo .env'
-      )
+    // ✅ Não quebrar mais o sistema se credenciais não existirem
+    // O erro só será lançado quando realmente tentar emitir NF-e
+    if (clientId && clientSecret) {
+      this.client = new NuvemFiscalClient({
+        clientId,
+        clientSecret,
+        ambiente: ambiente as 'SANDBOX' | 'PRODUCAO'
+      })
+      logger.info('NuvemFiscalAdapter inicializado', { ambiente })
+    } else {
+      logger.warn('Credenciais VITE_* não encontradas - use Edge Function')
+      // @ts-ignore - Client será null, erro só ao tentar emitir
+      this.client = null
     }
-
-    this.client = new NuvemFiscalClient({
-      clientId,
-      clientSecret,
-      ambiente: ambiente as 'SANDBOX' | 'PRODUCAO'
-    })
-
-    console.log(`✅ Nuvem Fiscal Adapter inicializado [${ambiente}]`)
   }
 
   /**
    * Emitir NF-e através da Nuvem Fiscal
    */
   async emitirNFe(dados: NotaFiscalDados): Promise<RetornoSEFAZ> {
+    // Verificar se client foi inicializado
+    if (!this.client) {
+      throw new Error(
+        '❌ Credenciais Nuvem Fiscal não configuradas!\n\n' +
+        '🔐 MIGRE PARA CREDENCIAIS SEGURAS:\n' +
+        '1. Ver: docs/QUICK_START_CREDENCIAIS_SEGURAS.md\n' +
+        '2. Usar: import { emitirNFe } from "../services/nuvemFiscalService"\n\n' +
+        'Ou configure temporariamente VITE_NUVEM_FISCAL_CLIENT_ID no .env'
+      )
+    }
+
     try {
-      console.log('🔄 Convertendo dados para formato Nuvem Fiscal...')
-      
-      // Log detalhado dos dados do emitente para debug
-      console.log('📋 Dados do emitente recebidos:', {
-        cnpj: dados.emitente?.cnpj,
-        razao_social: dados.emitente?.razao_social,
-        uf: dados.emitente?.uf,
-        cidade: dados.emitente?.cidade,
-        codigo_municipio: dados.emitente?.codigo_municipio,
-        tipo_codigo: typeof dados.emitente?.codigo_municipio,
-        codigo_length: dados.emitente?.codigo_municipio?.length
-      })
+      logger.debug('Convertendo dados para formato Nuvem Fiscal')
       
       // Validar dados obrigatórios
       this.validarDados(dados)
@@ -63,12 +64,12 @@ export class NuvemFiscalAdapter {
       // Converter dados do sistema para formato Nuvem Fiscal
       const dadosNuvemFiscal = this.converterDados(dados)
       
-      console.log('✅ Dados convertidos com sucesso')
+      logger.debug('Dados convertidos com sucesso')
 
       // Enviar para Nuvem Fiscal
       try {
         const resultado = await this.client.emitirNFe(dadosNuvemFiscal)
-        console.log('✅ NF-e emitida com sucesso via Nuvem Fiscal')
+        logger.info('NF-e emitida com sucesso via Nuvem Fiscal')
         return resultado
         
       } catch (emissaoError: any) {
@@ -76,7 +77,7 @@ export class NuvemFiscalAdapter {
         if (emissaoError.message?.includes('ConfigNfeNotFound') || 
             emissaoError.message?.includes('Configuração de NF-e da empresa não encontrada')) {
           
-          console.log('⚙️ Empresa não configurada na Nuvem Fiscal')
+          logger.warn('Empresa não configurada na Nuvem Fiscal')
           
           throw new Error(
             '⚙️ EMPRESA NÃO CONFIGURADA NA NUVEM FISCAL\n\n' +
@@ -97,7 +98,7 @@ export class NuvemFiscalAdapter {
       }
 
     } catch (error: any) {
-      console.error('❌ Erro ao emitir via Nuvem Fiscal:', error)
+      logger.error('Erro ao emitir via Nuvem Fiscal', error)
       throw error
     }
   }
@@ -169,11 +170,11 @@ export class NuvemFiscalAdapter {
     }
 
     if (erros.length > 0) {
-      console.error('❌ Erros de validação:', erros)
+      logger.error('Erros de validação', { count: erros.length })
       throw new Error(`Dados inválidos para emissão:\n${erros.join('\n')}`)
     }
 
-    console.log('✅ Validação dos dados concluída com sucesso')
+    logger.debug('Validação dos dados concluída com sucesso')
   }
 
   /**
@@ -376,81 +377,11 @@ export class NuvemFiscalAdapter {
       }
     }
     
-    // Validação completa antes de enviar
-    console.log('🔍 VALIDAÇÃO COMPLETA DO PAYLOAD')
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-    
-    // EMITENTE
-    console.log('\n📤 EMITENTE:')
-    const cnpjEmit = 'CNPJ' in payload.infNFe.emit ? payload.infNFe.emit.CNPJ : payload.infNFe.emit.CPF
-    console.log('  CNPJ:', cnpjEmit, '✓')
-    console.log('  Razão Social:', payload.infNFe.emit.xNome, '✓')
-    console.log('  IE:', payload.infNFe.emit.IE || '(não enviado)', payload.infNFe.emit.IE ? '✓' : '⚠️')
-    console.log('  CRT:', payload.infNFe.emit.CRT, '✓')
-    console.log('  Município:', payload.infNFe.emit.enderEmit.cMun, payload.infNFe.emit.enderEmit.xMun, '✓')
-    
-    // DESTINATÁRIO
-    console.log('\n📥 DESTINATÁRIO:')
-    const cnpjDest = 'CNPJ' in payload.infNFe.dest ? payload.infNFe.dest.CNPJ : payload.infNFe.dest.CPF
-    console.log('  CNPJ/CPF:', cnpjDest, '✓')
-    console.log('  Nome:', payload.infNFe.dest.xNome, '✓')
-    const destIE = payload.infNFe.dest.IE
-    const destIndIE = payload.infNFe.dest.indIEDest
-    console.log('  IE:', destIE || '(não enviado - correto para não contribuinte)', 
-      !destIE && destIndIE === 9 ? '✓' : destIE ? '✓' : '⚠️')
-    console.log('  indIEDest:', payload.infNFe.dest.indIEDest, 
-      payload.infNFe.dest.indIEDest === 9 ? '(Não Contribuinte) ✓' : 
-      payload.infNFe.dest.indIEDest === 1 ? '(Contribuinte) ✓' : 
-      payload.infNFe.dest.indIEDest === 2 ? '(Contribuinte Isento) ✓' : '❌')
-    console.log('  Município:', payload.infNFe.dest.enderDest.cMun, payload.infNFe.dest.enderDest.xMun, '✓')
-    
-    // IDENTIFICAÇÃO DA NOTA
-    console.log('\n📋 IDENTIFICAÇÃO:')
-    console.log('  Ambiente:', payload.infNFe.ide.tpAmb === 1 ? 'PRODUÇÃO' : 'HOMOLOGAÇÃO', '✓')
-    console.log('  Série:', payload.infNFe.ide.serie, '✓')
-    console.log('  Número:', payload.infNFe.ide.nNF, '✓')
-    console.log('  Modelo:', payload.infNFe.ide.mod, '✓')
-    console.log('  Finalidade:', payload.infNFe.ide.finNFe, '✓')
-    console.log('  Natureza:', payload.infNFe.ide.natOp, '✓')
-    
-    // ITENS
-    console.log('\n📦 ITENS:', payload.infNFe.det.length)
-    payload.infNFe.det.forEach((item: any) => {
-      console.log(`  Item ${item.nItem}:`)
-      console.log(`    Código: ${item.prod.cProd} ✓`)
-      console.log(`    Descrição: ${item.prod.xProd} ✓`)
-      console.log(`    NCM: ${item.prod.NCM} ✓`)
-      console.log(`    CFOP: ${item.prod.CFOP} ✓`)
-      console.log(`    Qtd: ${item.prod.qCom} (${typeof item.prod.qCom}) ${typeof item.prod.qCom === 'number' ? '✓' : '❌'}`)
-      console.log(`    Valor Unit: ${item.prod.vUnCom} (${typeof item.prod.vUnCom}) ${typeof item.prod.vUnCom === 'number' ? '✓' : '❌'}`)
-      console.log(`    Valor Total: ${item.prod.vProd} (${typeof item.prod.vProd}) ${typeof item.prod.vProd === 'number' ? '✓' : '❌'}`)
-      console.log(`    CST ICMS: ${item.imposto.ICMS.ICMS00?.CST || item.imposto.ICMS.ICMS20?.CST || item.imposto.ICMS.ICMS40?.CST || '?'} ✓`)
-    })
-    
-    // TOTAIS
-    console.log('\n💰 TOTAIS:')
-    console.log('  Produtos:', payload.infNFe.total.ICMSTot.vProd, '✓')
-    console.log('  Total NF:', payload.infNFe.total.ICMSTot.vNF, '✓')
-    console.log('  BC ICMS:', payload.infNFe.total.ICMSTot.vBC, '✓')
-    console.log('  ICMS:', payload.infNFe.total.ICMSTot.vICMS, '✓')
-    
-    // PAGAMENTO
-    console.log('\n💳 PAGAMENTO:')
-    console.log('  Forma:', payload.infNFe.pag.detPag[0].tPag, '✓')
-    console.log('  Valor:', payload.infNFe.pag.detPag[0].vPag, '✓')
-    
-    // TRANSPORTE
-    console.log('\n🚚 TRANSPORTE:')
-    console.log('  Modalidade:', payload.infNFe.transp.modFrete, '✓')
-    
-    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
-    
-    // Log resumido do payload
-    console.log('📊 Payload Nuvem Fiscal gerado:', {
+    // Validação completa antes de enviar - log apenas resumo
+    logger.debug('Payload Nuvem Fiscal gerado', {
       ambiente: payload.ambiente,
-      referencia: payload.referencia,
-      emitente: payload.infNFe.emit?.xNome,
-      destinatario: payload.infNFe.dest?.xNome,
+      hasEmitente: !!payload.infNFe.emit,
+      hasDestinatario: !!payload.infNFe.dest,
       qtdItens: payload.infNFe.det?.length,
       valorTotal: payload.infNFe.total?.ICMSTot?.vNF
     })

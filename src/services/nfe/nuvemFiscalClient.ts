@@ -7,6 +7,7 @@ import axios from 'axios'
 import type { AxiosInstance } from 'axios'
 import type { RetornoSEFAZ } from './types'
 import { NuvemFiscalAuth } from './nuvemFiscalAuth'
+import { logger } from '../../utils/logger'
 
 interface NuvemFiscalConfig {
   clientId: string
@@ -121,8 +122,7 @@ export class NuvemFiscalClient {
       timeout: 60000 // 60 segundos
     })
 
-    console.log(`🌐 Nuvem Fiscal Client configurado [${config.ambiente}]`)
-    console.log(`🔐 Usando OAuth 2.0 (client_credentials)`)
+    logger.info('Nuvem Fiscal Client configurado', { ambiente: config.ambiente })
   }
 
   /**
@@ -149,49 +149,27 @@ export class NuvemFiscalClient {
 
       const qtdItens = dados.infNFe.det?.length || 0
       
-      console.log('📤 Enviando NF-e para Nuvem Fiscal...', {
-        ambiente: this.ambiente,
-        ambienteNota: dados.ambiente,
-        natureza: dados.infNFe.ide?.natOp || 'N/A',
-        itens: qtdItens
-      })
-
-      console.log('📦 Estrutura da NF-e:', {
-        ambiente: dados.ambiente,
-        referencia: dados.referencia,
-        temInfNFe: !!dados.infNFe,
-        temIde: !!dados.infNFe?.ide,
-        temEmit: !!dados.infNFe?.emit,
-        temDest: !!dados.infNFe?.dest,
-        qtdItens
-      })
+      logger.debug('Enviando NF-e para Nuvem Fiscal', { ambiente: this.ambiente, itens: qtdItens })
 
       // Endpoint: POST /nfe
       const headers = await this.getAuthHeaders()
-      console.log('🔑 Headers preparados, enviando requisição...')
       
       const response = await this.client.post('/nfe', dados, { headers })
 
-      console.log('📥 Resposta da Nuvem Fiscal (completa):', response.data)
-      console.log('📥 Resposta JSON:', JSON.stringify(response.data, null, 2))
+      logger.info('Resposta da Nuvem Fiscal recebida')
 
       // Processar resposta
       const resultado = this.processarResposta(response.data)
-      console.log('📊 Resultado processado:', resultado)
+      logger.debug('Resultado processado')
       
       return resultado
 
     } catch (error: any) {
-      console.error('❌ Erro ao emitir NF-e na Nuvem Fiscal:', error)
+      logger.error('Erro ao emitir NF-e na Nuvem Fiscal', error)
 
       if (error.response) {
         const apiError = error.response.data
-        console.error('📋 Detalhes COMPLETOS do erro:', apiError)
-        console.error('📋 Detalhes JSON:', JSON.stringify(apiError, null, 2))
-        console.error('🔢 Status:', error.response.status)
-        console.error('📨 Headers:', error.response.headers)
-        console.error('🔍 Error code:', apiError.error?.code)
-        console.error('💬 Error message:', apiError.error?.message)
+        logger.error('Erro da API Nuvem Fiscal', { status: error.response.status, code: apiError.error?.code })
         
         // Tratamento especial para erro de certificado
         if (apiError.error?.code === 'CertificateNotFound') {
@@ -228,7 +206,7 @@ export class NuvemFiscalClient {
    */
   async configurarEmpresa(cnpj: string, certificadoPfx: string, senhaCertificado: string): Promise<void> {
     try {
-      console.log(`🏢 Configurando empresa na Nuvem Fiscal: ${cnpj}`)
+      logger.info('Configurando empresa na Nuvem Fiscal')
 
       const headers = await this.getAuthHeaders()
       
@@ -240,18 +218,12 @@ export class NuvemFiscalClient {
       }
 
       const cnpjLimpo = cnpj.replace(/\D/g, '')
-      const response = await this.client.put(`/empresas/${cnpjLimpo}/nfe`, config, { headers })
+      await this.client.put(`/empresas/${cnpjLimpo}/nfe`, config, { headers })
 
-      console.log('✅ Empresa configurada com sucesso na Nuvem Fiscal')
-      console.log('📋 Resposta:', response.data)
+      logger.info('Empresa configurada na Nuvem Fiscal', { cnpj: cnpjLimpo })
 
     } catch (error: any) {
-      console.error('❌ Erro ao configurar empresa:', error)
-      
-      if (error.response) {
-        const apiError = error.response.data
-        console.error('📋 Detalhes:', JSON.stringify(apiError, null, 2))
-      }
+      logger.error('Erro ao configurar empresa', error)
       
       throw new Error(`Erro ao configurar empresa: ${error.message}`)
     }
@@ -261,7 +233,7 @@ export class NuvemFiscalClient {
    */
   async consultarNFe(id: string): Promise<RetornoSEFAZ> {
     try {
-      console.log(`🔍 Consultando NF-e na Nuvem Fiscal: ${id}`)
+      logger.debug('Consultando NF-e na Nuvem Fiscal', { id })
 
       const headers = await this.getAuthHeaders()
       const response = await this.client.get(`/nfe/${id}`, { headers })
@@ -269,7 +241,7 @@ export class NuvemFiscalClient {
       return this.processarResposta(response.data)
 
     } catch (error: any) {
-      console.error('❌ Erro ao consultar NF-e:', error)
+      logger.error('Erro ao consultar NF-e', error)
       throw new Error(`Erro ao consultar NF-e: ${error.message}`)
     }
   }
@@ -278,8 +250,8 @@ export class NuvemFiscalClient {
    * Baixar XML da NF-e
    */
   async baixarXML(id: string): Promise<string> {
-    try {
-      console.log(`📄 Baixando XML da NF-e: ${id}`)
+     try {
+      logger.debug('Baixando XML da NF-e', { id })
 
       const headers = await this.getAuthHeaders()
       const response = await this.client.get(`/nfe/${id}/xml`, {
@@ -290,7 +262,7 @@ export class NuvemFiscalClient {
       return response.data
 
     } catch (error: any) {
-      console.error('❌ Erro ao baixar XML:', error)
+      logger.error('Erro ao baixar XML', error)
       throw new Error(`Erro ao baixar XML: ${error.message}`)
     }
   }
@@ -300,7 +272,7 @@ export class NuvemFiscalClient {
    */
   async baixarPDF(id: string): Promise<Blob> {
     try {
-      console.log(`📄 Baixando PDF da NF-e: ${id}`)
+      logger.debug('Baixando PDF da NF-e')
 
       const headers = await this.getAuthHeaders()
       const response = await this.client.get(`/nfe/${id}/pdf`, {
@@ -311,7 +283,7 @@ export class NuvemFiscalClient {
       return response.data
 
     } catch (error: any) {
-      console.error('❌ Erro ao baixar PDF:', error)
+      logger.error('Erro ao baixar PDF', error)
       throw new Error(`Erro ao baixar PDF: ${error.message}`)
     }
   }
@@ -321,8 +293,7 @@ export class NuvemFiscalClient {
    */
   async cancelarNFe(id: string, justificativa: string): Promise<RetornoSEFAZ> {
     try {
-      console.log(`🚫 Cancelando NF-e: ${id}`)
-      console.log(`📝 Justificativa: ${justificativa}`)
+      logger.info('Cancelando NF-e', { id })
 
       if (justificativa.length < 15) {
         throw new Error('Justificativa deve ter no mínimo 15 caracteres')
@@ -335,22 +306,15 @@ export class NuvemFiscalClient {
         justificativa: justificativa
       }
       
-      console.log('📤 Enviando cancelamento:', { id, body })
-      
       const response = await this.client.post(`/nfe/${id}/cancelamento`, body, { headers })
 
-      console.log('✅ Resposta do cancelamento:', response.data)
+      logger.info('NF-e cancelada com sucesso')
       return this.processarResposta(response.data)
 
     } catch (error: any) {
-      console.error('❌ Erro ao cancelar NF-e:', error)
+      logger.error('Erro ao cancelar NF-e', error)
       
-      // Capturar detalhes do erro da API
       if (error.response) {
-        console.error('📛 Status:', error.response.status)
-        console.error('📛 Dados do erro:', error.response.data)
-        console.error('📛 Headers:', error.response.headers)
-        
         const mensagemErro = error.response.data?.mensagem || 
                             error.response.data?.message || 
                             error.response.data?.erro ||
@@ -402,10 +366,10 @@ export class NuvemFiscalClient {
     try {
       // Endpoint de health check (se disponível)
       await this.client.get('/empresas', { timeout: 5000 })
-      console.log('✅ Conexão com Nuvem Fiscal OK')
+      logger.info('Conexão com Nuvem Fiscal OK')
       return true
     } catch (error) {
-      console.error('❌ Falha na conexão com Nuvem Fiscal:', error)
+      logger.error('Falha na conexão com Nuvem Fiscal', error)
       return false
     }
   }

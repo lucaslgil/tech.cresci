@@ -4,6 +4,8 @@
  */
 
 import { supabase } from '../../lib/supabase'
+import { logger } from '../../utils/logger'
+import { sanitizeText, sanitizeEmail, onlyNumbers } from '../../utils/sanitizer'
 import type {
   Cliente,
   ClienteEndereco,
@@ -229,6 +231,29 @@ export async function criarCliente(cliente: Partial<Cliente>) {
     // Filtra apenas os campos que existem na tabela
     const dadosCliente = filtrarCamposCliente(cliente)
 
+    // ✅ SEGURANÇA: Sanitizar dados antes de inserir
+    if (dadosCliente.nome_completo) {
+      dadosCliente.nome_completo = sanitizeText(dadosCliente.nome_completo)
+    }
+    if (dadosCliente.razao_social) {
+      dadosCliente.razao_social = sanitizeText(dadosCliente.razao_social)
+    }
+    if (dadosCliente.nome_fantasia) {
+      dadosCliente.nome_fantasia = sanitizeText(dadosCliente.nome_fantasia)
+    }
+    if (dadosCliente.cpf) {
+      dadosCliente.cpf = onlyNumbers(dadosCliente.cpf)
+    }
+    if (dadosCliente.cnpj) {
+      dadosCliente.cnpj = onlyNumbers(dadosCliente.cnpj)
+    }
+    if (dadosCliente.observacoes) {
+      dadosCliente.observacoes = sanitizeText(dadosCliente.observacoes)
+    }
+    if (dadosCliente.observacoes_internas) {
+      dadosCliente.observacoes_internas = sanitizeText(dadosCliente.observacoes_internas)
+    }
+
     const { data, error } = await supabase
       .from('clientes')
       .insert(dadosCliente)
@@ -237,9 +262,10 @@ export async function criarCliente(cliente: Partial<Cliente>) {
 
     if (error) throw error
 
+    logger.info('Cliente criado', { id: data.id })
     return data as Cliente
   } catch (error) {
-    console.error('Erro ao criar cliente:', error)
+    logger.error('Erro ao criar cliente', error)
     throw error
   }
 }
@@ -252,6 +278,29 @@ export async function atualizarCliente(id: string, cliente: Partial<Cliente>) {
     // Filtra apenas os campos que existem na tabela
     const dadosCliente = filtrarCamposCliente(cliente)
 
+    // ✅ SEGURANÇA: Sanitizar dados antes de atualizar
+    if (dadosCliente.nome_completo) {
+      dadosCliente.nome_completo = sanitizeText(dadosCliente.nome_completo)
+    }
+    if (dadosCliente.razao_social) {
+      dadosCliente.razao_social = sanitizeText(dadosCliente.razao_social)
+    }
+    if (dadosCliente.nome_fantasia) {
+      dadosCliente.nome_fantasia = sanitizeText(dadosCliente.nome_fantasia)
+    }
+    if (dadosCliente.cpf) {
+      dadosCliente.cpf = onlyNumbers(dadosCliente.cpf)
+    }
+    if (dadosCliente.cnpj) {
+      dadosCliente.cnpj = onlyNumbers(dadosCliente.cnpj)
+    }
+    if (dadosCliente.observacoes) {
+      dadosCliente.observacoes = sanitizeText(dadosCliente.observacoes)
+    }
+    if (dadosCliente.observacoes_internas) {
+      dadosCliente.observacoes_internas = sanitizeText(dadosCliente.observacoes_internas)
+    }
+
     const { data, error } = await supabase
       .from('clientes')
       .update(dadosCliente)
@@ -261,9 +310,10 @@ export async function atualizarCliente(id: string, cliente: Partial<Cliente>) {
 
     if (error) throw error
 
+    logger.info('Cliente atualizado', { id })
     return data as Cliente
   } catch (error) {
-    console.error('Erro ao atualizar cliente:', error)
+    logger.error('Erro ao atualizar cliente', error)
     throw error
   }
 }
