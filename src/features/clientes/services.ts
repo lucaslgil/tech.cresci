@@ -5,7 +5,7 @@
 
 import { supabase } from '../../lib/supabase'
 import { logger } from '../../utils/logger'
-import { sanitizeText, sanitizeEmail, onlyNumbers } from '../../utils/sanitizer'
+import { sanitizeText, onlyNumbers } from '../../utils/sanitizer'
 import type {
   Cliente,
   ClienteEndereco,
