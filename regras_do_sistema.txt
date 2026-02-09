@@ -111,14 +111,65 @@
 - Minimizar re-renders desnecessários
 
 ### 11. CONTROLE DE PERMISSÕES - ⚠️ OBRIGATÓRIO
-- **SEMPRE QUE O SISTEMA CRIAR UMA NOVA TELA, DEVEMOS ADICIONAR A OPÇÃO DE ACESSO NAS CONFIGURAÇÕES DO USUÁRIO, PARA CONTROLE DE PERMISSÃO DE ACESSO ÀS TELAS**
+- **SEMPRE QUE CRIAR UM NOVO MENU OU SUBMENU, DEVEMOS CONFIGURAR OS PARÂMETROS PARA LIBERAR OU BLOQUEAR ACESSO NA TELA DE USUÁRIOS E EDITAR USUÁRIOS**
 - Toda nova tela/funcionalidade deve ter uma permissão associada
-- Adicionar a permissão em:
-  1. Interface `Permissoes` em `src/shared/hooks/usePermissions.tsx`
-  2. Interface `Usuario` em `src/features/configuracoes/GerenciarUsuarios.tsx`
-  3. Array `permissoesModulos` em `src/features/configuracoes/GerenciarUsuarios.tsx`
-  4. Valores default em ambos os arquivos
-- Nomenclatura de permissões: `modulo_acao` (ex: `vendas_parametros`, `cadastro_empresa`)
-- Verificar permissões no componente antes de renderizar (usar `hasPermission()`)
-- Proteger rotas com `<PermissionGuard requiredPermissions={['permissao']}>` no App.tsx
-- Adicionar permissão no banco de dados para usuários Admin via SQL
+- **CHECKLIST COMPLETO para adicionar novo menu/submenu:**
+  1. ✅ **Criar componente da tela** (ex: `ConsultarNotasFiscais.tsx`)
+  2. ✅ **Adicionar rota no App.tsx** com `<PermissionGuard>`:
+     ```tsx
+     <Route path="/notas-fiscais/consultar" element={
+       <PermissionGuard requiredPermissions={['notas_fiscais_consultar']}>
+         <ConsultarNotasFiscais />
+       </PermissionGuard>
+     } />
+     ```
+  3. ✅ **Adicionar permissão na interface Permissoes** (`src/shared/hooks/usePermissions.tsx`):
+     ```typescript
+     export interface Permissoes {
+       notas_fiscais_consultar: boolean
+     }
+     ```
+  4. ✅ **Adicionar valor default no usePermissions.tsx**:
+     ```typescript
+     notas_fiscais_consultar: false
+     ```
+  5. ✅ **Adicionar no menu lateral** (`src/shared/components/Layout.tsx`) com verificação:
+     ```tsx
+     {hasPermission('notas_fiscais_consultar') && (
+       <li onClick={() => openConsultarNotasFiscais()}>...</li>
+     )}
+     ```
+  6. ✅ **Adicionar função de abertura** no `useTabOpener.tsx`
+  7. ✅ **Mapear rota para permissão** no `TabBar.tsx`:
+     ```typescript
+     const routePermissionMap = {
+       '/notas-fiscais/consultar': 'notas_fiscais_consultar'
+     }
+     ```
+  8. ✅ **Adicionar na Interface Usuario** (`GerenciarUsuarios.tsx`):
+     ```typescript
+     interface Usuario {
+       permissoes: {
+         notas_fiscais_consultar: boolean
+       }
+     }
+     ```
+  9. ✅ **Adicionar valor padrão** em formData e resetForm no `GerenciarUsuarios.tsx`
+  10. ✅ **Adicionar no array permissoesModulos** (`GerenciarUsuarios.tsx`):
+      ```typescript
+      { key: 'notas_fiscais_consultar' as const, label: 'Consultar Notas Fiscais', grupo: 'Notas Fiscais' }
+      ```
+  11. ✅ **Criar script SQL** para adicionar permissão aos usuários ativos:
+      ```sql
+      UPDATE usuarios 
+      SET permissoes = jsonb_set(
+        COALESCE(permissoes, '{}'::jsonb),
+        '{notas_fiscais_consultar}',
+        'true',
+        true
+      )
+      WHERE ativo = true;
+      ```
+- Nomenclatura de permissões: `modulo_acao` (ex: `vendas_parametros`, `cadastro_empresa`, `notas_fiscais_consultar`)
+- Sempre proteger rotas e menu lateral com verificação de permissão
+- **IMPORTANTE**: Permissões são armazenadas no campo JSON `permissoes` na tabela `usuarios`, NÃO em colunas individuais

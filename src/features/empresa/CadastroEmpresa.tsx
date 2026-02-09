@@ -73,6 +73,7 @@ interface EnderecoViaCep {
   bairro: string
   localidade: string
   uf: string
+  ibge?: string
   erro?: boolean
 }
 
@@ -227,7 +228,8 @@ export const CadastroEmpresa: React.FC = () => {
         ...prev,
         endereco: data.logradouro,
         cidade: data.localidade,
-        estado: data.uf
+        estado: data.uf,
+        codigo_municipio: data.ibge || ''
       }))
     } catch (error) {
       setMessage({ type: 'error', text: 'Erro ao buscar CEP' })
@@ -821,6 +823,23 @@ export const CadastroEmpresa: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Código IBGE do Município
+                  </label>
+                  <input
+                    type="text"
+                    name="codigo_municipio"
+                    maxLength={7}
+                    value={formData.codigo_municipio}
+                    disabled
+                    className="w-full border rounded-md px-3 py-2 text-sm bg-gray-100 text-gray-500 cursor-not-allowed"
+                    style={{ borderColor: '#C9C4B5' }}
+                    placeholder="Preenchido automaticamente"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Preenchido ao consultar o CEP</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
                     Bairro
                   </label>
                   <input
@@ -951,21 +970,42 @@ export const CadastroEmpresa: React.FC = () => {
                 </div>
 
                 {formData.emite_nfe && (
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      name="empresa_padrao_nfe"
-                      id="empresa_padrao_nfe"
-                      checked={formData.empresa_padrao_nfe}
-                      onChange={(e) => setFormData({ ...formData, empresa_padrao_nfe: e.target.checked })}
-                      className="w-4 h-4 mr-2"
-                      style={{ accentColor: '#394353' }}
-                    />
-                    <label htmlFor="empresa_padrao_nfe" className="text-sm font-medium text-gray-700">
-                      ⭐ Empresa Padrão NF-e
-                    </label>
-                    <span className="ml-2 text-xs text-gray-500">(Pré-selecionada na emissão)</span>
-                  </div>
+                  <>
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="empresa_padrao_nfe"
+                        id="empresa_padrao_nfe"
+                        checked={formData.empresa_padrao_nfe}
+                        onChange={(e) => setFormData({ ...formData, empresa_padrao_nfe: e.target.checked })}
+                        className="w-4 h-4 mr-2"
+                        style={{ accentColor: '#394353' }}
+                      />
+                      <label htmlFor="empresa_padrao_nfe" className="text-sm font-medium text-gray-700">
+                        ⭐ Empresa Padrão NF-e
+                      </label>
+                      <span className="ml-2 text-xs text-gray-500">(Pré-selecionada na emissão)</span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Ambiente NF-e <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        name="ambiente_nfe"
+                        value={formData.ambiente_nfe}
+                        onChange={handleChange}
+                        className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:border-transparent text-sm"
+                        style={{ borderColor: '#C9C4B5' }}
+                      >
+                        <option value="HOMOLOGACAO">🟡 Homologação (Testes)</option>
+                        <option value="PRODUCAO">🟢 Produção (Notas Reais)</option>
+                      </select>
+                      <p className="text-xs text-amber-600 mt-1">
+                        ⚠️ HOMOLOGAÇÃO: Para testes sem valor fiscal | PRODUÇÃO: Notas válidas oficiais
+                      </p>
+                    </div>
+                  </>
                 )}
 
                 {/* SEPARADOR - CONTADOR */}

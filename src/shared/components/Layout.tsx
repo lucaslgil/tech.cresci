@@ -381,7 +381,7 @@ export const Layout: React.FC = () => {
             )}
 
             {/* 6. NOTAS FISCAIS */}
-            {hasAnyPermission(['notas_fiscais_emitir', 'notas_fiscais_parametros']) && (
+            {hasAnyPermission(['notas_fiscais_consultar', 'notas_fiscais_emitir', 'notas_fiscais_parametros']) && (
             <div>
               <button
                 onClick={() => toggleMenu(setNotasFiscaisOpen, notasFiscaisOpen)}
@@ -403,6 +403,15 @@ export const Layout: React.FC = () => {
               
               {notasFiscaisOpen && (
                 <div className="mt-1 space-y-0.5 bg-black bg-opacity-20">
+                  {hasPermission('notas_fiscais_consultar') && (
+                  <button
+                    onClick={() => { tabs.consultarNotasFiscais(); closeMobileMenu(); }}
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                  >
+                    Consultar Notas Fiscais
+                  </button>
+                  )}
+                  
                   {hasPermission('notas_fiscais_emitir') && (
                   <button
                     onClick={() => { tabs.emitirNotaFiscal(); closeMobileMenu(); }}

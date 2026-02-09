@@ -86,6 +86,7 @@ export function GerenciadorEnderecos({ clienteId, enderecos, onAtualizarEndereco
           bairro: dados.bairro,
           cidade: dados.localidade,
           estado: dados.uf,
+          codigo_municipio: dados.ibge || '',
           complemento: dados.complemento || prev.complemento
         }))
       }
@@ -426,6 +427,51 @@ export function GerenciadorEnderecos({ clienteId, enderecos, onAtualizarEndereco
                 {erros.estado && <p className="mt-1 text-sm text-red-600">{erros.estado}</p>}
               </div>
             </div>
+
+            {/* Código do Município (IBGE) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Código IBGE do Município (NF-e)
+              </label>
+              <input
+                type="text"
+                value={formData.codigo_municipio || ''}
+                readOnly
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
+                placeholder="Preencha o CEP e clique em Buscar para obter automaticamente"
+              />
+              {formData.codigo_municipio && (
+                <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Código preenchido automaticamente - obrigatório para emissão de NF-e
+                </p>
+              )}
+              {!formData.codigo_municipio && formData.cidade && (
+                <p className="mt-1 text-xs text-orange-600 flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  Busque o CEP para preencher o código IBGE automaticamente
+                </p>
+              )}
+            </div>
+
+            {/* Código do Município (IBGE) - Info */}
+            {formData.codigo_municipio && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">Código IBGE do Município</p>
+                    <p className="text-xs text-blue-700">{formData.codigo_municipio} - Preenchido automaticamente pelo CEP</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Botões */}
             <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">

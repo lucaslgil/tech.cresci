@@ -192,6 +192,7 @@ export const vendasService = {
           forma_pagamento: formData.forma_pagamento,
           condicao_pagamento: formData.condicao_pagamento,
           numero_parcelas: formData.numero_parcelas || 1,
+          operacao_fiscal_id: formData.operacao_fiscal_id,
           vendedor: formData.vendedor,
           comissao_percentual: formData.comissao_percentual,
           comissao_valor: comissaoValor,
@@ -355,6 +356,7 @@ export const vendasService = {
           forma_pagamento: dados.forma_pagamento,
           condicao_pagamento: dados.condicao_pagamento,
           numero_parcelas: dados.numero_parcelas || 1,
+          operacao_fiscal_id: dados.operacao_fiscal_id,
           vendedor: dados.vendedor,
           observacoes: dados.observacoes,
           observacoes_internas: dados.observacoes_internas

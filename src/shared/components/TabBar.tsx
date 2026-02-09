@@ -20,6 +20,7 @@ const routePermissions: Record<string, string> = {
   '/inventario/cadastrar-item': 'inventario_itens',
   '/inventario/relatorio': 'inventario_relatorio',
   '/inventario/linhas-telefonicas': 'inventario_linhas',
+  '/notas-fiscais/consultar': 'notas_fiscais_consultar',
   '/notas-fiscais/emitir': 'notas_fiscais_emitir',
   '/notas-fiscais/parametros': 'notas_fiscais_parametros',
   '/vendas': 'vendas_listagem',

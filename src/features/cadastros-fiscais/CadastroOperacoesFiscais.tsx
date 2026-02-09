@@ -26,6 +26,7 @@ export default function CadastroOperacoesFiscais() {
     calcular_pis: true,
     calcular_cofins: true,
     calcular_st: false,
+    operacao_padrao: false,
     observacoes: '',
     ativo: true
   })
@@ -50,7 +51,7 @@ export default function CadastroOperacoesFiscais() {
       codigo: '', nome: '', descricao: '', cfop_dentro_estado: '', cfop_fora_estado: '', cfop_exterior: '',
       tipo_operacao: 'VENDA', finalidade: 'NORMAL', natureza_operacao: '',
       calcular_icms: true, calcular_ipi: true, calcular_pis: true, calcular_cofins: true, calcular_st: false,
-      observacoes: '', ativo: true
+      operacao_padrao: false, observacoes: '', ativo: true
     })
     setModalAberto(true)
   }
@@ -123,6 +124,7 @@ export default function CadastroOperacoesFiscais() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Nome</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Tipo</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">CFOP (Dentro/Fora)</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase">Padrão</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Ações</th>
               </tr>
             </thead>
@@ -133,6 +135,13 @@ export default function CadastroOperacoesFiscais() {
                   <td className="px-6 py-4 text-sm">{item.nome}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">{item.tipo_operacao}</td>
                   <td className="px-6 py-4 text-sm">{item.cfop_dentro_estado || '-'} / {item.cfop_fora_estado || '-'}</td>
+                  <td className="px-6 py-4 text-center">
+                    {item.operacao_padrao && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        ✓ Padrão
+                      </span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <div className="flex gap-2">
                       <button onClick={() => abrirEdicao(item)} className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded">Editar</button>
@@ -202,6 +211,23 @@ export default function CadastroOperacoesFiscais() {
               <div className="col-span-2">
                 <label className="block text-sm text-slate-700 mb-1">Natureza da Operação</label>
                 <input value={form.natureza_operacao} onChange={(e) => setForm({ ...form, natureza_operacao: e.target.value })} className="w-full px-3 py-2 border rounded" />
+              </div>
+
+              <div className="col-span-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={form.operacao_padrao} 
+                    onChange={(e) => setForm({ ...form, operacao_padrao: e.target.checked })}
+                    className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-slate-700">
+                    <strong>Definir como operação padrão do sistema</strong>
+                    <span className="block text-xs text-slate-500 mt-0.5">
+                      Ao marcar, esta operação será automaticamente selecionada na emissão de notas fiscais
+                    </span>
+                  </span>
+                </label>
               </div>
             </div>
 

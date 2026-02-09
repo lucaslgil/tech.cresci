@@ -11,6 +11,30 @@ import { ncmService, cfopService, operacoesFiscaisService } from '../cadastros-f
 import type { NCM, CFOP, OperacaoFiscal } from '../cadastros-fiscais/types'
 import { supabase } from '../../lib/supabase'
 
+// =====================================================
+// FUNÇÕES AUXILIARES PARA ALÍQUOTAS
+// Aceita vírgula na entrada (padrão BR)
+// Converte para ponto no armazenamento (padrão XML NF-e)
+// =====================================================
+
+/**
+ * Converte número do banco para string com vírgula (apenas para inicialização)
+ */
+const valorParaString = (valor: number | undefined): string => {
+  if (valor === undefined || valor === null || isNaN(valor)) return ''
+  return valor.toString().replace('.', ',')
+}
+
+/**
+ * Converte string com vírgula para número (para salvar no banco)
+ */
+const stringParaNumero = (valor: string): number | undefined => {
+  if (!valor || valor.trim() === '') return undefined
+  const valorNormalizado = valor.replace(',', '.')
+  const numero = parseFloat(valorNormalizado)
+  return isNaN(numero) ? undefined : numero
+}
+
 interface Empresa {
   id: number
   codigo: string
@@ -49,6 +73,32 @@ export default function RegrasTributacao({ empresaId }: Props) {
     nome: '',
     empresa_id: empresaId
   })
+
+  // Estados temporários para campos de alíquota (como string para permitir digitação com vírgula)
+  const [valoresTemp, setValoresTemp] = useState<Record<string, string>>({})
+
+  // Handler para campos de alíquota - permite digitação livre com vírgula
+  const handleAliquotaChange = (campo: string, valor: string) => {
+    // Permite apenas números, vírgula e ponto
+    const valorLimpo = valor.replace(/[^\d,\.]/g, '')
+    
+    // Bloqueia mais de um separador
+    const separadores = (valorLimpo.match(/[,\.]/g) || []).length
+    if (separadores > 1) return
+    
+    // Bloqueia mais de 4 casas decimais
+    const partes = valorLimpo.split(/[,\.]/)
+    if (partes.length === 2 && partes[1].length > 4) return
+    
+    // Atualiza valor temporário (string)
+    setValoresTemp(prev => ({ ...prev, [campo]: valorLimpo }))
+    
+    // Atualiza formData (número)
+    setFormData(prev => ({  
+      ...prev,
+      [campo]: stringParaNumero(valorLimpo)
+    }))
+  }
 
   useEffect(() => {
     carregarRegras()
@@ -156,6 +206,7 @@ export default function RegrasTributacao({ empresaId }: Props) {
       empresa_id: empresaId,
       origem_mercadoria: '0'
     })
+    setValoresTemp({}) // Limpar valores temporários
     setSaidaSearch('')
     setEntradaSearch('')
     setModalAberto(true)
@@ -164,6 +215,26 @@ export default function RegrasTributacao({ empresaId }: Props) {
   const abrirModalEditar = (regra: RegraTributacao) => {
     setRegraSelecionada(regra)
     setFormData(regra)
+    
+    // Inicializar valores temporários com os valores existentes
+    setValoresTemp({
+      aliquota_icms: valorParaString(regra.aliquota_icms),
+      reducao_bc_icms: valorParaString(regra.reducao_bc_icms),
+      aliquota_icms_proprio: valorParaString(regra.aliquota_icms_proprio),
+      aliquota_fcp: valorParaString(regra.aliquota_fcp),
+      reducao_bc_icms_proprio: valorParaString(regra.reducao_bc_icms_proprio),
+      mva_st: valorParaString(regra.mva_st),
+      aliquota_icms_st: valorParaString(regra.aliquota_icms_st),
+      aliquota_fcp_st: valorParaString(regra.aliquota_fcp_st),
+      reducao_bc_st: valorParaString(regra.reducao_bc_st),
+      aliquota_pis: valorParaString(regra.aliquota_pis),
+      aliquota_cofins: valorParaString(regra.aliquota_cofins),
+      aliquota_ipi: valorParaString(regra.aliquota_ipi),
+      reducao_bc_ipi: valorParaString(regra.reducao_bc_ipi),
+      aliquota_ibs: valorParaString(regra.aliquota_ibs),
+      aliquota_cbs: valorParaString(regra.aliquota_cbs),
+    })
+    
     setSaidaSearch(regra.cfop_saida ? `${regra.cfop_saida}` : '')
     setEntradaSearch(regra.cfop_entrada ? `${regra.cfop_entrada}` : '')
     setModalAberto(true)
@@ -595,12 +666,11 @@ export default function RegrasTributacao({ empresaId }: Props) {
                       Alíquota ICMS (%)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={formData.aliquota_icms || ''}
-                      onChange={(e) => setFormData({ ...formData, aliquota_icms: parseFloat(e.target.value) || undefined })}
+                      type="text"
+                      value={valoresTemp.aliquota_icms || ''}
+                      onChange={(e) => handleAliquotaChange('aliquota_icms', e.target.value)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
-                      placeholder="0"
+                      placeholder="0 ou 0,00"
                     />
                   </div>
 
@@ -609,12 +679,11 @@ export default function RegrasTributacao({ empresaId }: Props) {
                       Redução BC ICMS (%)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={formData.reducao_bc_icms || ''}
-                      onChange={(e) => setFormData({ ...formData, reducao_bc_icms: parseFloat(e.target.value) || undefined })}
+                      type="text"
+                      value={valoresTemp.reducao_bc_icms || ''}
+                      onChange={(e) => handleAliquotaChange('reducao_bc_icms', e.target.value)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
-                      placeholder="0"
+                      placeholder="0 ou 0,00"
                     />
                   </div>
                 </div>
@@ -629,12 +698,11 @@ export default function RegrasTributacao({ empresaId }: Props) {
                       Alíquota ICMS (%)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={formData.aliquota_icms_proprio || ''}
-                      onChange={(e) => setFormData({ ...formData, aliquota_icms_proprio: parseFloat(e.target.value) || undefined })}
+                      type="text"
+                      value={valoresTemp.aliquota_icms_proprio || ''}
+                      onChange={(e) => handleAliquotaChange('aliquota_icms_proprio', e.target.value)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
-                      placeholder="0"
+                      placeholder="0 ou 0,00"
                     />
                   </div>
 
@@ -643,10 +711,9 @@ export default function RegrasTributacao({ empresaId }: Props) {
                       Alíquota FCP (%)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={formData.aliquota_fcp || ''}
-                      onChange={(e) => setFormData({ ...formData, aliquota_fcp: parseFloat(e.target.value) || undefined })}
+                      type="text"
+                      value={valoresTemp.aliquota_fcp || ''}
+                      onChange={(e) => handleAliquotaChange('aliquota_fcp', e.target.value)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
                       placeholder="0"
                     />
@@ -673,10 +740,9 @@ export default function RegrasTributacao({ empresaId }: Props) {
                       Redução de Base de Cálculo (%)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={formData.reducao_bc_icms_proprio || ''}
-                      onChange={(e) => setFormData({ ...formData, reducao_bc_icms_proprio: parseFloat(e.target.value) || undefined })}
+                      type="text"
+                      value={valoresTemp.reducao_bc_icms_proprio || ''}
+                      onChange={(e) => handleAliquotaChange('reducao_bc_icms_proprio', e.target.value)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
                       placeholder="0"
                     />
@@ -731,12 +797,11 @@ export default function RegrasTributacao({ empresaId }: Props) {
                       MVA (%)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={formData.mva_st || ''}
-                      onChange={(e) => setFormData({ ...formData, mva_st: parseFloat(e.target.value) || undefined })}
+                      type="text"
+                      value={valoresTemp.mva_st || ''}
+                      onChange={(e) => handleAliquotaChange('mva_st', e.target.value)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
-                      placeholder="0"
+                      placeholder="0 ou 0,00"
                     />
                   </div>
 
@@ -745,10 +810,9 @@ export default function RegrasTributacao({ empresaId }: Props) {
                       Alíquota ST (%)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={formData.aliquota_icms_st || ''}
-                      onChange={(e) => setFormData({ ...formData, aliquota_icms_st: parseFloat(e.target.value) || undefined })}
+                      type="text"
+                      value={valoresTemp.aliquota_icms_st || ''}
+                      onChange={(e) => handleAliquotaChange('aliquota_icms_st', e.target.value)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
                       placeholder="0"
                     />
@@ -759,10 +823,9 @@ export default function RegrasTributacao({ empresaId }: Props) {
                       Alíquota FCP ST (%)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={formData.aliquota_fcp_st || ''}
-                      onChange={(e) => setFormData({ ...formData, aliquota_fcp_st: parseFloat(e.target.value) || undefined })}
+                      type="text"
+                      value={valoresTemp.aliquota_fcp_st || ''}
+                      onChange={(e) => handleAliquotaChange('aliquota_fcp_st', e.target.value)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
                       placeholder="0"
                     />
@@ -791,10 +854,9 @@ export default function RegrasTributacao({ empresaId }: Props) {
                       Redução BC ICMS ST (%)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={formData.reducao_bc_st || ''}
-                      onChange={(e) => setFormData({ ...formData, reducao_bc_st: parseFloat(e.target.value) || undefined })}
+                      type="text"
+                      value={valoresTemp.reducao_bc_st || ''}
+                      onChange={(e) => handleAliquotaChange('reducao_bc_st', e.target.value)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
                       placeholder="0"
                     />
@@ -831,12 +893,11 @@ export default function RegrasTributacao({ empresaId }: Props) {
                       Alíquota PIS (%)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={formData.aliquota_pis || ''}
-                      onChange={(e) => setFormData({ ...formData, aliquota_pis: parseFloat(e.target.value) || undefined })}
+                      type="text"
+                      value={valoresTemp.aliquota_pis || ''}
+                      onChange={(e) => handleAliquotaChange('aliquota_pis', e.target.value)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
-                      placeholder="0.65"
+                      placeholder="0,65"
                     />
                   </div>
 
@@ -898,12 +959,11 @@ export default function RegrasTributacao({ empresaId }: Props) {
                       Alíquota COFINS (%)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={formData.aliquota_cofins || ''}
-                      onChange={(e) => setFormData({ ...formData, aliquota_cofins: parseFloat(e.target.value) || undefined })}
+                      type="text"
+                      value={valoresTemp.aliquota_cofins || ''}
+                      onChange={(e) => handleAliquotaChange('aliquota_cofins', e.target.value)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
-                      placeholder="3.00"
+                      placeholder="3,00"
                     />
                   </div>
 
@@ -958,12 +1018,11 @@ export default function RegrasTributacao({ empresaId }: Props) {
                       Alíquota IPI (%)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={formData.aliquota_ipi || ''}
-                      onChange={(e) => setFormData({ ...formData, aliquota_ipi: parseFloat(e.target.value) || undefined })}
+                      type="text"
+                      value={valoresTemp.aliquota_ipi || ''}
+                      onChange={(e) => handleAliquotaChange('aliquota_ipi', e.target.value)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
-                      placeholder="0.0000"
+                      placeholder="0,0000"
                     />
                   </div>
 
@@ -972,12 +1031,11 @@ export default function RegrasTributacao({ empresaId }: Props) {
                       Redução de Base (%)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={formData.reducao_bc_ipi || ''}
-                      onChange={(e) => setFormData({ ...formData, reducao_bc_ipi: parseFloat(e.target.value) || undefined })}
+                      type="text"
+                      value={valoresTemp.reducao_bc_ipi || ''}
+                      onChange={(e) => handleAliquotaChange('reducao_bc_ipi', e.target.value)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
-                      placeholder="0.0000"
+                      placeholder="0,0000"
                     />
                   </div>
 
@@ -1098,12 +1156,11 @@ export default function RegrasTributacao({ empresaId }: Props) {
                       Alíquota IBS (%)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={formData.aliquota_ibs || ''}
-                      onChange={(e) => setFormData({ ...formData, aliquota_ibs: parseFloat(e.target.value) || undefined })}
+                      type="text"
+                      value={valoresTemp.aliquota_ibs || ''}
+                      onChange={(e) => handleAliquotaChange('aliquota_ibs', e.target.value)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
-                      placeholder="27.00 (padrão)"
+                      placeholder="27,00 (padrão)"
                     />
                     <p className="text-xs text-slate-500 mt-1">Padrão: 27% | Cesta básica: 0%</p>
                   </div>
@@ -1113,12 +1170,11 @@ export default function RegrasTributacao({ empresaId }: Props) {
                       Alíquota CBS (%)
                     </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={formData.aliquota_cbs || ''}
-                      onChange={(e) => setFormData({ ...formData, aliquota_cbs: parseFloat(e.target.value) || undefined })}
+                      type="text"
+                      value={valoresTemp.aliquota_cbs || ''}
+                      onChange={(e) => handleAliquotaChange('aliquota_cbs', e.target.value)}
                       className="w-full px-2 py-1.5 border border-slate-300 rounded text-sm"
-                      placeholder="12.00 (padrão)"
+                      placeholder="12,00 (padrão)"
                     />
                     <p className="text-xs text-slate-500 mt-1">Padrão: 12% | Cesta básica: 0%</p>
                   </div>

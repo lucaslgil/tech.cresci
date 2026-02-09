@@ -25,6 +25,7 @@ interface Usuario {
     vendas_relatorios: boolean
     vendas_parametros: boolean
     // Notas Fiscais
+    notas_fiscais_consultar: boolean
     notas_fiscais_emitir: boolean
     notas_fiscais_parametros: boolean
     // Financeiro
@@ -70,6 +71,7 @@ export const GerenciarUsuarios: React.FC = () => {
       vendas_relatorios: false,
       vendas_parametros: false,
       // Notas Fiscais
+      notas_fiscais_consultar: false,
       notas_fiscais_emitir: false,
       notas_fiscais_parametros: false,
       // Financeiro
@@ -149,6 +151,7 @@ export const GerenciarUsuarios: React.FC = () => {
         vendas_relatorios: false,
         vendas_parametros: false,
         // Notas Fiscais
+        notas_fiscais_consultar: false,
         notas_fiscais_emitir: false,
         notas_fiscais_parametros: false,
         // Financeiro
@@ -286,6 +289,7 @@ export const GerenciarUsuarios: React.FC = () => {
     { key: 'vendas_parametros' as const, label: 'Vendas - Parâmetros de Vendas', grupo: 'Vendas' },
     
     // NOTAS FISCAIS
+    { key: 'notas_fiscais_consultar' as const, label: 'Consultar Notas Fiscais', grupo: 'Notas Fiscais' },
     { key: 'notas_fiscais_emitir' as const, label: 'Emitir Nota Fiscal', grupo: 'Notas Fiscais' },
     { key: 'notas_fiscais_parametros' as const, label: 'Parâmetros Fiscais', grupo: 'Notas Fiscais' },
     

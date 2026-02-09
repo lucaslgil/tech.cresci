@@ -41,6 +41,18 @@ export default function ParametrosFiscais() {
   const [numeracaoNfce, setNumeracaoNfce] = useState({ serie: 1, ultimo_numero: 0, automatico: true })
   const [carregandoNumeracao, setCarregandoNumeracao] = useState(false)
 
+  // Estados para certificado digital
+  const [tipoCertificado, setTipoCertificado] = useState('A1')
+  const [arquivoCertificado, setArquivoCertificado] = useState<File | null>(null)
+  const [senhaCertificado, setSenhaCertificado] = useState('')
+  const [validandoCertificado, setValidandoCertificado] = useState(false)
+  const [certificadoInfo, setCertificadoInfo] = useState<{
+    cnpj: string
+    razaoSocial: string
+    validade: string
+    diasRestantes: number
+  } | null>(null)
+
   const [parametros, setParametros] = useState<ParametrosFiscais>({
     cnpj: '',
     inscricao_estadual: '',
@@ -80,6 +92,20 @@ export default function ParametrosFiscais() {
         setEmpresaId(empresaParaSelecionar.id)
         setEmpresaSelecionada(empresaParaSelecionar)
         console.log('Empresa selecionada:', empresaParaSelecionar.nome_fantasia)
+        
+        // Carregar informações do certificado se existir
+        if (empresaParaSelecionar.certificado_validade && empresaParaSelecionar.certificado_cnpj) {
+          const validade = new Date(empresaParaSelecionar.certificado_validade)
+          const hoje = new Date()
+          const diasRestantes = Math.ceil((validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24))
+          
+          setCertificadoInfo({
+            cnpj: empresaParaSelecionar.certificado_cnpj,
+            razaoSocial: empresaParaSelecionar.certificado_razao_social || '',
+            validade: empresaParaSelecionar.certificado_validade,
+            diasRestantes
+          })
+        }
       }
     } catch (error) {
       console.error('Erro ao carregar empresas:', error)
@@ -90,10 +116,12 @@ export default function ParametrosFiscais() {
   // Carregar parâmetros
   useEffect(() => {
     carregarParametros()
-    carregarNumeracao()
-  }, [])
+    if (empresaSelecionada) {
+      carregarNumeracao(empresaSelecionada.ambiente_nfe || 'HOMOLOGACAO')
+    }
+  }, [empresaSelecionada])
 
-  const carregarNumeracao = async () => {
+  const carregarNumeracao = async (ambiente: 'PRODUCAO' | 'HOMOLOGACAO' = 'HOMOLOGACAO') => {
     try {
       setCarregandoNumeracao(true)
       
@@ -103,7 +131,7 @@ export default function ParametrosFiscais() {
         .select('*')
         .eq('tipo_nota', 'NFE')
         .eq('serie', 1)
-        .eq('ambiente', 'HOMOLOGACAO')
+        .eq('ambiente', ambiente)
         .maybeSingle()
       
       if (nfe) {
@@ -120,7 +148,7 @@ export default function ParametrosFiscais() {
         .select('*')
         .eq('tipo_nota', 'NFCE')
         .eq('serie', 1)
-        .eq('ambiente', 'HOMOLOGACAO')
+        .eq('ambiente', ambiente)
         .maybeSingle()
       
       if (nfce) {
@@ -138,42 +166,249 @@ export default function ParametrosFiscais() {
   }
 
   const salvarNumeracao = async () => {
+    if (!empresaSelecionada) {
+      setToast({ tipo: 'error', mensagem: 'Nenhuma empresa selecionada' })
+      return
+    }
+
     try {
       setCarregando(true)
 
-      // Atualizar NFe
+      const ambiente = empresaSelecionada.ambiente_nfe || 'HOMOLOGACAO'
+      
+      console.log('💾 Salvando numeração:', {
+        ambiente,
+        nfe: numeracaoNfe,
+        nfce: numeracaoNfce
+      })
+
+      // Atualizar ou inserir NFe (UPSERT)
       const { error: erroNfe } = await supabase
         .from('notas_fiscais_numeracao')
-        .update({
+        .upsert({
+          tipo_nota: 'NFE',
+          serie: numeracaoNfe.serie,
+          ambiente: ambiente,
           ultimo_numero: numeracaoNfe.ultimo_numero,
           ativo: numeracaoNfe.automatico,
           updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'tipo_nota,serie,ambiente'
         })
-        .eq('tipo_nota', 'NFE')
-        .eq('serie', numeracaoNfe.serie)
-        .eq('ambiente', 'HOMOLOGACAO')
 
-      if (erroNfe) throw erroNfe
+      if (erroNfe) {
+        console.error('❌ Erro ao atualizar NFe:', erroNfe)
+        throw erroNfe
+      }
+      
+      console.log('✅ NFe atualizado com sucesso')
 
-      // Atualizar NFCe
+      // Atualizar ou inserir NFCe (UPSERT)
       const { error: erroNfce } = await supabase
         .from('notas_fiscais_numeracao')
-        .update({
+        .upsert({
+          tipo_nota: 'NFCE',
+          serie: numeracaoNfce.serie,
+          ambiente: ambiente,
           ultimo_numero: numeracaoNfce.ultimo_numero,
           ativo: numeracaoNfce.automatico,
           updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'tipo_nota,serie,ambiente'
         })
-        .eq('tipo_nota', 'NFCE')
-        .eq('serie', numeracaoNfce.serie)
-        .eq('ambiente', 'HOMOLOGACAO')
 
-      if (erroNfce) throw erroNfce
+      if (erroNfce) {
+        console.error('❌ Erro ao atualizar NFCe:', erroNfce)
+        throw erroNfce
+      }
+      
+      console.log('✅ NFCe atualizado com sucesso')
 
       setToast({ tipo: 'success', mensagem: 'Numeração atualizada com sucesso!' })
-      await carregarNumeracao()
+      
+      // Recarregar numeração com o ambiente correto
+      console.log('🔄 Recarregando numeração...')
+      await carregarNumeracao(ambiente)
+      console.log('✅ Numeração recarregada')
     } catch (error) {
       console.error('Erro ao salvar numeração:', error)
       setToast({ tipo: 'error', mensagem: 'Erro ao salvar numeração' })
+    } finally {
+      setCarregando(false)
+    }
+  }
+
+  const validarESalvarCertificado = async () => {
+    if (!empresaSelecionada) {
+      setToast({ tipo: 'error', mensagem: 'Selecione uma empresa primeiro' })
+      return
+    }
+
+    if (!arquivoCertificado) {
+      setToast({ tipo: 'error', mensagem: 'Selecione um arquivo de certificado' })
+      return
+    }
+
+    if (!senhaCertificado) {
+      setToast({ tipo: 'error', mensagem: 'Informe a senha do certificado' })
+      return
+    }
+
+    try {
+      setValidandoCertificado(true)
+
+      // Ler o arquivo como ArrayBuffer
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        try {
+          const arrayBuffer = e.target?.result as ArrayBuffer
+          
+          // Validar o certificado usando AssinaturaDigitalService
+          const { AssinaturaDigitalService } = await import('../../services/nfe/assinaturaDigitalService')
+          const assinatura = new AssinaturaDigitalService()
+          
+          // Carregar e validar certificado
+          await assinatura.carregarCertificado(arrayBuffer, senhaCertificado)
+          const validacao = assinatura.validarCertificado()
+          
+          if (!validacao.valido) {
+            setToast({ tipo: 'error', mensagem: validacao.mensagem })
+            setValidandoCertificado(false)
+            return
+          }
+          
+          // Extrair informações do certificado
+          const info = assinatura.getInfoCertificado()
+          
+          // Verificar se o CNPJ do certificado bate com o da empresa
+          if (info.cnpj && empresaSelecionada.cnpj) {
+            const cnpjCert = info.cnpj.replace(/\D/g, '')
+            const cnpjEmp = empresaSelecionada.cnpj.replace(/\D/g, '')
+            
+            if (cnpjCert !== cnpjEmp) {
+              setToast({ 
+                tipo: 'error', 
+                mensagem: `CNPJ do certificado (${info.cnpj}) diferente do CNPJ da empresa (${empresaSelecionada.cnpj})` 
+              })
+              setValidandoCertificado(false)
+              return
+            }
+          }
+          
+          // Converter ArrayBuffer para Base64 para salvar no banco (bytea)
+          const uint8Array = new Uint8Array(arrayBuffer)
+          let binaryString = ''
+          for (let i = 0; i < uint8Array.length; i++) {
+            binaryString += String.fromCharCode(uint8Array[i])
+          }
+          const base64Cert = btoa(binaryString)
+          
+          // Salvar no banco de dados
+          const { error: updateError } = await supabase
+            .from('empresas')
+            .update({
+              certificado_digital: base64Cert,
+              certificado_senha: senhaCertificado, // ⚠️ TODO: Criptografar com pgcrypto
+              certificado_validade: info.validoAte,
+              certificado_cnpj: info.cnpj,
+              certificado_razao_social: info.razaoSocial
+            })
+            .eq('id', empresaSelecionada.id)
+          
+          if (updateError) throw updateError
+          
+          // Calcular dias restantes
+          const validade = new Date(info.validoAte)
+          const hoje = new Date()
+          const diasRestantes = Math.ceil((validade.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24))
+          
+          // Atualizar estado com info do certificado
+          setCertificadoInfo({
+            cnpj: info.cnpj,
+            razaoSocial: info.razaoSocial,
+            validade: info.validoAte,
+            diasRestantes
+          })
+          
+          setToast({ 
+            tipo: 'success', 
+            mensagem: `✅ ${validacao.mensagem}\n📋 Razão: ${info.razaoSocial}\n📅 Válido até: ${new Date(info.validoAte).toLocaleDateString('pt-BR')}`
+          })
+          
+          // Limpar campos após sucesso (mas manter o arquivo selecionado)
+          setSenhaCertificado('')
+          
+          // Recarregar dados da empresa
+          await carregarEmpresa()
+        } catch (error: any) {
+          console.error('Erro ao processar certificado:', error)
+          setToast({ 
+            tipo: 'error', 
+            mensagem: error.message || 'Erro ao validar certificado. Verifique o arquivo e a senha.' 
+          })
+        } finally {
+          setValidandoCertificado(false)
+        }
+      }
+      
+      reader.onerror = () => {
+        setToast({ tipo: 'error', mensagem: 'Erro ao ler arquivo do certificado' })
+        setValidandoCertificado(false)
+      }
+      
+      reader.readAsArrayBuffer(arquivoCertificado)
+    } catch (error: any) {
+      console.error('Erro ao salvar certificado:', error)
+      setToast({ tipo: 'error', mensagem: error.message || 'Erro ao processar certificado' })
+      setValidandoCertificado(false)
+    }
+  }
+
+  const removerCertificado = async () => {
+    if (!empresaSelecionada) {
+      setToast({ tipo: 'error', mensagem: 'Selecione uma empresa primeiro' })
+      return
+    }
+
+    if (!confirm('Tem certeza que deseja remover o certificado digital? Você não poderá emitir notas fiscais sem um certificado válido.')) {
+      return
+    }
+
+    try {
+      setCarregando(true)
+
+      // Remover do banco de dados
+      const { error: updateError } = await supabase
+        .from('empresas')
+        .update({
+          certificado_digital: null,
+          certificado_senha: null,
+          certificado_validade: null,
+          certificado_cnpj: null,
+          certificado_razao_social: null
+        })
+        .eq('id', empresaSelecionada.id)
+
+      if (updateError) throw updateError
+
+      // Limpar estados
+      setCertificadoInfo(null)
+      setArquivoCertificado(null)
+      setSenhaCertificado('')
+
+      setToast({
+        tipo: 'success',
+        mensagem: '✅ Certificado removido com sucesso!'
+      })
+
+      // Recarregar dados da empresa
+      await carregarEmpresa()
+    } catch (error: any) {
+      console.error('Erro ao remover certificado:', error)
+      setToast({
+        tipo: 'error',
+        mensagem: error.message || 'Erro ao remover certificado'
+      })
     } finally {
       setCarregando(false)
     }
@@ -408,60 +643,172 @@ export default function ParametrosFiscais() {
           {/* Aba: Certificado Digital */}
           {abaAtiva === 'certificado' && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-slate-800 mb-4">Certificado Digital</h2>
+              <h2 className="text-base font-semibold text-slate-800 mb-3">Certificado Digital</h2>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                <h3 className="font-semibold text-blue-900 mb-2">Sobre o Certificado Digital</h3>
-                <p className="text-sm text-blue-800">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <h3 className="text-sm font-semibold text-blue-900 mb-2">💡 Sobre o Certificado Digital</h3>
+                <p className="text-xs text-blue-800">
                   O certificado digital é obrigatório para assinar as notas fiscais eletrônicas antes de enviá-las à SEFAZ.
                   Você pode utilizar certificados tipo A1 (arquivo .pfx/.p12) ou A3 (smartcard/token USB).
                 </p>
               </div>
 
-              <div className="space-y-4 mt-6">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Tipo de Certificado
-                  </label>
-                  <select className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500">
-                    <option value="A1">A1 - Arquivo (.pfx/.p12)</option>
-                    <option value="A3">A3 - Smartcard/Token USB</option>
-                  </select>
-                </div>
+              {/* Informações do Certificado Atual */}
+              {certificadoInfo && (
+                <div className="bg-white border-2 border-[#C9C4B5] rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                      Certificado Carregado
+                    </h3>
+                    
+                    <button
+                      onClick={removerCertificado}
+                      disabled={carregando}
+                      className="px-3 py-1.5 text-xs font-semibold text-red-600 border border-red-300 rounded-md hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                      title="Remover certificado"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Remover
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1">CNPJ</label>
+                      <p className="text-sm font-semibold text-slate-900">{certificadoInfo.cnpj}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1">Razão Social</label>
+                      <p className="text-sm font-semibold text-slate-900">{certificadoInfo.razaoSocial}</p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1">Validade</label>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {new Date(certificadoInfo.validade).toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-medium text-slate-500 mb-1">Status</label>
+                      <p className="text-sm font-semibold">
+                        {certificadoInfo.diasRestantes > 30 ? (
+                          <span className="text-green-600">✅ Válido ({certificadoInfo.diasRestantes} dias restantes)</span>
+                        ) : certificadoInfo.diasRestantes > 0 ? (
+                          <span className="text-yellow-600">⚠️ Vence em breve ({certificadoInfo.diasRestantes} dias)</span>
+                        ) : (
+                          <span className="text-red-600">❌ Vencido</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Arquivo do Certificado (.pfx/.p12)
-                  </label>
-                  <input
-                    type="file"
-                    accept=".pfx,.p12"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                  />
-                  <p className="text-xs text-slate-500 mt-1">Selecione o arquivo do certificado digital A1</p>
-                </div>
+                  {certificadoInfo.diasRestantes <= 30 && certificadoInfo.diasRestantes > 0 && (
+                    <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                      <p className="text-xs text-yellow-800">
+                        <strong>⚠️ Atenção:</strong> Seu certificado vence em breve! Providencie a renovação para evitar interrupção na emissão de notas.
+                      </p>
+                    </div>
+                  )}
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Senha do Certificado
-                  </label>
-                  <input
-                    type="password"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                    placeholder="Digite a senha do certificado"
-                  />
+                  {certificadoInfo.diasRestantes <= 0 && (
+                    <div className="mt-3 bg-red-50 border border-red-200 rounded-md p-3">
+                      <p className="text-xs text-red-800">
+                        <strong>❌ Certificado Vencido!</strong> Você não poderá emitir notas fiscais. Renove seu certificado imediatamente.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Formulário de Upload */}
+              <div className="bg-white border-2 border-[#C9C4B5] rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-slate-800 mb-3">
+                  {certificadoInfo ? 'Atualizar Certificado' : 'Carregar Certificado'}
+                </h3>
+
+                <div className="max-w-2xl space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">
+                      Tipo de Certificado
+                    </label>
+                    <select 
+                      value={tipoCertificado}
+                      onChange={(e) => setTipoCertificado(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-[#394353] focus:border-[#394353]"
+                    >
+                      <option value="A1">A1 - Arquivo (.pfx/.p12)</option>
+                      <option value="A3">A3 - Smartcard/Token USB</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">
+                      Arquivo do Certificado (.pfx/.p12)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <label className="flex-1 cursor-pointer">
+                        <div className="flex items-center justify-center gap-2 px-4 py-2 border-2 border-[#C9C4B5] rounded-md hover:bg-slate-50 transition-colors">
+                          <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                          </svg>
+                          <span className="text-sm font-medium text-slate-700">
+                            {arquivoCertificado ? arquivoCertificado.name : 'Escolher Arquivo'}
+                          </span>
+                        </div>
+                        <input
+                          type="file"
+                          accept=".pfx,.p12"
+                          onChange={(e) => setArquivoCertificado(e.target.files?.[0] || null)}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {arquivoCertificado ? `📄 ${arquivoCertificado.name}` : 'Selecione o arquivo do certificado digital A1'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1">
+                      Senha do Certificado
+                    </label>
+                    <input
+                      type="password"
+                      value={senhaCertificado}
+                      onChange={(e) => setSenhaCertificado(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-slate-300 rounded-md focus:ring-2 focus:ring-[#394353] focus:border-[#394353]"
+                      placeholder="Digite a senha do certificado"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mt-4">
-                <p className="text-sm text-yellow-800">
-                  <strong>Segurança:</strong> A senha do certificado não é armazenada. Será solicitada a cada assinatura.
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                <p className="text-xs text-yellow-800">
+                  <strong>🔒 Segurança:</strong> A senha do certificado é armazenada de forma segura e será solicitada a cada assinatura.
                 </p>
               </div>
 
-              <div className="flex justify-end mt-6">
-                <button className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                  Validar e Salvar Certificado
+              <div className="flex justify-end">
+                <button 
+                  onClick={validarESalvarCertificado}
+                  disabled={validandoCertificado || !arquivoCertificado || !senhaCertificado}
+                  className="px-6 py-2 bg-[#394353] text-white text-sm font-semibold rounded-md hover:opacity-90 disabled:bg-slate-400 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {validandoCertificado && (
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                  )}
+                  {validandoCertificado ? 'Validando...' : 'Validar e Salvar Certificado'}
                 </button>
               </div>
             </div>
@@ -535,7 +882,10 @@ export default function ParametrosFiscais() {
                           <input
                             type="number"
                             value={numeracaoNfe.ultimo_numero}
-                            onChange={(e) => setNumeracaoNfe({ ...numeracaoNfe, ultimo_numero: parseInt(e.target.value) || 0 })}
+                            onChange={(e) => {
+                              const valor = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
+                              setNumeracaoNfe({ ...numeracaoNfe, ultimo_numero: valor })
+                            }}
                             disabled={numeracaoNfe.automatico}
                             className={`w-full px-3 py-2 text-sm border border-[#C9C4B5] rounded-md focus:ring-2 focus:ring-[#394353] ${
                               numeracaoNfe.automatico ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'
@@ -618,7 +968,10 @@ export default function ParametrosFiscais() {
                           <input
                             type="number"
                             value={numeracaoNfce.ultimo_numero}
-                            onChange={(e) => setNumeracaoNfce({ ...numeracaoNfce, ultimo_numero: parseInt(e.target.value) || 0 })}
+                            onChange={(e) => {
+                              const valor = e.target.value === '' ? 0 : parseInt(e.target.value, 10)
+                              setNumeracaoNfce({ ...numeracaoNfce, ultimo_numero: valor })
+                            }}
                             disabled={numeracaoNfce.automatico}
                             className={`w-full px-3 py-2 text-sm border border-[#C9C4B5] rounded-md focus:ring-2 focus:ring-[#394353] ${
                               numeracaoNfce.automatico ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'

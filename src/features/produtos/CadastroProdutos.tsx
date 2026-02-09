@@ -16,7 +16,8 @@ import {
   Filter,
   AlertTriangle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Upload
 } from 'lucide-react'
 import type { Produto, ProdutoFormData } from './types'
 import {
@@ -35,6 +36,7 @@ import {
 } from './produtosService'
 import { CATEGORIAS_PADRAO } from './types'
 import { ModalFormularioProduto } from './ModalFormularioProduto'
+import { ModalImportacaoProdutos } from './ModalImportacaoProdutos'
 
 interface ToastMessage {
   message: string
@@ -51,6 +53,7 @@ export const CadastroProdutos: React.FC = () => {
   // Estados de modal
   const [showModal, setShowModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
   const [editingProduto, setEditingProduto] = useState<Produto | null>(null)
   const [produtoToDelete, setProdutoToDelete] = useState<Produto | null>(null)
   
@@ -311,6 +314,23 @@ export const CadastroProdutos: React.FC = () => {
   const handleViewDetails = (produto: Produto) => {
     // Futuramente pode abrir modal de detalhes
     console.log('Visualizar produto:', produto)
+  }
+
+  // Importar produtos em lote
+  const handleImportProdutos = async (produtos: ProdutoFormData[]) => {
+    // Processar apenas o primeiro produto (será chamado várias vezes pelo modal)
+    const produto = produtos[0]
+    if (!produto) return
+
+    const { data, error } = await criarProduto(produto)
+    
+    if (error) {
+      // Lançar erro para o modal capturar
+      const errorMsg = (error as any).message || 'Erro ao salvar produto'
+      throw new Error(errorMsg)
+    }
+    
+    return data
   }
 
   // Salvar produto (criar ou atualizar)
@@ -584,6 +604,14 @@ export const CadastroProdutos: React.FC = () => {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="inline-flex items-center justify-center px-4 py-2.5 border shadow-sm text-sm font-semibold rounded-md hover:bg-gray-50"
+                style={{borderColor: '#C9C4B5', color: '#394353'}}
+              >
+                <Upload className="w-4 h-4 sm:mr-2" />
+                <span className="sm:inline">Importar</span>
+              </button>
               <button
                 onClick={handleNovoProduto}
                 className="inline-flex items-center justify-center px-4 py-2.5 border border-transparent shadow-sm text-sm font-semibold rounded-md text-white hover:opacity-90"
@@ -883,6 +911,21 @@ export const CadastroProdutos: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de Importação */}
+      {showImportModal && (
+        <ModalImportacaoProdutos
+          onClose={() => setShowImportModal(false)}
+          onImport={handleImportProdutos}
+          onComplete={() => {
+            fetchProdutos()
+            setToast({ 
+              message: 'Importação concluída! Verifique o resultado acima.', 
+              type: 'success' 
+            })
+          }}
+        />
       )}
 
       {/* Toast de Notificações */}

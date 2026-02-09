@@ -77,22 +77,6 @@ export default function ListagemVendas() {
     }
   }
 
-  const handleReabrir = async (id: number | string) => {
-    if (!confirm('Deseja reabrir este pedido? O status voltará para "Pedido Aberto".')) return
-
-    try {
-      const resultado = await vendasService.reabrirPedido(id)
-      if (resultado.sucesso) {
-        setToast({ tipo: 'success', mensagem: resultado.mensagem })
-        carregarVendas()
-      } else {
-        setToast({ tipo: 'error', mensagem: resultado.mensagem })
-      }
-    } catch (error) {
-      setToast({ tipo: 'error', mensagem: 'Erro ao reabrir pedido' })
-    }
-  }
-
   const handleEmitirNotaFiscal = (venda: Venda) => {
     // Navegar para tela de emissão de nota fiscal com dados da venda
     navigate('/notas-fiscais/emitir', { state: { venda } })
@@ -310,10 +294,11 @@ export default function ListagemVendas() {
                         {/* Botão Ver Detalhes - sempre visível */}
                         <button
                           onClick={() => navigate(`/vendas/${venda.id}`)}
-                          className="text-blue-600 hover:text-blue-900 text-sm"
+                          style={{ backgroundColor: '#E5F6F7', color: '#009FC4' }}
+                          className="px-2 py-1 text-xs rounded hover:opacity-80 font-semibold"
                           title="Ver detalhes"
                         >
-                          👁️
+                          Ver Detalhes
                         </button>
 
                         {/* Botões para PEDIDO_ABERTO */}
@@ -340,27 +325,17 @@ export default function ListagemVendas() {
 
                         {/* Botões para PEDIDO_FECHADO */}
                         {venda.status === 'PEDIDO_FECHADO' && (
-                          <>
-                            <button
-                              onClick={() => handleReabrir(venda.id)}
-                              className="px-2 py-1 text-xs bg-orange-500 text-white rounded hover:bg-orange-600"
-                              title="Reabrir pedido"
-                            >
-                              Reabrir Pedido
-                            </button>
-
-                            <button
-                              onClick={() => handleEmitirNotaFiscal(venda)}
-                              style={{ backgroundColor: '#394353' }}
-                              className="px-2 py-1 text-xs text-white rounded hover:opacity-90 flex items-center gap-1"
-                              title="Emitir Nota Fiscal"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                              Emitir NF
-                            </button>
-                          </>
+                          <button
+                            onClick={() => handleEmitirNotaFiscal(venda)}
+                            style={{ backgroundColor: '#394353' }}
+                            className="px-2 py-1 text-xs text-white rounded hover:opacity-90 flex items-center gap-1"
+                            title="Emitir Nota Fiscal"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Emitir NF
+                          </button>
                         )}
                       </div>
                     </td>

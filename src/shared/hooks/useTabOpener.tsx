@@ -90,6 +90,12 @@ export const useTabOpener = () => {
     }),
 
     // NOTAS FISCAIS
+    consultarNotasFiscais: () => openTab({
+      title: 'Consultar Notas Fiscais',
+      path: '/notas-fiscais/consultar',
+      icon: <FileText className="w-3.5 h-3.5" />
+    }),
+
     emitirNotaFiscal: () => openTab({
       title: 'Emitir Nota Fiscal',
       path: '/notas-fiscais/emitir',

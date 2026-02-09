@@ -114,6 +114,10 @@ export interface Venda {
   condicao_pagamento: CondicaoPagamento
   numero_parcelas?: number
   
+  // Operação Fiscal (para emissão de NF-e)
+  operacao_fiscal_id?: number | string
+  operacao_fiscal_nome?: string
+  
   // Observações e informações adicionais
   observacoes?: string
   observacoes_internas?: string
@@ -219,6 +223,9 @@ export interface VendaFormData {
   forma_pagamento: FormaPagamento
   condicao_pagamento: CondicaoPagamento
   numero_parcelas?: number
+  
+  // Operação Fiscal (para emissão de NF-e)
+  operacao_fiscal_id?: number | string
   
   // Observações
   observacoes?: string

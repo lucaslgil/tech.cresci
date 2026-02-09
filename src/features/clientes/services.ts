@@ -137,7 +137,24 @@ export async function buscarClienteCompleto(id: string) {
 
     if (error) throw error
 
-    return data as ClienteCompleto
+    // Buscar endereços e contatos separadamente
+    const { data: enderecos } = await supabase
+      .from('clientes_enderecos')
+      .select('*')
+      .eq('cliente_id', id)
+      .order('principal', { ascending: false })
+
+    const { data: contatos } = await supabase
+      .from('clientes_contatos')
+      .select('*')
+      .eq('cliente_id', id)
+      .order('principal', { ascending: false })
+
+    return {
+      ...data,
+      enderecos: enderecos || [],
+      contatos: contatos || []
+    } as ClienteCompleto
   } catch (error) {
     console.error('Erro ao buscar cliente:', error)
     throw error

@@ -21,6 +21,8 @@ import { buscarProdutos } from '../produtos/produtosService'
 import type { Cliente } from '../clientes/types'
 import type { Produto } from '../produtos/types'
 import { BotoesAcaoVenda } from './components/BotoesAcaoVenda'
+import { operacoesFiscaisService } from '../cadastros-fiscais/services'
+import type { OperacaoFiscal } from '../cadastros-fiscais/types'
 import { ImpressaoPedido } from './components/ImpressaoPedido'
 import { useParametrosFinanceiros } from './hooks/useParametrosFinanceiros'
 import { criarContaReceber, buscarContasPorVenda } from '../financeiro/contasReceberService'
@@ -53,6 +55,10 @@ export default function NovaVenda() {
   const [buscaProduto, setBuscaProduto] = useState('')
   const [produtosSugeridos, setProdutosSugeridos] = useState<Produto[]>([])
   const [mostrarSugestoesProdutos, setMostrarSugestoesProdutos] = useState(false)
+
+  // Estados para operações fiscais
+  const [operacoesFiscais, setOperacoesFiscais] = useState<OperacaoFiscal[]>([])
+  const [carregandoOperacoes, setCarregandoOperacoes] = useState(false)
 
   const [formData, setFormData] = useState<VendaFormData>({
     tipo_venda: 'PEDIDO',
@@ -152,7 +158,26 @@ export default function NovaVenda() {
     if (id) {
       carregarVenda()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
+
+  // Carregar operações fiscais
+  useEffect(() => {
+    carregarOperacoesFiscais()
+  }, [])
+
+  const carregarOperacoesFiscais = async () => {
+    setCarregandoOperacoes(true)
+    try {
+      const dados = await operacoesFiscaisService.listar({ ativo: true })
+      setOperacoesFiscais(dados)
+    } catch (error) {
+      console.error('Erro ao carregar operações fiscais:', error)
+      // Não mostra erro para não bloquear a tela
+    } finally {
+      setCarregandoOperacoes(false)
+    }
+  }
 
   const carregarVenda = async () => {
     if (!id) return
@@ -173,6 +198,7 @@ export default function NovaVenda() {
           forma_pagamento: venda.forma_pagamento,
           condicao_pagamento: venda.condicao_pagamento,
           numero_parcelas: venda.numero_parcelas,
+          operacao_fiscal_id: venda.operacao_fiscal_id,
           desconto: venda.desconto,
           acrescimo: venda.acrescimo,
           frete: venda.frete,
@@ -208,7 +234,10 @@ export default function NovaVenda() {
 
         // Carregar pagamentos existentes do contas_receber
         const { data: contasReceber, error: erroContas } = await buscarContasPorVenda(Number(id))
-        console.log('Contas a receber carregadas:', contasReceber, 'Erro:', erroContas)
+        console.log('🔍 Carregando pagamentos da venda ID:', id)
+        console.log('📦 Contas a receber retornadas:', contasReceber)
+        console.log('❌ Erro ao buscar contas:', erroContas)
+        
         if (contasReceber && contasReceber.length > 0) {
           // Remover duplicatas baseado em forma_pagamento, valor e vencimento
           const pagamentosUnicos: typeof contasReceber = []
@@ -220,7 +249,7 @@ export default function NovaVenda() {
               chaves.add(chave)
               pagamentosUnicos.push(conta)
             } else {
-              console.warn('Duplicata detectada e ignorada:', conta)
+              console.warn('⚠️ Duplicata detectada e ignorada:', conta)
             }
           }
           
@@ -229,9 +258,17 @@ export default function NovaVenda() {
             valor: conta.valor_original,
             data_vencimento: conta.data_vencimento
           }))
-          console.log('Pagamentos carregados (sem duplicatas):', pagamentosCarregados)
+          console.log('✅ Pagamentos carregados (sem duplicatas):', pagamentosCarregados)
+          console.log('📝 Setando', pagamentosCarregados.length, 'pagamentos no estado')
           setPagamentos(pagamentosCarregados)
+          
+          // Toast informativo sobre pagamentos carregados
+          setTimeout(() => {
+            console.log('ℹ️ Toast: Carregados', pagamentosCarregados.length, 'pagamentos')
+          }, 500)
         } else {
+          console.log('⚠️ Nenhuma conta a receber encontrada para venda_id:', id)
+          console.log('⚠️ Limpando array de pagamentos')
           // Limpar pagamentos se não houver nenhum
           setPagamentos([])
         }
@@ -384,14 +421,15 @@ export default function NovaVenda() {
 
     // Prevenir múltiplos cliques
     if (carregando) {
-      console.warn('Já está salvando, aguarde...')
+      console.warn('⏳ Já está salvando, aguarde...')
       return
     }
 
-    console.log('=== INICIANDO SALVAMENTO ===')
-    console.log('Venda ID:', id)
-    console.log('Pagamentos no estado:', pagamentos)
-    console.log('FormData antes de enviar:', JSON.stringify(formData, null, 2))
+    console.log('💾 === INICIANDO SALVAMENTO ===')
+    console.log('🆔 Venda ID:', id)
+    console.log('💳 Pagamentos no estado (quantidade):', pagamentos.length)
+    console.log('💳 Pagamentos detalhados:', JSON.stringify(pagamentos, null, 2))
+    console.log('📄 FormData itens:', formData.itens.length)
 
     setCarregando(true)
     try {
@@ -454,11 +492,16 @@ export default function NovaVenda() {
               })
             }
             setToast({ tipo: 'success', mensagem: 'Pedido e formas de pagamento atualizados!' })
+            // Aguardar um pouco para garantir que as contas foram salvas
+            console.log('⏳ Aguardando 500ms antes de recarregar...')
+            await new Promise(resolve => setTimeout(resolve, 500))
           } else {
             setToast({ tipo: 'success', mensagem: 'Pedido atualizado com sucesso!' })
           }
           // Recarregar dados
-          carregarVenda()
+          console.log('🔄 Recarregando venda...')
+          await carregarVenda()
+          console.log('✅ Venda recarregada, pagamentos:', pagamentos.length)
         } else {
           setToast({ tipo: 'error', mensagem: resultado.mensagem })
         }
@@ -515,48 +558,17 @@ export default function NovaVenda() {
             }
             console.log('=== TODAS AS CONTAS CRIADAS ===')
             setToast({ tipo: 'success', mensagem: 'Pedido criado com formas de pagamento!' })
+            
+            // Aguardar um pouco para garantir que as contas foram salvas no banco
+            console.log('⏳ Aguardando 800ms para garantir persistência...')
+            await new Promise(resolve => setTimeout(resolve, 800))
           } else {
             setToast({ tipo: 'success', mensagem: 'Pedido criado com status: Pedido em Aberto' })
           }
           
-          // Atualizar URL para modo de edição e carregar dados
+          // Atualizar URL para modo de edição - o useEffect detectará a mudança do id e recarregará automaticamente
+          console.log('📍 Navegando para /vendas/' + vendaId)
           navigate(`/vendas/${vendaId}`, { replace: true })
-          
-          // Aguardar um momento para a URL ser atualizada e então carregar os dados
-          setTimeout(async () => {
-            try {
-              const vendaCarregada = await vendasService.buscarPorId(vendaId)
-              if (vendaCarregada) {
-                setStatusVenda(vendaCarregada.status || 'PEDIDO_ABERTO')
-                setNumeroVenda(vendaCarregada.numero || null)
-                setVendaBloqueada(vendaCarregada.bloqueado || false)
-                setFormData({
-                  tipo_venda: vendaCarregada.tipo_venda,
-                  data_venda: vendaCarregada.data_venda,
-                  data_validade: vendaCarregada.data_validade,
-                  cliente_id: vendaCarregada.cliente_id,
-                  vendedor: vendaCarregada.vendedor,
-                  forma_pagamento: vendaCarregada.forma_pagamento,
-                  condicao_pagamento: vendaCarregada.condicao_pagamento,
-                  numero_parcelas: vendaCarregada.numero_parcelas,
-                  desconto: vendaCarregada.desconto,
-                  acrescimo: vendaCarregada.acrescimo,
-                  frete: vendaCarregada.frete,
-                  outras_despesas: vendaCarregada.outras_despesas,
-                  observacoes: vendaCarregada.observacoes,
-                  observacoes_internas: vendaCarregada.observacoes_internas,
-                  itens: vendaCarregada.itens || []
-                })
-                
-                if (vendaCarregada.cliente_nome) {
-                  clienteSelecionadoRef.current = true
-                  setBuscaCliente(vendaCarregada.cliente_nome)
-                }
-              }
-            } catch (error) {
-              console.error('Erro ao carregar venda:', error)
-            }
-          }, 300)
         } else {
           setToast({ tipo: 'error', mensagem: resultado.mensagem })
         }
@@ -703,6 +715,11 @@ export default function NovaVenda() {
   const handleConfirmarPedido = async () => {
     if (!id) return
     
+    console.log('🔵 === INICIANDO CONFIRMAÇÃO DE PEDIDO ===')
+    console.log('🔵 ID da venda:', id)
+    console.log('🔵 Pagamentos no estado local:', pagamentos.length)
+    console.log('🔵 Detalhes dos pagamentos:', JSON.stringify(pagamentos, null, 2))
+    
     // Validar se há pelo menos uma forma de pagamento antes de confirmar
     if (pagamentos.length === 0) {
       setToast({ tipo: 'error', mensagem: 'Não é possível confirmar o pedido sem informar ao menos uma forma de pagamento!' })
@@ -712,11 +729,13 @@ export default function NovaVenda() {
     setCarregando(true)
     try {
       // Primeiro, salvar os pagamentos se ainda não foram salvos
+      console.log('🔍 Buscando contas existentes...')
       const { data: contasExistentes } = await buscarContasPorVenda(Number(id))
       const pagamentosExistentes = contasExistentes || []
       
-      console.log('Confirmar - Pagamentos no estado:', pagamentos)
-      console.log('Confirmar - Pagamentos existentes no banco:', pagamentosExistentes)
+      console.log('📊 Confirmar - Pagamentos no estado:', pagamentos.length)
+      console.log('📊 Confirmar - Pagamentos existentes no banco:', pagamentosExistentes.length)
+      console.log('📊 Detalhes dos existentes:', JSON.stringify(pagamentosExistentes, null, 2))
       
       // Comparar pagamentos para identificar novos (que não existem no banco)
       const novosPagamentos = pagamentos.filter(pagamento => {
@@ -727,10 +746,12 @@ export default function NovaVenda() {
         )
       })
       
-      console.log('Confirmar - Novos pagamentos a serem criados:', novosPagamentos)
+      console.log('🔍 Confirmar - Novos pagamentos a serem criados:', novosPagamentos.length)
+      console.log('📝 Detalhes dos novos:', JSON.stringify(novosPagamentos, null, 2))
       
       // Se houver pagamentos novos, criar contas a receber
       if (novosPagamentos.length > 0) {
+        console.log('💾 Criando', novosPagamentos.length, 'novas contas a receber...')
         // Buscar informações do cliente se necessário
         let cliente = clienteSelecionado
         if (!cliente && formData.cliente_id) {
@@ -743,6 +764,7 @@ export default function NovaVenda() {
           return
         }
         
+        let contadorCriadas = 0
         for (const pagamento of novosPagamentos) {
           // VALIDAÇÃO: Não criar conta sem forma de pagamento
           if (!pagamento.forma_pagamento || pagamento.forma_pagamento.trim() === '') {
@@ -754,6 +776,9 @@ export default function NovaVenda() {
             console.error('❌ ERRO: Tentativa de criar pagamento com valor zero:', pagamento)
             continue
           }
+          
+          contadorCriadas++
+          console.log(`💰 Criando conta ${contadorCriadas}/${novosPagamentos.length}:`, pagamento.forma_pagamento, 'R$', pagamento.valor)
           
           const statusConta = determinarStatusConta(pagamento.forma_pagamento)
           await criarContaReceber({
@@ -773,18 +798,27 @@ export default function NovaVenda() {
             forma_pagamento: pagamento.forma_pagamento,
             status: statusConta
           })
+          console.log(`✅ Conta ${contadorCriadas} criada com sucesso`)
         }
+        console.log('✅ Todas as', contadorCriadas, 'contas foram criadas')
+      } else {
+        console.log('ℹ️ Nenhuma nova conta a criar (todas já existem)')
       }
       
       // Agora confirmar o pedido
       const resultado = await vendasService.confirmarPedido(id)
       if (resultado.sucesso) {
         setToast({ tipo: 'success', mensagem: 'Pedido confirmado! Movimentação de estoque efetuada.' })
-        carregarVenda() // Recarregar dados da venda
+        console.log('✅ Pedido confirmado, recarregando venda...')
+        // Aguardar um pouco para garantir que as contas foram salvas
+        await new Promise(resolve => setTimeout(resolve, 500))
+        await carregarVenda() // Recarregar dados da venda
+        console.log('✅ Venda recarregada, pagamentos no estado:', pagamentos.length)
       } else {
         setToast({ tipo: 'error', mensagem: resultado.mensagem })
       }
     } catch (error) {
+      console.error('❌ Erro ao confirmar pedido:', error)
       setToast({ tipo: 'error', mensagem: error instanceof Error ? error.message : 'Erro ao confirmar pedido' })
     } finally {
       setCarregando(false)
@@ -874,22 +908,42 @@ export default function NovaVenda() {
                 />
               </div>
 
-              {/* Campo Validade - Apenas para Orçamentos */}
-              {formData.tipo_venda === 'ORCAMENTO' && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Validade do Orçamento *
-                  </label>
-                  <DatePicker
-                    selected={formData.data_validade ? new Date(formData.data_validade) : null}
-                    onChange={(date) => setFormData({ ...formData, data_validade: date ? date.toISOString().split('T')[0] : '' })}
-                    placeholder="Selecione a validade"
-                    minDate={formData.data_venda ? new Date(formData.data_venda) : new Date()}
-                    required
-                  />
-                </div>
-              )}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Operação Fiscal
+                </label>
+                <select
+                  value={formData.operacao_fiscal_id || ''}
+                  onChange={(e) => setFormData({ ...formData, operacao_fiscal_id: e.target.value ? Number(e.target.value) : undefined })}
+                  className="w-full px-2 py-1.5 text-sm border border-[#C9C4B5] rounded-md focus:ring-1 focus:ring-[#394353] focus:border-[#394353]"
+                  disabled={statusVenda === 'PEDIDO_FECHADO' || carregandoOperacoes}
+                >
+                  <option value="">Selecione (opcional)</option>
+                  {operacoesFiscais.map(op => (
+                    <option key={op.id} value={op.id}>
+                      {op.codigo} - {op.nome}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Usado na emissão de NF-e</p>
+              </div>
             </div>
+
+            {/* Campo Validade - Apenas para Orçamentos */}
+            {formData.tipo_venda === 'ORCAMENTO' && (
+              <div className="mt-3">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Validade do Orçamento *
+                </label>
+                <DatePicker
+                  selected={formData.data_validade ? new Date(formData.data_validade) : null}
+                  onChange={(date) => setFormData({ ...formData, data_validade: date ? date.toISOString().split('T')[0] : '' })}
+                  placeholder="Selecione a validade"
+                  minDate={formData.data_venda ? new Date(formData.data_venda) : new Date()}
+                  required
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3 mt-3">
               {/* Campo Cliente com Autocomplete */}
@@ -971,7 +1025,16 @@ export default function NovaVenda() {
 
           {/* Card: Itens */}
           <div className="bg-white rounded-lg shadow p-4">
-            <h2 className="text-base font-medium text-gray-900 mb-3">Produtos/Itens</h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-medium text-gray-900">Produtos/Itens</h2>
+              <button
+                onClick={adicionarItem}
+                className="px-3 py-1.5 text-sm bg-[#394353] text-white rounded-md hover:opacity-90 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={statusVenda === 'PEDIDO_FECHADO'}
+              >
+                + Adicionar Item
+              </button>
+            </div>
 
             {/* Formulário de Adicionar Item */}
             <div className="bg-gray-50 p-3 rounded-md border border-gray-200 mb-3">
@@ -1080,14 +1143,6 @@ export default function NovaVenda() {
                   </div>
                 </div>
               </div>
-
-              <button
-                onClick={adicionarItem}
-                className="mt-2 px-3 py-1.5 text-sm bg-gray-800 text-white rounded-md hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={statusVenda === 'PEDIDO_FECHADO'}
-              >
-                + Adicionar Item
-              </button>
             </div>
 
             {/* Lista de Itens */}
@@ -1137,48 +1192,17 @@ export default function NovaVenda() {
 
           {/* Card: Pagamento */}
           <div className="bg-white rounded-lg shadow p-4">
-            <h2 className="text-base font-medium text-gray-900 mb-3">Pagamento</h2>
-
-            {/* Lista de pagamentos adicionados */}
-            {pagamentos.length > 0 && (
-              <div className="mb-4 space-y-2">
-                <p className="text-xs font-semibold text-gray-700 mb-2">Formas de Pagamento Adicionadas:</p>
-                {pagamentos.map((pag, index) => (
-                  <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded text-xs border border-gray-200">
-                    <div>
-                      <span className="font-medium text-gray-900">{pag.forma_pagamento}</span>
-                      <span className="text-gray-600 ml-2">R$ {pag.valor.toFixed(2)}</span>
-                      {pag.data_vencimento && (
-                        <span className="text-gray-500 ml-2 text-xs">
-                          (Venc: {new Date(pag.data_vencimento).toLocaleDateString('pt-BR')})
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoverPagamento(index)}
-                      className="text-red-600 hover:text-red-800 font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Remover pagamento"
-                      disabled={statusVenda === 'PEDIDO_FECHADO'}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-                <div className="flex justify-between pt-2 border-t border-gray-300">
-                  <span className="text-xs font-semibold text-gray-900">Total Pago:</span>
-                  <span className="text-xs font-semibold text-gray-900">
-                    R$ {pagamentos.reduce((sum, p) => sum + p.valor, 0).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-gray-600">Saldo Restante:</span>
-                  <span className="text-xs font-medium text-blue-600">
-                    R$ {Math.max(0, subtotal - pagamentos.reduce((sum, p) => sum + p.valor, 0)).toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            )}
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-medium text-gray-900">Pagamento</h2>
+              <button
+                type="button"
+                onClick={handleAdicionarPagamento}
+                className="px-3 py-1.5 text-sm bg-[#394353] text-white rounded-md hover:opacity-90 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={statusVenda === 'PEDIDO_FECHADO'}
+              >
+                + Adicionar Pagamento
+              </button>
+            </div>
 
             {/* Formulário para adicionar pagamento */}
             <div className="grid grid-cols-3 gap-3">
@@ -1234,15 +1258,6 @@ export default function NovaVenda() {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleAdicionarPagamento}
-              className="mt-2 px-3 py-1.5 text-sm bg-gray-800 text-white rounded-md hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={statusVenda === 'PEDIDO_FECHADO'}
-            >
-              + Adicionar Pagamento
-            </button>
-
             <div className="mt-4 pt-4 border-t border-gray-200">
               <label className="block text-xs font-medium text-gray-700 mb-1">
                 Observações
@@ -1260,6 +1275,7 @@ export default function NovaVenda() {
 
         {/* Coluna Lateral - Resumo */}
         <div className="col-span-1">
+          {/* Card: Resumo */}
           <div className="bg-white rounded-lg shadow p-4 sticky top-4">
             <h2 className="text-base font-medium text-gray-900 mb-3">Resumo</h2>
 
@@ -1313,6 +1329,52 @@ export default function NovaVenda() {
                   </span>
                 </div>
               </div>
+
+              {/* Formas de Pagamento Adicionadas */}
+              {pagamentos.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <p className="text-xs font-semibold text-gray-700 mb-2">Formas de Pagamento Adicionadas:</p>
+                  <div className="space-y-2">
+                    {pagamentos.map((pag, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded text-xs border border-[#C9C4B5]">
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900">{pag.forma_pagamento}</div>
+                          <div className="text-gray-600">R$ {pag.valor.toFixed(2)}</div>
+                          {pag.data_vencimento && (
+                            <div className="text-gray-500 text-xs">
+                              Venc: {new Date(pag.data_vencimento).toLocaleDateString('pt-BR')}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoverPagamento(index)}
+                          className="text-red-600 hover:text-red-800 font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed ml-2"
+                          title="Remover pagamento"
+                          disabled={statusVenda === 'PEDIDO_FECHADO'}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="mt-3 space-y-1">
+                    <div className="flex justify-between text-xs font-semibold text-gray-900 pt-2 border-t border-gray-300">
+                      <span>Total Pago:</span>
+                      <span className="text-green-600">
+                        R$ {pagamentos.reduce((sum, p) => sum + p.valor, 0).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-gray-600">Saldo Restante:</span>
+                      <span className="font-medium text-blue-600">
+                        R$ {Math.max(0, subtotal - pagamentos.reduce((sum, p) => sum + p.valor, 0)).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {formData.condicao_pagamento === 'PARCELADO' && formData.numero_parcelas && formData.numero_parcelas > 1 && (
                 <div className="bg-blue-50 p-2 rounded-md mt-2">

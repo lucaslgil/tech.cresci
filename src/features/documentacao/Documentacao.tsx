@@ -59,6 +59,15 @@ export const Documentacao: React.FC = () => {
                   <li>• Estatísticas: Total de itens, valor total e valor médio</li>
                 </ul>
               </div>
+
+              <div className="border border-gray-200 rounded-lg p-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-3">NOTAS FISCAIS</h3>
+                <ul className="space-y-2 text-gray-700">
+                  <li>• <strong>Consultar Notas:</strong> Lista completa com filtros, dashboard e exportação</li>
+                  <li>• <strong>Excluir Rascunhos:</strong> Exclusão de notas em rascunho com confirmação</li>
+                  <li>• <strong>Segurança:</strong> Exclusão permitida apenas para status <strong>RASCUNHO</strong></li>
+                </ul>
+              </div>
             </div>
           </section>
 

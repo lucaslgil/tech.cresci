@@ -97,10 +97,15 @@ export interface NotaFiscal {
   protocolo_autorizacao?: string
   data_autorizacao?: string
   
+  // Integração Nuvem Fiscal
+  nuvem_fiscal_id?: string
+  
   // Cancelamento
   data_cancelamento?: string
   protocolo_cancelamento?: string
+  protocolo_evento_cancelamento?: string
   motivo_cancelamento?: string
+  justificativa_cancelamento?: string
   
   // Contingência
   em_contingencia: boolean
@@ -215,9 +220,11 @@ export interface NotaFiscalFormData {
   
   // Cliente
   cliente_id?: string | number
+  destinatario_tipo?: 'FISICA' | 'JURIDICA'
   destinatario_cpf_cnpj?: string
   destinatario_nome?: string
   destinatario_ie?: string
+  destinatario_indicador_ie?: 'CONTRIBUINTE' | 'ISENTO' | 'NAO_CONTRIBUINTE'
   destinatario_email?: string
   destinatario_telefone?: string
   destinatario_logradouro?: string
@@ -227,9 +234,16 @@ export interface NotaFiscalFormData {
   destinatario_cidade?: string
   destinatario_uf?: string
   destinatario_cep?: string
+  destinatario_codigo_municipio?: string
   
   // Itens
   itens: NotaFiscalItemFormData[]
+  
+  // Totais
+  valor_frete?: number
+  valor_seguro?: number
+  valor_desconto?: number
+  valor_outras_despesas?: number
   
   // Transporte
   modalidade_frete: '0' | '1' | '2' | '3' | '4' | '9'
@@ -254,14 +268,20 @@ export interface NotaFiscalFormData {
 
 export interface NotaFiscalItemFormData {
   produto_id?: string | number
-  codigo_produto: string
-  descricao: string
+  codigo_produto?: string
+  produto_codigo?: string
+  produto_descricao?: string
+  descricao?: string
   ncm: string
   cest?: string
   cfop: string
-  unidade_comercial: string
-  quantidade_comercial: number
-  valor_unitario_comercial: number
+  unidade?: string
+  unidade_comercial?: string
+  quantidade?: number
+  quantidade_comercial?: number
+  valor_unitario?: number
+  valor_unitario_comercial?: number
+  valor_total?: number
   valor_desconto?: number
   valor_frete?: number
   valor_seguro?: number
@@ -277,12 +297,17 @@ export interface NotaFiscalItemFormData {
   origem_mercadoria?: string
   
   // ICMS
+  icms_origem?: string
+  icms_cst?: string
   cst_icms?: string
   csosn_icms?: string
   modalidade_bc_icms?: string
   reducao_bc_icms?: number
+  icms_base_calculo?: number
   base_calculo_icms?: number
+  icms_aliquota?: number
   aliquota_icms?: number
+  icms_valor?: number
   valor_icms?: number
   
   // ICMS-ST
@@ -294,15 +319,23 @@ export interface NotaFiscalItemFormData {
   valor_icms_st?: number
   
   // PIS
+  pis_cst?: string
   cst_pis?: string
+  pis_base_calculo?: number
   base_calculo_pis?: number
+  pis_aliquota?: number
   aliquota_pis?: number
+  pis_valor?: number
   valor_pis?: number
   
   // COFINS
+  cofins_cst?: string
   cst_cofins?: string
+  cofins_base_calculo?: number
   base_calculo_cofins?: number
+  cofins_aliquota?: number
   aliquota_cofins?: number
+  cofins_valor?: number
   valor_cofins?: number
   
   // IPI
@@ -318,6 +351,12 @@ export interface NotaFiscalItemFormData {
   codigo_tributacao_municipio?: string
   municipio_incidencia_iss?: string
   
+  // IBS e CBS (Reforma Tributária)
+  ibs_aliquota?: number
+  ibs_valor?: number
+  cbs_aliquota?: number
+  cbs_valor?: number
+  
   // Retenções
   aliquota_ir?: number
   valor_ir?: number
@@ -325,6 +364,9 @@ export interface NotaFiscalItemFormData {
   valor_csll?: number
   aliquota_inss?: number
   valor_inss?: number
+  
+  // Totais
+  valor_total_tributos?: number
   
   // Mensagens fiscais
   mensagens_fiscais?: string[]

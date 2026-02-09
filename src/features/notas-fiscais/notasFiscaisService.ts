@@ -2,10 +2,12 @@
 // SERVICES - NOTAS FISCAIS
 // Serviços para emissão, consulta e gerenciamento de NF-e/NFC-e
 // Data: 01/12/2025
+// Atualização: 06/02/2026 - Cancelamento via Nuvem Fiscal
 // =====================================================
 
 import { supabase } from '../../lib/supabase'
 import { aplicarMotorFiscalNoItem } from './fiscalEngine'
+import { nfeService } from '../../services/nfe/nfeService'
 import type { 
   NotaFiscal, 
   NotaFiscalFormData, 
@@ -103,6 +105,7 @@ export const notasFiscaisService = {
         tipo_nota: dados.tipo_nota,
         numero: proximo,
         serie: dados.serie,
+        empresa_id: dados.empresa_id,
         natureza_operacao: dados.natureza_operacao,
         cfop_predominante: dados.itens[0]?.cfop || '5102',
         finalidade: dados.finalidade,
@@ -131,13 +134,26 @@ export const notasFiscaisService = {
       .select()
       .single()
 
-    if (erroNota) throw erroNota
+    if (erroNota) {
+      console.error('❌ Erro ao criar nota fiscal:', erroNota)
+      console.error('Detalhes do erro:', JSON.stringify(erroNota, null, 2))
+      console.error('Dados enviados:', {
+        tipo_nota: dados.tipo_nota,
+        numero: proximo,
+        serie: dados.serie,
+        empresa_id: dados.empresa_id,
+        natureza_operacao: dados.natureza_operacao,
+        cfop_predominante: dados.itens[0]?.cfop || '5102',
+        finalidade: dados.finalidade
+      })
+      throw new Error(erroNota.message || 'Erro ao criar rascunho de nota fiscal')
+    }
 
     // 4. Inserir itens
     // Antes de inserir, aplicar motor fiscal para preencher campos de impostos
     const itensComImpostos = await Promise.all(dados.itens.map(async (item) => {
       const impostos = await aplicarMotorFiscalNoItem(item, {
-        empresaId: dados.cliente_id ? Number(dados.cliente_id) : 1,
+        empresaId: dados.empresa_id ? Number(dados.empresa_id) : 1,
         tipoOperacao: dados.natureza_operacao || 'VENDA',
         tipoDocumento: 'NFE',
         ufOrigem: 'SP',
@@ -215,14 +231,72 @@ export const notasFiscaisService = {
   },
 
   /**
-   * Deletar nota fiscal (apenas rascunho)
+   * Verificar se pode excluir uma nota fiscal
+   * Não permite exclusão se houver notas posteriores AUTORIZADAS na mesma série
+   */
+  async podeExcluirNota(id: string | number): Promise<{ pode: boolean; motivo?: string }> {
+    try {
+      // 1. Buscar a nota que se deseja excluir
+      const { data: nota, error: erroNota } = await supabase
+        .from('notas_fiscais')
+        .select('numero, serie, tipo_nota, status')
+        .eq('id', id)
+        .single()
+
+      if (erroNota || !nota) {
+        return { pode: false, motivo: 'Nota fiscal não encontrada' }
+      }
+
+      // 2. Verificar se a nota já foi autorizada
+      if (nota.status === 'AUTORIZADA') {
+        return { pode: false, motivo: 'Não é possível excluir uma nota fiscal já autorizada pela SEFAZ' }
+      }
+
+      // 3. Verificar se existem notas posteriores AUTORIZADAS na mesma série e tipo
+      const { data: notasPosteriores, error: erroPosteriores } = await supabase
+        .from('notas_fiscais')
+        .select('numero, status')
+        .eq('tipo_nota', nota.tipo_nota)
+        .eq('serie', nota.serie)
+        .gt('numero', nota.numero)
+        .eq('status', 'AUTORIZADA')
+        .order('numero', { ascending: true })
+        .limit(1)
+
+      if (erroPosteriores) {
+        throw erroPosteriores
+      }
+
+      // 4. Se existirem notas posteriores autorizadas, não pode excluir
+      if (notasPosteriores && notasPosteriores.length > 0) {
+        return {
+          pode: false,
+          motivo: `Não é possível excluir esta nota pois existe a nota nº ${notasPosteriores[0].numero} já autorizada pela SEFAZ. Excluir esta nota geraria uma quebra na sequência numérica.`
+        }
+      }
+
+      return { pode: true }
+    } catch (error) {
+      console.error('Erro ao verificar se pode excluir nota:', error)
+      return { pode: false, motivo: 'Erro ao verificar possibilidade de exclusão' }
+    }
+  },
+
+  /**
+   * Deletar nota fiscal (apenas rascunho sem notas posteriores autorizadas)
    */
   async deletar(id: string | number) {
+    // Validar se pode excluir
+    const validacao = await this.podeExcluirNota(id)
+    if (!validacao.pode) {
+      throw new Error(validacao.motivo || 'Não é possível excluir esta nota')
+    }
+
+    // Excluir nota
     const { error } = await supabase
       .from('notas_fiscais')
       .delete()
       .eq('id', id)
-      .eq('status', 'RASCUNHO')
 
     if (error) throw error
   },
@@ -340,36 +414,216 @@ export const notasFiscaisService = {
 
   /**
    * Cancelar nota fiscal autorizada
+   * Envia evento de cancelamento para SEFAZ via Nuvem Fiscal
    */
-  async cancelar(id: string | number, motivo: string) {
-    const nota = await this.buscarPorId(id)
+  async cancelar(id: string | number, justificativa: string) {
+    try {
+      // 1. Buscar nota completa
+      const nota = await this.buscarPorId(id)
 
-    if (nota.status !== 'AUTORIZADA') {
-      throw new Error('Apenas notas autorizadas podem ser canceladas')
+      // 2. Validações
+      if (nota.status !== 'AUTORIZADA') {
+        throw new Error('Apenas notas autorizadas podem ser canceladas')
+      }
+
+      if (nota.status === 'CANCELADA') {
+        throw new Error('Esta nota já foi cancelada')
+      }
+
+      if (!nota.chave_acesso) {
+        throw new Error('Nota sem chave de acesso. Não pode ser cancelada')
+      }
+
+      if (!justificativa || justificativa.trim().length < 15) {
+        throw new Error('Justificativa de cancelamento deve ter no mínimo 15 caracteres')
+      }
+
+      // 3. Validar prazo de cancelamento (24h após autorização)
+      if (nota.data_autorizacao) {
+        const dataAutorizacao = new Date(nota.data_autorizacao)
+        const agora = new Date()
+        const diferencaHoras = (agora.getTime() - dataAutorizacao.getTime()) / (1000 * 60 * 60)
+        
+        // SEFAZ permite cancelamento em até 168 horas (7 dias) 
+        // mas o ideal é avisar se passou de 24h
+        if (diferencaHoras > 168) {
+          throw new Error('Prazo de cancelamento expirado. Notas fiscais só podem ser canceladas em até 7 dias após autorização')
+        }
+      }
+
+      // 4. Enviar evento de cancelamento para SEFAZ via Nuvem Fiscal
+      const idNum = typeof id === 'number' ? id : Number(id)
+      const retorno = await nfeService.cancelar(idNum, justificativa)
+
+      // 5. Atualizar status no banco
+      if (retorno.status === 'CANCELADA') {
+        await supabase
+          .from('notas_fiscais')
+          .update({
+            status: 'CANCELADA',
+            data_cancelamento: new Date().toISOString(),
+            justificativa_cancelamento: justificativa,
+            protocolo_evento_cancelamento: retorno.numeroProtocolo || retorno.codigo
+          })
+          .eq('id', id)
+
+        // 6. Registrar evento na tabela de eventos
+        await supabase
+          .from('notas_fiscais_eventos')
+          .insert({
+            nota_fiscal_id: id,
+            tipo_evento: 'CANCELAMENTO',
+            sequencia_evento: 1,
+            chave_acesso: nota.chave_acesso,
+            descricao_evento: justificativa,
+            protocolo: retorno.numeroProtocolo || retorno.codigo,
+            status: 'REGISTRADO',
+            codigo_status: retorno.codigo,
+            motivo: retorno.mensagem
+          })
+
+        return {
+          sucesso: true,
+          status: 'CANCELADA',
+          mensagem: 'Nota fiscal cancelada com sucesso na SEFAZ',
+          protocolo: retorno.numeroProtocolo || retorno.codigo
+        }
+      } else {
+        // Cancelamento rejeitado pela SEFAZ
+        await supabase
+          .from('notas_fiscais_eventos')
+          .insert({
+            nota_fiscal_id: id,
+            tipo_evento: 'CANCELAMENTO',
+            sequencia_evento: 1,
+            chave_acesso: nota.chave_acesso,
+            descricao_evento: justificativa,
+            status: 'REJEITADO',
+            codigo_status: retorno.codigo,
+            motivo: retorno.mensagem
+          })
+
+        throw new Error(`SEFAZ rejeitou o cancelamento: ${retorno.mensagem}`)
+      }
+    } catch (error: any) {
+      console.error('Erro ao cancelar nota fiscal:', error)
+      throw new Error(error.message || 'Erro ao cancelar nota fiscal')
+    }
+  },
+
+  /**
+   * Consultar status atual da nota na SEFAZ
+   * Atualiza status local com base na consulta
+   */
+  async consultarStatusSEFAZ(id: string | number) {
+    try {
+      console.log(`🔍 Consultando status da nota ${id} na SEFAZ...`)
+      
+      // 1. Buscar nota
+      const { data: nota, error } = await supabase
+        .from('notas_fiscais')
+        .select('nuvem_fiscal_id, chave_acesso, status')
+        .eq('id', id)
+        .single()
+
+      if (error || !nota) {
+        throw new Error('Nota fiscal não encontrada')
+      }
+
+      console.log(`📋 Status atual no banco: ${nota.status}`)
+
+      if (!nota.nuvem_fiscal_id) {
+        throw new Error('ID da Nuvem Fiscal não encontrado. Esta nota pode ter sido emitida sem integração.')
+      }
+
+      // 2. Consultar na Nuvem Fiscal (que consulta na SEFAZ)
+      console.log(`🌐 Consultando Nuvem Fiscal ID: ${nota.nuvem_fiscal_id}`)
+      const retorno = await nfeService.consultar(nota.nuvem_fiscal_id)
+
+      console.log(`✅ Status retornado da SEFAZ: ${retorno.status}`)
+      console.log(`📊 Detalhes:`, retorno)
+
+      // 3. Atualizar status local se diferente
+      if (retorno.status !== nota.status) {
+        console.log(`🔄 Status diferente! Atualizando ${nota.status} → ${retorno.status}`)
+        
+        const update: any = {
+          status: retorno.status,
+          codigo_status_sefaz: retorno.codigo,
+          motivo_status: retorno.mensagem
+        }
+
+        if (retorno.status === 'CANCELADA') {
+          update.data_cancelamento = retorno.dataHoraAutorizacao || new Date().toISOString()
+          console.log(`📅 Adicionando data de cancelamento: ${update.data_cancelamento}`)
+        }
+
+        const { error: updateError } = await supabase
+          .from('notas_fiscais')
+          .update(update)
+          .eq('id', id)
+
+        if (updateError) {
+          console.error('❌ Erro ao atualizar status no banco:', updateError)
+          throw updateError
+        }
+
+        console.log(`✅ Status atualizado no banco com sucesso!`)
+
+        return {
+          sucesso: true,
+          statusAnterior: nota.status,
+          statusAtual: retorno.status,
+          mensagem: `Status atualizado: ${nota.status} → ${retorno.status}`,
+          detalhes: retorno,
+          atualizado: true
+        }
+      }
+
+      console.log(`ℹ️ Status já está sincronizado: ${retorno.status}`)
+
+      return {
+        sucesso: true,
+        statusAtual: retorno.status,
+        mensagem: `Status confirmado: ${retorno.status}`,
+        detalhes: retorno,
+        atualizado: false
+      }
+    } catch (error: any) {
+      console.error('❌ Erro ao consultar status:', error)
+      throw new Error(error.message || 'Erro ao consultar status na SEFAZ')
+    }
+  },
+
+  /**
+   * Excluir nota fiscal (apenas rascunhos)
+   */
+  async excluir(id: string | number) {
+    const idNum = typeof id === 'number' ? id : Number(id)
+    // Verificar se é rascunho
+    const { data: nota, error: erroConsulta } = await supabase
+      .from('notas_fiscais')
+      .select('status')
+      .eq('id', idNum)
+      .single()
+
+    if (erroConsulta) throw erroConsulta
+    
+    if (nota.status !== 'RASCUNHO') {
+      throw new Error('Apenas notas em rascunho podem ser excluídas')
     }
 
-    // TODO: Enviar evento de cancelamento para SEFAZ
-
-    await supabase
+    // Excluir (cascade vai excluir os itens automaticamente)
+    const { data: deletado, error } = await supabase
       .from('notas_fiscais')
-      .update({
-        status: 'CANCELADA',
-        data_cancelamento: new Date().toISOString(),
-        motivo_cancelamento: motivo
-      })
-      .eq('id', id)
+      .delete()
+      .eq('id', idNum)
+      .select('id')
 
-    // Registrar evento
-    await supabase
-      .from('notas_fiscais_eventos')
-      .insert({
-        nota_fiscal_id: id,
-        tipo_evento: 'CANCELAMENTO',
-        sequencia_evento: 1,
-        chave_acesso: nota.chave_acesso,
-        descricao_evento: motivo,
-        status: 'REGISTRADO'
-      })
+    if (error) throw error
+    if (!deletado || deletado.length === 0) {
+      throw new Error('Sem permissão para excluir esta nota fiscal')
+    }
   }
 }
 
@@ -473,7 +727,7 @@ function gerarXMLNFe(nota: NotaFiscal, itens: NotaFiscalItem[]): string {
       </total>
     </infNFe>
   </NFe>
-</nfeProc>`
+ </nfeProc>`
 }
 
 export default notasFiscaisService

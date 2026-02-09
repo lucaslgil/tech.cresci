@@ -182,49 +182,90 @@ async function buscarRegraTributacao(
     }
     
     // 2️⃣ FALLBACK: Busca dinâmica por NCM + CFOP + UF
-    console.log('🔍 Buscando regra dinamicamente...')
+    console.log('🔍 Buscando regra dinamicamente para:', {
+      produto: item.descricao,
+      ncm: item.ncm,
+      cfop: contexto.cfop,
+      totalRegras: regras.length
+    })
     
     // Normalizar códigos do item para comparação
     const itemNCM = normalizarCodigoFiscal(item.ncm)
     const itemCEST = normalizarCodigoFiscal(item.cest)
     const contextoCFOP = normalizarCodigoFiscal(contexto.cfop)
     
+    console.log('📋 Códigos normalizados:', {
+      itemNCM,
+      itemCEST,
+      contextoCFOP,
+      ufOrigem: contexto.ufOrigem,
+      ufDestino: contexto.ufDestino
+    })
+    
     // Filtrar regras aplicáveis
     const regrasAplicaveis = regras.filter(r => {
-      if (!r.ativo) return false
+      if (!r.ativo) {
+        console.log(`⏭️ Regra "${r.nome}" ignorada: inativa`)
+        return false
+      }
       
-      // Tipo de documento deve corresponder (ou ser genérico)
-      if (r.tipo_documento && r.tipo_documento !== contexto.tipoDocumento) return false
+      // Tipo de documento deve corresponder (ou ser genérico/vazio)
+      if (r.tipo_documento && r.tipo_documento !== contexto.tipoDocumento) {
+        console.log(`⏭️ Regra "${r.nome}" ignorada: tipo_documento ${r.tipo_documento} !== ${contexto.tipoDocumento}`)
+        return false
+      }
       
       // NCM (prioridade alta) - COMPARAÇÃO NORMALIZADA
+      // IMPORTANTE: Se a regra TEM NCM, ele DEVE bater. Se não tem, ignora essa validação
       if (r.ncm) {
         const regraNcm = normalizarCodigoFiscal(r.ncm)
-        if (regraNcm !== itemNCM) return false
+        if (regraNcm && regraNcm !== itemNCM) {
+          console.log(`⏭️ Regra "${r.nome}" ignorada: NCM ${regraNcm} !== ${itemNCM}`)
+          return false
+        }
       }
       
-      // CEST - COMPARAÇÃO NORMALIZADA
-      if (r.cest) {
+      // CEST - COMPARAÇÃO NORMALIZADA (apenas se preenchido)
+      if (r.cest && itemCEST) {
         const regraCest = normalizarCodigoFiscal(r.cest)
-        if (regraCest !== itemCEST) return false
+        if (regraCest !== itemCEST) {
+          console.log(`⏭️ Regra "${r.nome}" ignorada: CEST ${regraCest} !== ${itemCEST}`)
+          return false
+        }
       }
       
-      // UF Origem/Destino
-      if (r.uf_origem && r.uf_origem !== contexto.ufOrigem) return false
-      if (r.uf_destino && r.uf_destino !== contexto.ufDestino) return false
+      // UF Origem/Destino (apenas se preenchido na regra)
+      if (r.uf_origem && r.uf_origem !== contexto.ufOrigem) {
+        console.log(`⏭️ Regra "${r.nome}" ignorada: UF origem ${r.uf_origem} !== ${contexto.ufOrigem}`)
+        return false
+      }
+      if (r.uf_destino && r.uf_destino !== contexto.ufDestino) {
+        console.log(`⏭️ Regra "${r.nome}" ignorada: UF destino ${r.uf_destino} !== ${contexto.ufDestino}`)
+        return false
+      }
       
-      // CFOP - COMPARAÇÃO NORMALIZADA
+      // CFOP - COMPARAÇÃO NORMALIZADA (apenas se preenchido na regra)
       if (r.cfop_saida) {
         const regraCfop = normalizarCodigoFiscal(r.cfop_saida)
-        if (regraCfop !== contextoCFOP) return false
+        if (regraCfop && regraCfop !== contextoCFOP) {
+          console.log(`⏭️ Regra "${r.nome}" ignorada: CFOP ${regraCfop} !== ${contextoCFOP}`)
+          return false
+        }
       }
       
-      // Operação Fiscal
-      if (r.operacao_fiscal && r.operacao_fiscal !== contexto.tipoOperacao) return false
+      // Operação Fiscal (VALIDAÇÃO REMOVIDA - causa muitos falsos negativos)
+      // A operação fiscal na regra é informativa, não deve bloquear o match
+      // if (r.operacao_fiscal && r.operacao_fiscal !== contexto.tipoOperacao) {
+      //   console.log(`⏭️ Regra "${r.nome}" ignorada: operacao_fiscal ${r.operacao_fiscal} !== ${contexto.tipoOperacao}`)
+      //   return false
+      // }
       
+      console.log(`✅ Regra "${r.nome}" aplicável!`)
       return true
     })
     
     if (regrasAplicaveis.length === 0) {
+      console.warn('❌ NENHUMA REGRA ENCONTRADA para:', item.descricao)
       return null
     }
     
@@ -236,6 +277,7 @@ async function buscarRegraTributacao(
     })
     
     // Retornar a regra mais específica
+    console.log(`✅ Regra encontrada dinamicamente: "${regrasAplicaveis[0].nome}" (${regrasAplicaveis.length} regras aplicáveis)`)
     return regrasAplicaveis[0]
   } catch (error) {
     console.error('Erro ao buscar regra de tributação:', error)
@@ -259,9 +301,57 @@ export async function aplicarMotorFiscalNoItem(item: NotaFiscalItemFormData, con
   // Buscar regra de tributação
   const regra = await buscarRegraTributacao(item, contexto)
   
+  // ⚠️ VALIDAÇÃO RIGOROSA: Bloquear cálculo sem regra de tributação
+  if (!regra) {
+    const mensagemErro = `⚠️ PRODUTO SEM REGRA DE TRIBUTAÇÃO CADASTRADA!\n\n` +
+      `Produto: ${item.descricao}\n` +
+      `NCM: ${item.ncm || 'NÃO INFORMADO'}\n` +
+      `CFOP: ${contexto.cfop || 'NÃO INFORMADO'}\n\n` +
+      `AÇÃO NECESSÁRIA:\n` +
+      `1. Acesse: Parâmetros Fiscais > Regras de Tributação\n` +
+      `2. Clique em "Nova Regra"\n` +
+      `3. Cadastre uma regra para o NCM ${item.ncm}\n` +
+      `4. Defina os impostos (ICMS, PIS, COFINS, etc)\n` +
+      `5. Salve e tente novamente`
+    
+    console.error(`\n🚫 ==========================================`)
+    console.error(`🚫 ERRO: PRODUTO SEM REGRA DE TRIBUTAÇÃO`)
+    console.error(`🚫 ==========================================`)
+    console.error(`📦 Produto: ${item.descricao}`)
+    console.error(`🏷️  NCM: ${item.ncm || 'NÃO INFORMADO'}`)
+    console.error(`📋 CFOP: ${contexto.cfop || 'NÃO INFORMADO'}`)
+    console.error(`\n❌ Este produto NÃO PODE ser incluído na nota fiscal!`)
+    console.error(`\n✅ SOLUÇÃO: Cadastre uma regra de tributação em:`)
+    console.error(`   Parâmetros Fiscais > Regras de Tributação`)
+    console.error(`🚫 ==========================================\n`)
+    
+    return {
+      origem_mercadoria: '0',
+      reducao_bc_icms: 0,
+      base_calculo_icms: 0,
+      aliquota_icms: 0,
+      valor_icms: 0,
+      mva_st: 0,
+      reducao_bc_icms_st: 0,
+      base_calculo_icms_st: 0,
+      aliquota_icms_st: 0,
+      valor_icms_st: 0,
+      base_calculo_pis: 0,
+      aliquota_pis: 0,
+      valor_pis: 0,
+      base_calculo_cofins: 0,
+      aliquota_cofins: 0,
+      valor_cofins: 0,
+      base_calculo_ipi: 0,
+      aliquota_ipi: 0,
+      valor_ipi: 0,
+      mensagens_fiscais: [mensagemErro]
+    }
+  }
+  
   // Resultado padrão
   const resultado: TributosCalculados = {
-    origem_mercadoria: regra?.origem_mercadoria || '0',
+    origem_mercadoria: regra.origem_mercadoria || '0',
     reducao_bc_icms: 0,
     base_calculo_icms: 0,
     aliquota_icms: 0,

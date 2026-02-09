@@ -118,6 +118,9 @@ export interface OperacaoFiscal {
   calcular_cofins: boolean
   calcular_st: boolean
   
+  // Configurações
+  operacao_padrao: boolean // Define se é operação padrão do sistema
+  
   // Observações
   observacoes?: string
   
@@ -168,6 +171,7 @@ export interface OperacaoFiscalFormData {
   movimenta_financeiro?: boolean
   gera_duplicata?: boolean
   gera_comissao?: boolean
+  operacao_padrao?: boolean
   mensagem_nota?: string
   observacoes?: string
   ativo?: boolean

@@ -18,7 +18,7 @@ import { Documentacao } from './features/documentacao/Documentacao'
 import { Configuracoes } from './features/configuracoes/Configuracoes'
 import ConfiguracaoUsuario from './features/perfil/ConfiguracaoUsuario'
 import { CadastroClientes, ListagemClientes } from './features/clientes'
-import { EmitirNotaFiscal, ParametrosFiscais } from './features/notas-fiscais'
+import { EmitirNotaFiscal, ParametrosFiscais, ConsultarNotasFiscais } from './features/notas-fiscais'
 import { NovaVenda, ListagemVendas, RelatoriosVendas, ParametrosVendas } from './features/vendas'
 import Franquias from './features/franquias/Franquias'
 import { ContasPagar } from './features/financeiro/ContasPagar'
@@ -27,6 +27,12 @@ import { ParametrosFinanceiros } from './features/financeiro/ParametrosFinanceir
 import { useTema } from './shared/hooks/useTema'
 
 function App() {
+  console.log('🚀 App.tsx carregando...')
+  console.log('📦 Variáveis env disponíveis:', {
+    VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL ? 'Definida' : 'NÃO DEFINIDA',
+    VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Definida' : 'NÃO DEFINIDA'
+  })
+  
   // Aplicar tema ao iniciar
   useTema()
   
@@ -106,6 +112,11 @@ function App() {
             } />
             
             {/* NOTAS FISCAIS */}
+            <Route path="notas-fiscais/consultar" element={
+              <PermissionGuard requiredPermissions={['notas_fiscais_consultar']}>
+                <ConsultarNotasFiscais />
+              </PermissionGuard>
+            } />
             <Route path="notas-fiscais/emitir" element={
               <PermissionGuard requiredPermissions={['notas_fiscais_emitir']}>
                 <EmitirNotaFiscal />

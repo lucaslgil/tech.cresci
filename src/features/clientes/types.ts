@@ -131,6 +131,7 @@ export interface ClienteEndereco {
   bairro: string
   cidade: string
   estado: string
+  codigo_municipio?: string
   pais: string
   
   // Coordenadas
