@@ -202,7 +202,7 @@ export class NuvemFiscalAdapter {
           nNF: Number(dados.numero || 1),
           dhEmi: new Date().toISOString(),
           tpNF: 1, // 1 = Saída
-          idDest: 1, // 1 = Operação interna
+          idDest: this.calcularIdDest(dados),
           cMunFG: Number(dados.emitente.codigo_municipio),
           tpImp: 1, // 1 = Retrato
           tpEmis: 1, // 1 = Normal
@@ -234,29 +234,7 @@ export class NuvemFiscalAdapter {
         },
         
         // Destinatário
-        dest: {
-          ...(cpfCnpjDestinatario.length === 11 ? { CPF: cpfCnpjDestinatario } : { CNPJ: cpfCnpjDestinatario }),
-          xNome: String(dados.destinatario.nome_razao).substring(0, 60),
-          enderDest: {
-            xLgr: String(dados.destinatario.logradouro).substring(0, 60),
-            nro: String(dados.destinatario.numero).substring(0, 60),
-            ...(dados.destinatario.complemento && { xCpl: String(dados.destinatario.complemento).substring(0, 60) }),
-            xBairro: String(dados.destinatario.bairro).substring(0, 60),
-            cMun: String(dados.destinatario.codigo_municipio || '').padStart(7, '0'),
-            xMun: String(dados.destinatario.cidade).substring(0, 60),
-            UF: String(dados.destinatario.uf),
-            CEP: String(dados.destinatario.cep).replace(/\D/g, '')
-          },
-          indIEDest: this.converterIndicadorIE(dados.destinatario.indicador_ie),
-          // IE: Só enviar se for contribuinte (indIEDest = 1) e tiver valor numérico
-          ...(
-            this.converterIndicadorIE(dados.destinatario.indicador_ie) === 1 &&
-            dados.destinatario.inscricao_estadual &&
-            /^[0-9]+$/.test(String(dados.destinatario.inscricao_estadual).replace(/\D/g, ''))
-              ? { IE: String(dados.destinatario.inscricao_estadual).replace(/\D/g, '') }
-              : {}
-          )
-        },
+        dest: this.montarDestinatario(dados),
         
         // Itens/Produtos
         det: dados.itens.map((item, index) => {
@@ -325,8 +303,17 @@ export class NuvemFiscalAdapter {
             }
           }
         }),
-        
-        // Totais
+                // Grupo de Exportação (obrigatório quando idDest = 3)
+        ...(dados.exportacao && {
+          exporta: {
+            UFSaidaPais: dados.exportacao.uf_embarque,
+            xLocExporta: String(dados.exportacao.local_embarque).substring(0, 60),
+            ...(dados.exportacao.local_despacho && {
+              xLocDespacho: String(dados.exportacao.local_despacho).substring(0, 60)
+            })
+          }
+        }),
+                // Totais
         total: {
           ICMSTot: {
             vBC: parseFloat(Number(dados.totais.base_calculo_icms || 0).toFixed(2)),
@@ -389,6 +376,88 @@ export class NuvemFiscalAdapter {
     return payload
   }
   
+  /**
+   * Calcular identificador do destino da opera\u00e7\u00e3o
+   * 1 = Opera\u00e7\u00e3o interna (dentro do estado)
+   * 2 = Opera\u00e7\u00e3o interestadual
+   * 3 = Opera\u00e7\u00e3o com exterior
+   */
+  private calcularIdDest(dados: NotaFiscalDados): number {
+    // Verificar se \u00e9 exporta\u00e7\u00e3o (pa\u00eds diferente do Brasil)
+    if (dados.destinatario.pais_codigo && 
+        dados.destinatario.pais_codigo !== '1058' && 
+        dados.destinatario.pais_codigo !== 'BR') {
+      return 3 // Exterior
+    }
+    
+    // Verificar se \u00e9 opera\u00e7\u00e3o interna (mesma UF) ou interestadual
+    if (dados.destinatario.uf === dados.emitente.uf) {
+      return 1 // Interna
+    }
+    
+    return 2 // Interestadual
+  }
+
+  /**
+   * Montar dados do destinat\u00e1rio (nacional ou estrangeiro)
+   */
+  private montarDestinatario(dados: NotaFiscalDados): any {
+    const cpfCnpjDestinatario = dados.destinatario.cpf_cnpj.replace(/\D/g, '')
+    const ehExterior = dados.destinatario.pais_codigo && 
+                       dados.destinatario.pais_codigo !== '1058' && 
+                       dados.destinatario.pais_codigo !== 'BR'
+    
+    if (ehExterior) {
+      // Destinat\u00e1rio Estrangeiro
+      return {
+        // Para estrangeiro, pode usar idEstrangeiro ou CNPJ gen\u00e9rico
+        ...(cpfCnpjDestinatario ? { idEstrangeiro: cpfCnpjDestinatario } : {}),
+        xNome: String(dados.destinatario.nome_razao).substring(0, 60),
+        enderDest: {
+          xLgr: String(dados.destinatario.logradouro || 'EXTERIOR').substring(0, 60),
+          nro: String(dados.destinatario.numero || 'SN').substring(0, 60),
+          ...(dados.destinatario.complemento && { 
+            xCpl: String(dados.destinatario.complemento).substring(0, 60) 
+          }),
+          xBairro: String(dados.destinatario.bairro || 'EXTERIOR').substring(0, 60),
+          cMun: 9999999, // C\u00f3digo para exterior
+          xMun: 'EXTERIOR',
+          UF: 'EX',
+          CEP: String(dados.destinatario.cep || '').replace(/\D/g, '') || '00000000',
+          cPais: dados.destinatario.pais_codigo || '0132',
+          xPais: dados.destinatario.pais_nome || 'EXTERIOR'
+        }
+      }
+    }
+    
+    // Destinat\u00e1rio Nacional
+    return {
+      ...(cpfCnpjDestinatario.length === 11 ? { CPF: cpfCnpjDestinatario } : { CNPJ: cpfCnpjDestinatario }),
+      xNome: String(dados.destinatario.nome_razao).substring(0, 60),
+      enderDest: {
+        xLgr: String(dados.destinatario.logradouro).substring(0, 60),
+        nro: String(dados.destinatario.numero).substring(0, 60),
+        ...(dados.destinatario.complemento && { 
+          xCpl: String(dados.destinatario.complemento).substring(0, 60) 
+        }),
+        xBairro: String(dados.destinatario.bairro).substring(0, 60),
+        cMun: String(dados.destinatario.codigo_municipio || '').padStart(7, '0'),
+        xMun: String(dados.destinatario.cidade).substring(0, 60),
+        UF: String(dados.destinatario.uf),
+        CEP: String(dados.destinatario.cep).replace(/\D/g, '')
+      },
+      indIEDest: this.converterIndicadorIE(dados.destinatario.indicador_ie),
+      // IE: S\u00f3 enviar se for contribuinte (indIEDest = 1) e tiver valor num\u00e9rico
+      ...(
+        this.converterIndicadorIE(dados.destinatario.indicador_ie) === 1 &&
+        dados.destinatario.inscricao_estadual &&
+        /^[0-9]+$/.test(String(dados.destinatario.inscricao_estadual).replace(/\D/g, ''))
+          ? { IE: String(dados.destinatario.inscricao_estadual).replace(/\D/g, '') }
+          : {}
+      )
+    }
+  }
+
   /**
    * Obter código UF conforme tabela IBGE
    */

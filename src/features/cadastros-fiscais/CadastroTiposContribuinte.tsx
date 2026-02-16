@@ -13,13 +13,26 @@ interface TipoContribuinte {
   descricao?: string
   consumidor_final: boolean
   contribuinte_icms: 'CONTRIBUINTE' | 'ISENTO' | 'NAO_CONTRIBUINTE'
+  operacao_fiscal_padrao_id?: number
   ativo: boolean
   created_at: string
   updated_at: string
 }
 
+interface OperacaoFiscal {
+  id: number
+  codigo: string
+  nome: string
+  cfop_dentro_estado?: string
+  cfop_fora_estado?: string
+  tipo_operacao: string
+  natureza_operacao: string
+  ativo: boolean
+}
+
 export default function CadastroTiposContribuinte() {
   const [tipos, setTipos] = useState<TipoContribuinte[]>([])
+  const [operacoesFiscais, setOperacoesFiscais] = useState<OperacaoFiscal[]>([])
   const [carregando, setCarregando] = useState(true)
   const [editando, setEditando] = useState<TipoContribuinte | null>(null)
   const [modoEdicao, setModoEdicao] = useState(false)
@@ -29,12 +42,29 @@ export default function CadastroTiposContribuinte() {
     descricao: '',
     consumidor_final: true,
     contribuinte_icms: 'NAO_CONTRIBUINTE' as 'CONTRIBUINTE' | 'ISENTO' | 'NAO_CONTRIBUINTE',
+    operacao_fiscal_padrao_id: undefined as number | undefined,
     ativo: true
   })
 
   useEffect(() => {
     carregarTipos()
+    carregarOperacoesFiscais()
   }, [])
+
+  const carregarOperacoesFiscais = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('operacoes_fiscais')
+        .select('id, codigo, nome, cfop_dentro_estado, cfop_fora_estado, tipo_operacao, natureza_operacao, ativo')
+        .eq('ativo', true)
+        .order('nome')
+
+      if (error) throw error
+      setOperacoesFiscais(data || [])
+    } catch (error) {
+      console.error('Erro ao carregar operações fiscais:', error)
+    }
+  }
 
   const carregarTipos = async () => {
     try {
@@ -95,6 +125,7 @@ export default function CadastroTiposContribuinte() {
       descricao: tipo.descricao || '',
       consumidor_final: tipo.consumidor_final,
       contribuinte_icms: tipo.contribuinte_icms,
+      operacao_fiscal_padrao_id: tipo.operacao_fiscal_padrao_id,
       ativo: tipo.ativo
     })
     setModoEdicao(true)
@@ -123,6 +154,7 @@ export default function CadastroTiposContribuinte() {
       nome: '',
       descricao: '',
       consumidor_final: true,
+      operacao_fiscal_padrao_id: undefined,
       contribuinte_icms: 'NAO_CONTRIBUINTE',
       ativo: true
     })
@@ -192,6 +224,30 @@ export default function CadastroTiposContribuinte() {
               <option value="true">Sim</option>
               <option value="false">Não</option>
             </select>
+          </div>
+
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-slate-700 mb-1">
+              Operação Fiscal Padrão
+            </label>
+            <select
+              value={formData.operacao_fiscal_padrao_id || ''}
+              onChange={(e) => setFormData({ 
+                ...formData, 
+                operacao_fiscal_padrao_id: e.target.value ? Number(e.target.value) : undefined 
+              })}
+              className="w-full px-3 py-2 border border-[#C9C4B5] rounded-md text-sm focus:ring-2 focus:ring-[#394353]"
+            >
+              <option value="">Nenhuma (usar operação manual)</option>
+              {operacoesFiscais.map(op => (
+                <option key={op.id} value={op.id}>
+                  {op.codigo} - {op.nome} | CFOP: {op.cfop_dentro_estado || '---'}/{op.cfop_fora_estado || '---'}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500 mt-1">
+              💡 Quando um cliente tiver este tipo, o sistema pré-selecionará automaticamente esta operação fiscal na emissão de NF-e
+            </p>
           </div>
 
           <div>

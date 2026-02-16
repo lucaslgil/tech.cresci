@@ -46,6 +46,15 @@ export interface NotaFiscal {
   destinatario_cep?: string
   destinatario_codigo_municipio?: string
   
+  // Campos de Exportação
+  destinatario_pais_codigo?: string
+  destinatario_pais_nome?: string
+  eh_exportacao?: boolean
+  uf_embarque?: string
+  local_embarque?: string
+  local_despacho?: string
+  tipo_comercio_exterior?: '1' | '2' | '3'
+  
   // Totais
   valor_produtos: number
   valor_frete: number
@@ -235,6 +244,15 @@ export interface NotaFiscalFormData {
   destinatario_uf?: string
   destinatario_cep?: string
   destinatario_codigo_municipio?: string
+  
+  // Campos de Exportação
+  destinatario_pais_codigo?: string  // Código Bacen (1058=Brasil, 0132=Argentina)
+  destinatario_pais_nome?: string
+  eh_exportacao?: boolean
+  uf_embarque?: string
+  local_embarque?: string
+  local_despacho?: string
+  tipo_comercio_exterior?: '1' | '2' | '3'  // 1=Venda direta, 2=Intermediada, 3=Outras
   
   // Itens
   itens: NotaFiscalItemFormData[]

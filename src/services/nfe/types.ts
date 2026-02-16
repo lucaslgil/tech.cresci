@@ -53,6 +53,10 @@ export interface NotaFiscalDados {
     codigo_municipio: string
     telefone?: string
     email?: string
+    
+    // Campos para exportação
+    pais_codigo?: string  // Código Bacen (ex: 1058=Brasil, 0132=Argentina)
+    pais_nome?: string    // Nome do país
   }
   
   // Produtos/Serviços
@@ -127,6 +131,14 @@ export interface NotaFiscalDados {
   // Informações Adicionais
   informacoes_complementares?: string
   informacoes_fisco?: string
+  
+  // Dados específicos de Exportação (CFOP 7xxx)
+  exportacao?: {
+    uf_embarque: string                    // UF de saída para o exterior
+    local_embarque: string                 // Porto, aeroporto, fronteira terrestre
+    local_despacho?: string                // Local de despacho (opcional)
+    tipo_operacao: '1' | '2' | '3'         // 1=Venda direta, 2=Intermediada por trading, 3=Outras
+  }
 }
 
 export interface ItemNotaFiscal {
