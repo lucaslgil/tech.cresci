@@ -1,0 +1,7 @@
+# pack-refs with: peeled fully-peeled sorted 
+42005f7e222a54b154bacb5e0e78217cbc992132 refs/heads/copilot/add-produtos-submenu-cadastro
+00f0041867b9eba7f59949cf73fce0a98e7e7ebc refs/heads/main
+42005f7e222a54b154bacb5e0e78217cbc992132 refs/pull/1/head
+b42f85df5922cfdae96332a60c495b3e5dc41eb5 refs/pull/1/merge
+cba08edc686fd925a5bc0902ececab94e2e8e985 refs/tags/v0.0.1
+^1b75aa1af55120ca745cde6a4307860439769f76

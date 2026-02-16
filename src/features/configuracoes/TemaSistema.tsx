@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import { supabase, isSupabaseConfigured } from '../../lib/supabase'
+import { useEmpresaId } from '../../shared/hooks/useEmpresaId'
 import { Check, Trash2, Save } from 'lucide-react'
 
 interface TemaConfig {
@@ -33,13 +35,161 @@ export const TemaSistema: React.FC = () => {
   // Cores da personalização
   const [corFundoMenu, setCorFundoMenu] = useState('#2c3940')
   const [corTextoMenu, setCorTextoMenu] = useState('#f1f5f9')
+  // Logo da empresa (preview e salvamento em localStorage)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const { empresaId, loading: loadingEmpresa } = useEmpresaId()
+  const [salvando, setSalvando] = useState(false)
+  const [logoBg, setLogoBg] = useState<string>('#2c3940')
   const [nomeTemaCustomizado, setNomeTemaCustomizado] = useState('')
   const [mostrarModalSalvar, setMostrarModalSalvar] = useState(false)
 
   useEffect(() => {
     carregarTemasCustomizados()
     carregarTemaAtivo()
+    // carregar logo salvo e cor de fundo
+    const logoSalvo = localStorage.getItem('empresa-logo')
+    if (logoSalvo) setLogoPreview(logoSalvo)
+    const bgSalvo = localStorage.getItem('empresa-logo-bg')
+    if (bgSalvo) setLogoBg(bgSalvo)
   }, [])
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setLogoFile(file)
+  }
+
+  // Process image to fit target dimensions and apply background color
+  const processImageFile = (file: File, targetW = 320, targetH = 160, bg = '#ffffff') => {
+    return new Promise<{ dataUrl: string; blob: Blob }>((resolve, reject) => {
+      const img = new Image()
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement('canvas')
+          canvas.width = targetW
+          canvas.height = targetH
+          const ctx = canvas.getContext('2d')!
+
+          // Fill background
+          ctx.fillStyle = bg || 'transparent'
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+          // Compute scaled size preserving aspect
+          const ratio = Math.min(canvas.width / img.width, canvas.height / img.height)
+          const drawW = img.width * ratio
+          const drawH = img.height * ratio
+          const offsetX = (canvas.width - drawW) / 2
+          const offsetY = (canvas.height - drawH) / 2
+
+          ctx.drawImage(img, offsetX, offsetY, drawW, drawH)
+
+          const dataUrl = canvas.toDataURL('image/png')
+          const blob = await (await fetch(dataUrl)).blob()
+          resolve({ dataUrl, blob })
+        } catch (err) {
+          reject(err)
+        }
+      }
+      img.onerror = (e) => reject(new Error('Erro ao carregar imagem'))
+      img.src = URL.createObjectURL(file)
+    })
+  }
+
+  // Re-generate preview when file or background changes so preview matches final crop
+  useEffect(() => {
+    let mounted = true
+    const doProcess = async () => {
+      if (!logoFile) return
+      try {
+        const { dataUrl } = await processImageFile(logoFile, 320, 160, logoBg)
+        if (mounted) setLogoPreview(dataUrl)
+      } catch (err) {
+        console.error('Erro ao processar preview da logo:', err)
+      }
+    }
+    doProcess()
+    return () => { mounted = false }
+  }, [logoFile, logoBg])
+
+  const salvarLogo = async () => {
+    if (!logoPreview) {
+      alert('Selecione uma imagem antes de salvar')
+      return
+    }
+
+    // If Supabase configured and user has empresaId and a file, upload to storage and save URL via RPC
+    if (isSupabaseConfigured && empresaId && logoFile) {
+      try {
+        setSalvando(true)
+        const bucket = 'empresa-logos'
+        // Process image to standard size before upload
+        const processed = await processImageFile(logoFile, 320, 160, logoBg)
+        const blob = processed.blob
+        const fileName = `logo-${Date.now()}.png`
+        const path = `${empresaId}/${fileName}`
+
+        const fileToUpload = new File([blob], fileName, { type: 'image/png' })
+
+        // Upload (upsert true to replace)
+        const { error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(path, fileToUpload, { upsert: true })
+
+        if (uploadError) {
+          console.error('Erro ao enviar arquivo para Storage:', uploadError)
+          throw uploadError
+        }
+
+        // Get public URL
+        const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(path)
+        const publicUrl = publicData.publicUrl
+
+        // Call RPC to save logo url and bg
+        const rpcRes = await supabase.rpc('rpc_set_empresa_logo', {
+          p_empresa_id: empresaId,
+          p_logo_url: publicUrl,
+          p_logo_bg: logoBg
+        })
+        if (rpcRes.error) {
+          console.error('Erro ao chamar RPC:', rpcRes.error)
+          throw rpcRes.error
+        }
+
+        alert('✅ Logo enviada e salva com sucesso! A página será recarregada.')
+        setTimeout(() => window.location.reload(), 800)
+      } catch (err) {
+        console.error('Erro ao salvar logo no Supabase:', err)
+        alert('Erro ao salvar logo no Supabase. Verifique o console.')
+      } finally {
+        setSalvando(false)
+      }
+
+      return
+    }
+
+    // Fallback: salvar no localStorage (sem backend)
+    try {
+      // If we have a processed preview prefer that (logoPreview is kept in sync)
+      localStorage.setItem('empresa-logo', logoPreview || '')
+      localStorage.setItem('empresa-logo-bg', logoBg)
+      alert('✅ Logo e cor de fundo salvas localmente! A página será recarregada para aplicar as mudanças.')
+      setTimeout(() => window.location.reload(), 800)
+    } catch (error) {
+      console.error('Erro ao salvar logo:', error)
+      alert('Erro ao salvar a logo')
+    }
+  }
+
+  const removerLogo = () => {
+    if (!confirm('Deseja remover a logo atual da empresa?')) return
+    localStorage.removeItem('empresa-logo')
+    localStorage.removeItem('empresa-logo-bg')
+    setLogoPreview(null)
+    setLogoBg('#2c3940')
+    alert('✅ Logo removida. A página será recarregada.')
+    setTimeout(() => window.location.reload(), 600)
+  }
 
   const carregarTemasCustomizados = () => {
     const temasCustomizadosSalvos = localStorage.getItem('temas-menu-customizados')
@@ -168,6 +318,55 @@ export const TemaSistema: React.FC = () => {
           <p className="text-sm text-gray-600 mt-1">
             Escolha um tema pré-definido ou personalize as cores do menu lateral
           </p>
+        </div>
+
+        {/* Logo da Empresa */}
+        <div className="mb-8 bg-white rounded-lg shadow p-4">
+          <h3 className="text-md font-medium text-gray-900 mb-3">Logo da Empresa</h3>
+          <p className="text-sm text-gray-600 mb-3">Adicione a logo da empresa para que seja exibida no canto superior do menu lateral.</p>
+
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="w-40 h-20 rounded flex items-center justify-center overflow-hidden border border-gray-200" style={{ backgroundColor: logoBg }}>
+              {logoPreview ? (
+                <img src={logoPreview} alt="Preview Logo" className="max-h-full max-w-full object-contain" />
+              ) : (
+                <span className="text-sm text-gray-200">Sem logo</span>
+              )}
+            </div>
+
+            <div className="flex-1 flex flex-col gap-2 w-full">
+              <input type="file" accept="image/*" onChange={handleLogoChange} className="text-sm" />
+
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">Cor de fundo para logomarca</label>
+                  <div className="flex items-center gap-3">
+                    <input type="color" value={logoBg} onChange={(e) => setLogoBg(e.target.value)} className="w-12 h-10 p-0 border-0" />
+                    <input type="text" value={logoBg} onChange={(e) => setLogoBg(e.target.value)} className="flex-1 border border-gray-300 rounded-md px-2 py-2 text-sm font-mono uppercase" />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={salvarLogo}
+                    disabled={salvando || loadingEmpresa}
+                    className={`px-3 py-2 rounded-md text-sm flex items-center gap-2 ${salvando || loadingEmpresa ? 'bg-blue-300 text-white cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                  >
+                    {salvando ? 'Salvando...' : 'Salvar Logo'}
+                  </button>
+                  <button
+                    onClick={removerLogo}
+                    disabled={salvando}
+                    className={`px-3 py-2 rounded-md text-sm flex items-center gap-2 ${salvando ? 'bg-red-300 text-white cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700'}`}
+                  >
+                    Remover Logo
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-500 mt-2">Recomenda-se PNG com fundo transparente; use a cor de fundo para que a logo fique bem enquadrada no menu.</p>
+            </div>
+          </div>
         </div>
 
         {/* Temas Pré-definidos */}
