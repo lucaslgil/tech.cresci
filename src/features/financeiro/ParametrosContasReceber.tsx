@@ -1,5 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Plus, Edit2, Trash2, Save, X } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
+import { useEmpresaId } from '../../shared/hooks/useEmpresaId'
 
 interface FormaPagamento {
   id: string
@@ -36,14 +38,10 @@ interface ContaBancaria {
 }
 
 export const ParametrosContasReceber: React.FC = () => {
-  // Estados para Formas de Pagamento
-  const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>([
-    { id: '1', nome: 'Dinheiro', ativo: true, diasPrazo: 0, tipoRecebimento: 'DINHEIRO', permiteParcelamento: false, descontoAVista: 0, geraFinanceiro: true },
-    { id: '2', nome: 'PIX', ativo: true, diasPrazo: 0, tipoRecebimento: 'PIX', permiteParcelamento: false, descontoAVista: 0, geraFinanceiro: true },
-    { id: '3', nome: 'Cartão de Crédito', ativo: true, diasPrazo: 0, tipoRecebimento: 'CARTAO_CREDITO', permiteParcelamento: true, taxaJuros: 0, geraFinanceiro: true },
-    { id: '4', nome: 'Cartão de Débito', ativo: true, diasPrazo: 0, tipoRecebimento: 'CARTAO_DEBITO', permiteParcelamento: false, geraFinanceiro: true },
-    { id: '5', nome: 'Boleto Bancário', ativo: true, diasPrazo: 30, tipoRecebimento: 'BOLETO', permiteParcelamento: false, geraFinanceiro: true },
-  ])
+  const { empresaId, loading: loadingEmpresa } = useEmpresaId()
+
+  // Estados para Formas de Pagamento (carregadas do backend)
+  const [formasPagamento, setFormasPagamento] = useState<FormaPagamento[]>([])
   const [modalForma, setModalForma] = useState(false)
   const [formaEditando, setFormaEditando] = useState<FormaPagamento | null>(null)
   const [novaForma, setNovaForma] = useState({ 
@@ -58,12 +56,7 @@ export const ParametrosContasReceber: React.FC = () => {
   })
 
   // Estados para Parcelamentos
-  const [parcelamentos, setParcelamentos] = useState<Parcelamento[]>([
-    { id: '1', descricao: '2x sem juros', numeroParcelas: 2, intervaloEntreParcelas: 30, ativo: true, taxaJuros: 0, primeiroVencimento: 30 },
-    { id: '2', descricao: '3x sem juros', numeroParcelas: 3, intervaloEntreParcelas: 30, ativo: true, taxaJuros: 0, primeiroVencimento: 30 },
-    { id: '3', descricao: '6x sem juros', numeroParcelas: 6, intervaloEntreParcelas: 30, ativo: true, taxaJuros: 0, primeiroVencimento: 30 },
-    { id: '4', descricao: '12x sem juros', numeroParcelas: 12, intervaloEntreParcelas: 30, ativo: true, taxaJuros: 0, primeiroVencimento: 30 },
-  ])
+  const [parcelamentos, setParcelamentos] = useState<Parcelamento[]>([])
   const [modalParcelamento, setModalParcelamento] = useState(false)
   const [parcelamentoEditando, setParcelamentoEditando] = useState<Parcelamento | null>(null)
   const [novoParcelamento, setNovoParcelamento] = useState({ 
@@ -76,10 +69,7 @@ export const ParametrosContasReceber: React.FC = () => {
   })
 
   // Estados para Contas Bancárias
-  const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([
-    { id: '1', banco: 'Banco do Brasil', codigoBanco: '001', agencia: '1234-5', conta: '12345-6', tipoConta: 'CORRENTE', descricao: 'Conta Principal', ativo: true, saldoInicial: 0 },
-    { id: '2', banco: 'Itaú', codigoBanco: '341', agencia: '5678-9', conta: '67890-1', tipoConta: 'CORRENTE', descricao: 'Conta Secundária', ativo: true, saldoInicial: 0 },
-  ])
+  const [contasBancarias, setContasBancarias] = useState<ContaBancaria[]>([])
   const [modalConta, setModalConta] = useState(false)
   const [contaEditando, setContaEditando] = useState<ContaBancaria | null>(null)
   const [novaConta, setNovaConta] = useState({ 
@@ -93,88 +83,202 @@ export const ParametrosContasReceber: React.FC = () => {
     saldoInicial: 0 
   })
 
-  // Salvar no localStorage quando os dados mudarem
-  React.useEffect(() => {
-    localStorage.setItem('parametros_formas_pagamento', JSON.stringify(formasPagamento))
-  }, [formasPagamento])
+  const [carregando, setCarregando] = useState(false)
 
-  React.useEffect(() => {
-    localStorage.setItem('parametros_parcelamentos', JSON.stringify(parcelamentos))
-  }, [parcelamentos])
+  // Carregar dados do backend quando empresaId estiver disponível
+  useEffect(() => {
+    if (loadingEmpresa) return
+    if (!empresaId) return
 
-  React.useEffect(() => {
-    localStorage.setItem('parametros_contas_bancarias', JSON.stringify(contasBancarias))
-  }, [contasBancarias])
+    const fetchAll = async () => {
+      setCarregando(true)
+      try {
+        // Formas
+        const { data: formasData, error: formasError } = await supabase.rpc('rpc_listar_formas', { p_empresa_id: empresaId })
+        if (formasError) throw formasError
+
+        const mappedFormas: FormaPagamento[] = (formasData || []).map((f: any) => ({
+          id: String(f.id),
+          nome: f.nome,
+          ativo: !!f.ativo,
+          diasPrazo: Number(f.parametros?.diasPrazo || 0),
+          tipoRecebimento: (f.parametros?.tipoRecebimento || 'OUTROS') as any,
+          permiteParcelamento: !!f.parametros?.permiteParcelamento,
+          taxaJuros: f.parametros?.taxaJuros || 0,
+          descontoAVista: f.parametros?.descontoAVista || 0,
+          geraFinanceiro: f.parametros?.geraFinanceiro ?? true
+        }))
+
+        // Parcelamentos
+        const { data: planosData, error: planosError } = await supabase.rpc('rpc_listar_planos', { p_empresa_id: empresaId })
+        if (planosError) throw planosError
+        const mappedPlanos: Parcelamento[] = (planosData || []).map((p: any) => ({
+          id: String(p.id),
+          descricao: p.nome || p.codigo || '',
+          numeroParcelas: p.numero_parcelas || 1,
+          intervaloEntreParcelas: p.intervalo_meses || 30,
+          ativo: !!p.ativo,
+          taxaJuros: p.taxa_juros || 0,
+          primeiroVencimento: p.parametros?.primeiroVencimento || 30
+        }))
+
+        // Contas Bancárias
+        const { data: contasData, error: contasError } = await supabase.rpc('rpc_listar_contas_bancarias', { p_empresa_id: empresaId })
+        if (contasError) throw contasError
+        const mappedContas: ContaBancaria[] = (contasData || []).map((c: any) => ({
+          id: String(c.id),
+          banco: c.nome || '',
+          codigoBanco: c.codigo || '',
+          agencia: c.agencia || '',
+          conta: c.conta || '',
+          tipoConta: (c.tipo || 'CORRENTE') as any,
+          descricao: c.parametros?.descricao || '',
+          ativo: !!c.ativo,
+          saldoInicial: c.parametros?.saldoInicial || 0
+        }))
+
+        setFormasPagamento(mappedFormas)
+        setParcelamentos(mappedPlanos)
+        setContasBancarias(mappedContas)
+      } catch (err) {
+        console.error('Erro ao carregar parâmetros financeiros:', err)
+      } finally {
+        setCarregando(false)
+      }
+    }
+
+    fetchAll()
+  }, [empresaId, loadingEmpresa])
 
   // Funções Formas de Pagamento
-  const salvarFormaPagamento = () => {
-    if (formaEditando) {
-      setFormasPagamento(formasPagamento.map(f => 
-        f.id === formaEditando.id ? { ...formaEditando } : f
-      ))
-      setFormaEditando(null)
-    } else {
-      const nova: FormaPagamento = {
-        id: Date.now().toString(),
-        ...novaForma
+  const salvarFormaPagamento = async () => {
+    if (!empresaId) return alert('Empresa não identificada')
+    try {
+      const parametros = {
+        diasPrazo: (formaEditando ? formaEditando.diasPrazo : novaForma.diasPrazo) || 0,
+        tipoRecebimento: (formaEditando ? formaEditando.tipoRecebimento : novaForma.tipoRecebimento) || 'OUTROS',
+        permiteParcelamento: (formaEditando ? formaEditando.permiteParcelamento : novaForma.permiteParcelamento) || false,
+        taxaJuros: (formaEditando ? formaEditando.taxaJuros : novaForma.taxaJuros) || 0,
+        descontoAVista: (formaEditando ? formaEditando.descontoAVista : novaForma.descontoAVista) || 0,
+        geraFinanceiro: (formaEditando ? formaEditando.geraFinanceiro : novaForma.geraFinanceiro) ?? true
       }
-      setFormasPagamento([...formasPagamento, nova])
+
+      const codigo = (formaEditando && formaEditando.nome) ? (formaEditando.nome.replace(/\s+/g, '_').toUpperCase()) : novaForma.nome.replace(/\s+/g, '_').toUpperCase()
+
+      const { data, error } = await supabase.rpc('rpc_criar_forma', { p_empresa_id: empresaId, p_codigo: codigo, p_nome: (formaEditando ? formaEditando.nome : novaForma.nome), p_ativo: (formaEditando ? formaEditando.ativo : novaForma.ativo), p_parametros: parametros })
+      if (error) throw error
+      // Recarregar lista
+      const { data: formasData } = await supabase.rpc('rpc_listar_formas', { p_empresa_id: empresaId })
+      const mappedFormas: FormaPagamento[] = (formasData || []).map((f: any) => ({
+        id: String(f.id),
+        nome: f.nome,
+        ativo: !!f.ativo,
+        diasPrazo: Number(f.parametros?.diasPrazo || 0),
+        tipoRecebimento: (f.parametros?.tipoRecebimento || 'OUTROS') as any,
+        permiteParcelamento: !!f.parametros?.permiteParcelamento,
+        taxaJuros: f.parametros?.taxaJuros || 0,
+        descontoAVista: f.parametros?.descontoAVista || 0,
+        geraFinanceiro: f.parametros?.geraFinanceiro ?? true
+      }))
+      setFormasPagamento(mappedFormas)
+      setFormaEditando(null)
       setNovaForma({ nome: '', diasPrazo: 0, ativo: true, tipoRecebimento: 'OUTROS', permiteParcelamento: false, taxaJuros: 0, descontoAVista: 0, geraFinanceiro: true })
+      setModalForma(false)
+    } catch (err) {
+      console.error('Erro ao salvar forma:', err)
+      alert('Erro ao salvar forma de pagamento')
     }
-    setModalForma(false)
   }
 
-  const excluirFormaPagamento = (id: string) => {
-    if (confirm('Deseja realmente excluir esta forma de pagamento?')) {
+  const excluirFormaPagamento = async (id: string) => {
+    if (!confirm('Deseja realmente excluir esta forma de pagamento?')) return
+    try {
+      const { error } = await supabase.rpc('rpc_deletar_forma', { p_id: Number(id) })
+      if (error) throw error
       setFormasPagamento(formasPagamento.filter(f => f.id !== id))
+    } catch (err) {
+      console.error('Erro ao excluir forma:', err)
+      alert('Erro ao excluir forma')
     }
   }
 
   // Funções Parcelamentos
-  const salvarParcelamento = () => {
-    if (parcelamentoEditando) {
-      setParcelamentos(parcelamentos.map(p => 
-        p.id === parcelamentoEditando.id ? { ...parcelamentoEditando } : p
-      ))
+  const salvarParcelamento = async () => {
+    if (!empresaId) return alert('Empresa não identificada')
+    try {
+      const codigo = (parcelamentoEditando && parcelamentoEditando.descricao) ? parcelamentoEditando.descricao.replace(/\s+/g, '_').toUpperCase() : novoParcelamento.descricao.replace(/\s+/g, '_').toUpperCase()
+      const { data, error } = await supabase.rpc('rpc_upsert_plano', { p_empresa_id: empresaId, p_codigo: codigo, p_nome: (parcelamentoEditando ? parcelamentoEditando.descricao : novoParcelamento.descricao), p_numero_parcelas: (parcelamentoEditando ? parcelamentoEditando.numeroParcelas : novoParcelamento.numeroParcelas), p_intervalo_meses: (parcelamentoEditando ? parcelamentoEditando.intervaloEntreParcelas : novoParcelamento.intervaloEntreParcelas), p_taxa_juros: (parcelamentoEditando ? parcelamentoEditando.taxaJuros : novoParcelamento.taxaJuros), p_ativo: (parcelamentoEditando ? parcelamentoEditando.ativo : novoParcelamento.ativo), p_parametros: { primeiroVencimento: (parcelamentoEditando ? parcelamentoEditando.primeiroVencimento : novoParcelamento.primeiroVencimento) } })
+      if (error) throw error
+      const { data: planosData } = await supabase.rpc('rpc_listar_planos', { p_empresa_id: empresaId })
+      const mappedPlanos: Parcelamento[] = (planosData || []).map((p: any) => ({
+        id: String(p.id),
+        descricao: p.nome || p.codigo || '',
+        numeroParcelas: p.numero_parcelas || 1,
+        intervaloEntreParcelas: p.intervalo_meses || 30,
+        ativo: !!p.ativo,
+        taxaJuros: p.taxa_juros || 0,
+        primeiroVencimento: p.parametros?.primeiroVencimento || 30
+      }))
+      setParcelamentos(mappedPlanos)
       setParcelamentoEditando(null)
-    } else {
-      const novo: Parcelamento = {
-        id: Date.now().toString(),
-        ...novoParcelamento
-      }
-      setParcelamentos([...parcelamentos, novo])
       setNovoParcelamento({ descricao: '', numeroParcelas: 1, intervaloEntreParcelas: 30, ativo: true, taxaJuros: 0, primeiroVencimento: 30 })
+      setModalParcelamento(false)
+    } catch (err) {
+      console.error('Erro ao salvar parcelamento:', err)
+      alert('Erro ao salvar parcelamento')
     }
-    setModalParcelamento(false)
   }
 
-  const excluirParcelamento = (id: string) => {
-    if (confirm('Deseja realmente excluir este parcelamento?')) {
+  const excluirParcelamento = async (id: string) => {
+    if (!confirm('Deseja realmente excluir este parcelamento?')) return
+    try {
+      const { error } = await supabase.from('planos_parcelamento').delete().eq('id', Number(id))
+      if (error) throw error
       setParcelamentos(parcelamentos.filter(p => p.id !== id))
+    } catch (err) {
+      console.error('Erro ao excluir parcelamento:', err)
+      alert('Erro ao excluir parcelamento')
     }
   }
 
   // Funções Contas Bancárias
-  const salvarContaBancaria = () => {
-    if (contaEditando) {
-      setContasBancarias(contasBancarias.map(c => 
-        c.id === contaEditando.id ? { ...contaEditando } : c
-      ))
+  const salvarContaBancaria = async () => {
+    if (!empresaId) return alert('Empresa não identificada')
+    try {
+      const codigo = (contaEditando && contaEditando.descricao) ? contaEditando.descricao.replace(/\s+/g, '_').toUpperCase() : novaConta.descricao.replace(/\s+/g, '_').toUpperCase()
+      const { data, error } = await supabase.rpc('rpc_upsert_conta_bancaria', { p_empresa_id: empresaId, p_codigo: codigo, p_numero_conta: (contaEditando ? contaEditando.conta : novaConta.conta), p_numero_agencia: (contaEditando ? contaEditando.agencia : novaConta.agencia), p_banco: (contaEditando ? contaEditando.banco : novaConta.banco), p_tipo: (contaEditando ? contaEditando.tipoConta : novaConta.tipoConta), p_ativa: (contaEditando ? contaEditando.ativo : novaConta.ativo), p_parametros: { descricao: (contaEditando ? contaEditando.descricao : novaConta.descricao), saldoInicial: (contaEditando ? contaEditando.saldoInicial : novaConta.saldoInicial) } })
+      if (error) throw error
+      const { data: contasData } = await supabase.rpc('rpc_listar_contas_bancarias', { p_empresa_id: empresaId })
+      const mapped: ContaBancaria[] = (contasData || []).map((c: any) => ({
+        id: String(c.id),
+        banco: c.banco || c.nome || '',
+        codigoBanco: c.codigo || '',
+        agencia: c.numero_agencia || c.agencia || '',
+        conta: c.numero_conta || c.conta || '',
+        tipoConta: (c.tipo || 'CORRENTE') as any,
+        descricao: c.parametros?.descricao || c.descricao || '',
+        ativo: !!c.ativo,
+        saldoInicial: c.parametros?.saldoInicial || 0
+      }))
+      setContasBancarias(mapped)
       setContaEditando(null)
-    } else {
-      const nova: ContaBancaria = {
-        id: Date.now().toString(),
-        ...novaConta
-      }
-      setContasBancarias([...contasBancarias, nova])
       setNovaConta({ banco: '', codigoBanco: '', agencia: '', conta: '', tipoConta: 'CORRENTE', descricao: '', ativo: true, saldoInicial: 0 })
+      setModalConta(false)
+    } catch (err) {
+      console.error('Erro ao salvar conta bancária:', err)
+      alert('Erro ao salvar conta bancária')
     }
-    setModalConta(false)
   }
 
-  const excluirContaBancaria = (id: string) => {
-    if (confirm('Deseja realmente excluir esta conta bancária?')) {
+  const excluirContaBancaria = async (id: string) => {
+    if (!confirm('Deseja realmente excluir esta conta bancária?')) return
+    try {
+      const { error } = await supabase.from('contas_bancarias').delete().eq('id', Number(id))
+      if (error) throw error
       setContasBancarias(contasBancarias.filter(c => c.id !== id))
+    } catch (err) {
+      console.error('Erro ao excluir conta bancária:', err)
+      alert('Erro ao excluir conta bancária')
     }
   }
 

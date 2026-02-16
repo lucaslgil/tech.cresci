@@ -89,6 +89,12 @@ export const useTabOpener = () => {
       icon: <Settings className="w-3.5 h-3.5" />
     }),
 
+    movimentacoesCaixa: () => openTab({
+      title: 'Movimentações de Caixa',
+      path: '/vendas/movimentacoes-caixa',
+      icon: <DollarSign className="w-3.5 h-3.5" />
+    }),
+
     // NOTAS FISCAIS
     consultarNotasFiscais: () => openTab({
       title: 'Consultar Notas Fiscais',
