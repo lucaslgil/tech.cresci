@@ -83,7 +83,7 @@ export const ParametrosContasReceber: React.FC = () => {
     saldoInicial: 0 
   })
 
-  const [carregando, setCarregando] = useState(false)
+  const [, setCarregando] = useState(false)
 
   // Carregar dados do backend quando empresaId estiver disponível
   useEffect(() => {
@@ -165,7 +165,7 @@ export const ParametrosContasReceber: React.FC = () => {
 
       const codigo = (formaEditando && formaEditando.nome) ? (formaEditando.nome.replace(/\s+/g, '_').toUpperCase()) : novaForma.nome.replace(/\s+/g, '_').toUpperCase()
 
-      const { data, error } = await supabase.rpc('rpc_criar_forma', { p_empresa_id: empresaId, p_codigo: codigo, p_nome: (formaEditando ? formaEditando.nome : novaForma.nome), p_ativo: (formaEditando ? formaEditando.ativo : novaForma.ativo), p_parametros: parametros })
+      const { error } = await supabase.rpc('rpc_criar_forma', { p_empresa_id: empresaId, p_codigo: codigo, p_nome: (formaEditando ? formaEditando.nome : novaForma.nome), p_ativo: (formaEditando ? formaEditando.ativo : novaForma.ativo), p_parametros: parametros })
       if (error) throw error
       // Recarregar lista
       const { data: formasData } = await supabase.rpc('rpc_listar_formas', { p_empresa_id: empresaId })
@@ -207,7 +207,7 @@ export const ParametrosContasReceber: React.FC = () => {
     if (!empresaId) return alert('Empresa não identificada')
     try {
       const codigo = (parcelamentoEditando && parcelamentoEditando.descricao) ? parcelamentoEditando.descricao.replace(/\s+/g, '_').toUpperCase() : novoParcelamento.descricao.replace(/\s+/g, '_').toUpperCase()
-      const { data, error } = await supabase.rpc('rpc_upsert_plano', { p_empresa_id: empresaId, p_codigo: codigo, p_nome: (parcelamentoEditando ? parcelamentoEditando.descricao : novoParcelamento.descricao), p_numero_parcelas: (parcelamentoEditando ? parcelamentoEditando.numeroParcelas : novoParcelamento.numeroParcelas), p_intervalo_meses: (parcelamentoEditando ? parcelamentoEditando.intervaloEntreParcelas : novoParcelamento.intervaloEntreParcelas), p_taxa_juros: (parcelamentoEditando ? parcelamentoEditando.taxaJuros : novoParcelamento.taxaJuros), p_ativo: (parcelamentoEditando ? parcelamentoEditando.ativo : novoParcelamento.ativo), p_parametros: { primeiroVencimento: (parcelamentoEditando ? parcelamentoEditando.primeiroVencimento : novoParcelamento.primeiroVencimento) } })
+      const { error } = await supabase.rpc('rpc_upsert_plano', { p_empresa_id: empresaId, p_codigo: codigo, p_nome: (parcelamentoEditando ? parcelamentoEditando.descricao : novoParcelamento.descricao), p_numero_parcelas: (parcelamentoEditando ? parcelamentoEditando.numeroParcelas : novoParcelamento.numeroParcelas), p_intervalo_meses: (parcelamentoEditando ? parcelamentoEditando.intervaloEntreParcelas : novoParcelamento.intervaloEntreParcelas), p_taxa_juros: (parcelamentoEditando ? parcelamentoEditando.taxaJuros : novoParcelamento.taxaJuros), p_ativo: (parcelamentoEditando ? parcelamentoEditando.ativo : novoParcelamento.ativo), p_parametros: { primeiroVencimento: (parcelamentoEditando ? parcelamentoEditando.primeiroVencimento : novoParcelamento.primeiroVencimento) } })
       if (error) throw error
       const { data: planosData } = await supabase.rpc('rpc_listar_planos', { p_empresa_id: empresaId })
       const mappedPlanos: Parcelamento[] = (planosData || []).map((p: any) => ({
@@ -246,7 +246,7 @@ export const ParametrosContasReceber: React.FC = () => {
     if (!empresaId) return alert('Empresa não identificada')
     try {
       const codigo = (contaEditando && contaEditando.descricao) ? contaEditando.descricao.replace(/\s+/g, '_').toUpperCase() : novaConta.descricao.replace(/\s+/g, '_').toUpperCase()
-      const { data, error } = await supabase.rpc('rpc_upsert_conta_bancaria', { p_empresa_id: empresaId, p_codigo: codigo, p_numero_conta: (contaEditando ? contaEditando.conta : novaConta.conta), p_numero_agencia: (contaEditando ? contaEditando.agencia : novaConta.agencia), p_banco: (contaEditando ? contaEditando.banco : novaConta.banco), p_tipo: (contaEditando ? contaEditando.tipoConta : novaConta.tipoConta), p_ativa: (contaEditando ? contaEditando.ativo : novaConta.ativo), p_parametros: { descricao: (contaEditando ? contaEditando.descricao : novaConta.descricao), saldoInicial: (contaEditando ? contaEditando.saldoInicial : novaConta.saldoInicial) } })
+      const { error } = await supabase.rpc('rpc_upsert_conta_bancaria', { p_empresa_id: empresaId, p_codigo: codigo, p_numero_conta: (contaEditando ? contaEditando.conta : novaConta.conta), p_numero_agencia: (contaEditando ? contaEditando.agencia : novaConta.agencia), p_banco: (contaEditando ? contaEditando.banco : novaConta.banco), p_tipo: (contaEditando ? contaEditando.tipoConta : novaConta.tipoConta), p_ativa: (contaEditando ? contaEditando.ativo : novaConta.ativo), p_parametros: { descricao: (contaEditando ? contaEditando.descricao : novaConta.descricao), saldoInicial: (contaEditando ? contaEditando.saldoInicial : novaConta.saldoInicial) } })                                                                          
       if (error) throw error
       const { data: contasData } = await supabase.rpc('rpc_listar_contas_bancarias', { p_empresa_id: empresaId })
       const mapped: ContaBancaria[] = (contasData || []).map((c: any) => ({

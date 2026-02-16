@@ -30,6 +30,7 @@ interface Permissoes {
   tarefas: boolean
   documentacao: boolean
   configuracoes: boolean
+  movimentacoes_caixa_visualizar: boolean
 }
 
 const permissoesDefault: Permissoes = {
@@ -54,6 +55,7 @@ const permissoesDefault: Permissoes = {
   tarefas: false,
   documentacao: false,
   configuracoes: false
+  ,movimentacoes_caixa_visualizar: false
 }
 
 export const usePermissions = () => {

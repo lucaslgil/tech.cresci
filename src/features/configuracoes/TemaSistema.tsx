@@ -91,7 +91,7 @@ export const TemaSistema: React.FC = () => {
           reject(err)
         }
       }
-      img.onerror = (e) => reject(new Error('Erro ao carregar imagem'))
+      img.onerror = () => reject(new Error('Erro ao carregar imagem'))
       img.src = URL.createObjectURL(file)
     })
   }
