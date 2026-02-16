@@ -182,7 +182,6 @@ export class NuvemFiscalAdapter {
    */
   private converterDados(dados: NotaFiscalDados): any {
     const cpfCnpjEmitente = dados.emitente.cnpj.replace(/\D/g, '')
-    const cpfCnpjDestinatario = dados.destinatario.cpf_cnpj.replace(/\D/g, '')
     
     const payload = {
       // Ambiente e referência

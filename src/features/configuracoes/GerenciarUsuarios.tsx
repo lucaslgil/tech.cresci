@@ -37,6 +37,7 @@ interface Usuario {
     tarefas: boolean
     documentacao: boolean
     configuracoes: boolean
+    movimentacoes_caixa_visualizar: boolean
   }
   ativo: boolean
   created_at: string
@@ -92,6 +93,7 @@ export const GerenciarUsuarios: React.FC = () => {
       tarefas: false,
       documentacao: false,
       configuracoes: false
+      ,movimentacoes_caixa_visualizar: false
     },
     ativo: true
   })
@@ -190,6 +192,18 @@ export const GerenciarUsuarios: React.FC = () => {
         vendas_parametros: false,
         // Notas Fiscais
         notas_fiscais_consultar: false,
+        notas_fiscais_emitir: false,
+        notas_fiscais_parametros: false,
+        // Financeiro
+        financeiro_contas_pagar: false,
+        financeiro_contas_receber: false,
+        financeiro_parametros: false,
+        // Outros
+        franquias: false,
+        tarefas: false,
+        documentacao: false,
+        configuracoes: false,
+        movimentacoes_caixa_visualizar: false
       },
       ativo: true
     })

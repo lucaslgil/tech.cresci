@@ -69,13 +69,20 @@ export function useOperacaoFiscalCliente() {
         return null
       }
 
-      if (!data || !data.tipos_contribuinte || !data.tipos_contribuinte.operacoes_fiscais) {
-        logger.debug('Cliente sem operação fiscal padrão configurada')
+      if (!data || !data.tipos_contribuinte || data.tipos_contribuinte.length === 0) {
+        logger.debug('Cliente sem tipo de contribuinte ou operação fiscal padrão configurada')
         return null
       }
 
-      const tipoContribuinte = data.tipos_contribuinte as any
-      const operacaoFiscal = tipoContribuinte.operacoes_fiscais
+      // Supabase returns related rows as arrays; pegar o primeiro tipo de contribuinte
+      const tipoContribuinte = Array.isArray(data.tipos_contribuinte) ? data.tipos_contribuinte[0] : (data.tipos_contribuinte as any)
+      if (!tipoContribuinte || !tipoContribuinte.operacoes_fiscais || tipoContribuinte.operacoes_fiscais.length === 0) {
+        logger.debug('Tipo de contribuinte sem operações fiscais')
+        return null
+      }
+
+      // Pegar operação fiscal padrão (usar primeiro item ou o que estiver marcado)
+      const operacaoFiscal = Array.isArray(tipoContribuinte.operacoes_fiscais) ? tipoContribuinte.operacoes_fiscais[0] : tipoContribuinte.operacoes_fiscais
 
       logger.info('Operação fiscal encontrada', {
         tipoContribuinte: tipoContribuinte.nome,
