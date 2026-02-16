@@ -121,6 +121,10 @@ export interface OperacaoFiscal {
   // Configurações
   operacao_padrao: boolean // Define se é operação padrão do sistema
   
+  // Exportação
+  eh_exportacao?: boolean  // Indica se é operação de exportação
+  tipo_comercio_exterior?: '1' | '2' | '3'  // 1=Venda direta, 2=Intermediada, 3=Outras
+  
   // Observações
   observacoes?: string
   
@@ -172,6 +176,8 @@ export interface OperacaoFiscalFormData {
   gera_duplicata?: boolean
   gera_comissao?: boolean
   operacao_padrao?: boolean
+  eh_exportacao?: boolean
+  tipo_comercio_exterior?: '1' | '2' | '3'
   mensagem_nota?: string
   observacoes?: string
   ativo?: boolean

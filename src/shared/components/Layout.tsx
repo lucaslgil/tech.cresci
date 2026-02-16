@@ -21,6 +21,8 @@ export const Layout: React.FC = () => {
     fundo: '#1e293b',
     texto: '#f1f5f9'
   })
+  const [logoEmpresa, setLogoEmpresa] = useState<string | null>(null)
+  const [logoBg, setLogoBg] = useState<string | null>(null)
 
   // Carregar tema do menu ao montar
   useEffect(() => {
@@ -35,6 +37,16 @@ export const Layout: React.FC = () => {
       } catch (error) {
         console.error('Erro ao carregar tema do menu:', error)
       }
+    }
+
+    // Carregar logo da empresa (salva em localStorage pela tela de configurações)
+    const logoSalvo = localStorage.getItem('empresa-logo')
+    if (logoSalvo) {
+      setLogoEmpresa(logoSalvo)
+    }
+    const logoBgSalvo = localStorage.getItem('empresa-logo-bg')
+    if (logoBgSalvo) {
+      setLogoBg(logoBgSalvo)
     }
   }, [])
 
@@ -154,8 +166,16 @@ export const Layout: React.FC = () => {
         <div className="flex flex-col h-full">
           {/* Header/Logo */}
           <div className="px-4 py-4 border-b border-gray-600">
-            <h1 className="text-xl font-bold text-white tracking-wide">CRESCI E PERDI</h1>
-            <p className="text-xs text-gray-400 mt-0.5">Sistema de Gestão</p>
+            {logoEmpresa ? (
+              <div className="w-40 h-20 mx-auto flex items-center justify-center rounded-sm overflow-hidden" style={{ backgroundColor: logoBg || 'transparent' }}>
+                <img src={logoEmpresa} alt="Logo Empresa" className="max-h-full max-w-full object-contain block" />
+              </div>
+            ) : (
+              <div>
+                <h1 className="text-xl font-bold text-white tracking-wide">CRESCI E PERDI</h1>
+                <p className="text-xs text-gray-400 mt-0.5">Sistema de Gestão</p>
+              </div>
+            )}
           </div>
 
           {/* Navigation */}
@@ -451,7 +471,7 @@ export const Layout: React.FC = () => {
             )}
 
             {/* 8. VENDAS */}
-            {hasAnyPermission(['vendas_listagem', 'vendas_nova', 'vendas_relatorios', 'vendas_parametros']) && (
+            {hasAnyPermission(['vendas_listagem', 'vendas_nova', 'vendas_relatorios', 'vendas_parametros', 'movimentacoes_caixa_visualizar']) && (
             <div>
               <button
                 onClick={() => toggleMenu(setVendasOpen, vendasOpen)}
@@ -488,6 +508,15 @@ export const Layout: React.FC = () => {
                     className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
                   >
                     Relatórios
+                  </button>
+                  )}
+
+                  {hasPermission('movimentacoes_caixa_visualizar') && (
+                  <button
+                    onClick={() => { tabs.movimentacoesCaixa(); closeMobileMenu(); }}
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                  >
+                    Movimentações de Caixa
                   </button>
                   )}
 
@@ -598,7 +627,13 @@ export const Layout: React.FC = () => {
               )}
             </svg>
           </button>
-          <h1 className="text-lg font-bold text-gray-900">CRESCI E PERDI</h1>
+          {logoEmpresa ? (
+            <div className="w-12 h-12 flex items-center justify-center rounded-sm overflow-hidden" style={{ backgroundColor: logoBg || 'transparent' }}>
+              <img src={logoEmpresa} alt="Logo Empresa" className="max-h-full max-w-full object-contain" />
+            </div>
+          ) : (
+            <h1 className="text-lg font-bold text-gray-900">CRESCI E PERDI</h1>
+          )}
           <div className="w-10"></div> {/* Spacer para centralizar título */}
         </div>
 

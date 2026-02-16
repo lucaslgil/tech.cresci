@@ -42,8 +42,17 @@ interface Usuario {
   created_at: string
 }
 
+interface Empresa {
+  id: number
+  codigo: string
+  razao_social: string
+  nome_fantasia: string
+}
+
 export const GerenciarUsuarios: React.FC = () => {
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
+  const [empresas, setEmpresas] = useState<Empresa[]>([])
+  const [empresasSelecionadas, setEmpresasSelecionadas] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -89,7 +98,22 @@ export const GerenciarUsuarios: React.FC = () => {
 
   useEffect(() => {
     fetchUsuarios()
+    fetchEmpresas()
   }, [])
+
+  const fetchEmpresas = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('empresas')
+        .select('id, codigo, razao_social, nome_fantasia')
+        .order('nome_fantasia')
+
+      if (error) throw error
+      setEmpresas(data || [])
+    } catch (error) {
+      console.error('Erro ao buscar empresas:', error)
+    }
+  }
 
   const fetchUsuarios = async () => {
     try {
@@ -109,7 +133,7 @@ export const GerenciarUsuarios: React.FC = () => {
     }
   }
 
-  const openModal = (usuario?: Usuario) => {
+  const openModal = async (usuario?: Usuario) => {
     if (usuario) {
       setEditingId(usuario.id)
       setFormData({
@@ -121,6 +145,20 @@ export const GerenciarUsuarios: React.FC = () => {
         permissoes: usuario.permissoes,
         ativo: usuario.ativo
       })
+      
+      // Buscar empresas do usuário
+      try {
+        const { data, error } = await supabase
+          .from('users_empresas')
+          .select('empresa_id')
+          .eq('user_id', usuario.id)
+        
+        if (error) throw error
+        setEmpresasSelecionadas(data?.map(e => e.empresa_id) || [])
+      } catch (error) {
+        console.error('Erro ao buscar empresas do usuário:', error)
+        setEmpresasSelecionadas([])
+      }
     } else {
       resetForm()
     }
@@ -152,21 +190,10 @@ export const GerenciarUsuarios: React.FC = () => {
         vendas_parametros: false,
         // Notas Fiscais
         notas_fiscais_consultar: false,
-        notas_fiscais_emitir: false,
-        notas_fiscais_parametros: false,
-        // Financeiro
-        financeiro_contas_pagar: false,
-        financeiro_contas_receber: false,
-        financeiro_parametros: false,
-        // Outros
-        franquias: false,
-        tarefas: false,
-        documentacao: false,
-        configuracoes: false
       },
       ativo: true
     })
-    setShowPassword(false)
+    setEmpresasSelecionadas([])
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -179,6 +206,11 @@ export const GerenciarUsuarios: React.FC = () => {
 
     if (!editingId && !formData.senha) {
       alert('Senha é obrigatória para novos usuários')
+      return
+    }
+
+    if (empresasSelecionadas.length === 0) {
+      alert('Selecione pelo menos uma empresa para o usuário')
       return
     }
 
@@ -199,6 +231,26 @@ export const GerenciarUsuarios: React.FC = () => {
           .eq('id', editingId)
 
         if (error) throw error
+
+        // Atualizar vínculos com empresas
+        // 1. Remover vínculos antigos
+        await supabase
+          .from('users_empresas')
+          .delete()
+          .eq('user_id', editingId)
+
+        // 2. Inserir novos vínculos
+        const vinculos = empresasSelecionadas.map(empresa_id => ({
+          user_id: editingId,
+          empresa_id
+        }))
+
+        const { error: vinculoError } = await supabase
+          .from('users_empresas')
+          .insert(vinculos)
+
+        if (vinculoError) throw vinculoError
+
         alert('Usuário atualizado com sucesso!')
       } else {
         // Criar novo usuário no Supabase Auth
@@ -226,6 +278,18 @@ export const GerenciarUsuarios: React.FC = () => {
             .eq('id', authData.user.id)
 
           if (dbError) throw dbError
+
+          // Criar vínculos com empresas
+          const vinculos = empresasSelecionadas.map(empresa_id => ({
+            user_id: authData.user!.id,
+            empresa_id
+          }))
+
+          const { error: vinculoError } = await supabase
+            .from('users_empresas')
+            .insert(vinculos)
+
+          if (vinculoError) throw vinculoError
         }
 
         alert('Usuário criado com sucesso! Um e-mail de confirmação foi enviado.')
@@ -534,6 +598,105 @@ export const GerenciarUsuarios: React.FC = () => {
                       </select>
                     </div>
                   </div>
+                </div>
+
+                {/* Empresas com Acesso */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900 mb-4">
+                    Empresas com Acesso <span className="text-red-500">*</span>
+                  </h4>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-3">
+                    <p className="text-xs text-blue-800">
+                      <span className="font-semibold">💡 Dica:</span> Selecione as empresas que o usuário poderá acessar. 
+                      Se tiver acesso a múltiplas empresas, o PDV perguntará qual usar no momento do login.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2 max-h-60 overflow-y-auto bg-slate-50 rounded-lg p-4">
+                    {empresas.length === 0 ? (
+                      <p className="text-sm text-gray-500 text-center py-4">
+                        Nenhuma empresa cadastrada
+                      </p>
+                    ) : (
+                      <>
+                        {/* Botões Selecionar Todas / Nenhuma */}
+                        <div className="flex gap-2 mb-2 pb-2 border-b border-gray-200">
+                          <button
+                            type="button"
+                            onClick={() => setEmpresasSelecionadas(empresas.map(e => e.id))}
+                            className="text-xs px-3 py-1 bg-slate-600 text-white rounded hover:bg-slate-700 transition-colors"
+                          >
+                            Selecionar Todas
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEmpresasSelecionadas([])}
+                            className="text-xs px-3 py-1 bg-gray-400 text-white rounded hover:bg-gray-500 transition-colors"
+                          >
+                            Desmarcar Todas
+                          </button>
+                          <span className="text-xs text-gray-600 ml-auto self-center">
+                            {empresasSelecionadas.length} de {empresas.length} selecionadas
+                          </span>
+                        </div>
+
+                        {/* Lista de Empresas */}
+                        {empresas.map((empresa) => (
+                          <label
+                            key={empresa.id}
+                            className={`flex items-start p-3 rounded-md cursor-pointer transition-all ${
+                              empresasSelecionadas.includes(empresa.id)
+                                ? 'bg-slate-100 border-2 border-slate-500'
+                                : 'bg-white border-2 border-gray-200 hover:border-slate-300'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={empresasSelecionadas.includes(empresa.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setEmpresasSelecionadas([...empresasSelecionadas, empresa.id])
+                                } else {
+                                  setEmpresasSelecionadas(empresasSelecionadas.filter(id => id !== empresa.id))
+                                }
+                              }}
+                              className="w-5 h-5 text-slate-600 focus:ring-slate-500 border-gray-300 rounded mt-0.5"
+                            />
+                            <div className="ml-3 flex-1">
+                              <span className="text-sm font-medium text-gray-900">
+                                {empresa.nome_fantasia || empresa.razao_social}
+                              </span>
+                              <p className="text-xs text-gray-600 mt-0.5">
+                                Código: {empresa.codigo}
+                              </p>
+                            </div>
+                          </label>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {empresasSelecionadas.length === 0 && (
+                      <span className="text-red-600 font-medium">
+                        ⚠️ Selecione pelo menos uma empresa
+                      </span>
+                    )}
+                    {empresasSelecionadas.length === 1 && (
+                      <span className="text-green-600">
+                        ✓ Usuário terá acesso apenas à empresa selecionada
+                      </span>
+                    )}
+                    {empresasSelecionadas.length > 1 && empresasSelecionadas.length < empresas.length && (
+                      <span className="text-blue-600">
+                        ✓ Usuário terá acesso a {empresasSelecionadas.length} empresas. No PDV, deverá escolher uma delas.
+                      </span>
+                    )}
+                    {empresasSelecionadas.length === empresas.length && empresas.length > 1 && (
+                      <span className="text-purple-600">
+                        ✓ Usuário terá acesso a TODAS as empresas do sistema
+                      </span>
+                    )}
+                  </p>
                 </div>
 
                 {/* Permissões */}
