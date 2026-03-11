@@ -121,6 +121,18 @@ export const useTabOpener = () => {
       icon: <Store className="w-3.5 h-3.5" />
     }),
 
+    franquiasUnidades: () => openTab({
+      title: 'Unidades',
+      path: '/franquias/unidades',
+      icon: <Store className="w-3.5 h-3.5" />
+    }),
+
+    franquiasParametros: () => openTab({
+      title: 'Parâmetros Franquia',
+      path: '/franquias/parametros',
+      icon: <Store className="w-3.5 h-3.5" />
+    }),
+
     // FINANCEIRO
     contasPagar: () => openTab({
       title: 'Contas a Pagar',
@@ -138,6 +150,12 @@ export const useTabOpener = () => {
       title: 'Parâmetros Financeiros',
       path: '/financeiro/parametros',
       icon: <Settings className="w-3.5 h-3.5" />
+    }),
+
+    controleInadimplencia: () => openTab({
+      title: 'Controle Inadimplência',
+      path: '/financeiro/controle-inadimplencia',
+      icon: <FileText className="w-3.5 h-3.5" />
     }),
 
     // OUTROS

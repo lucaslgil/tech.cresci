@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
-import { Users, Palette } from 'lucide-react'
+import { Users, Palette, Mail } from 'lucide-react'
 import { GerenciarUsuarios } from './GerenciarUsuarios'
 import { TemaSistema } from './TemaSistema'
+import { ConfiguracaoEmail } from './ConfiguracaoEmail'
 
-type AbaAtiva = 'usuarios' | 'tema'
+type AbaAtiva = 'usuarios' | 'tema' | 'email'
 
 export const Configuracoes: React.FC = () => {
   const [abaAtiva, setAbaAtiva] = useState<AbaAtiva>('usuarios')
@@ -20,7 +21,13 @@ export const Configuracoes: React.FC = () => {
       nome: 'Tema do Sistema',
       icone: Palette,
       descricao: 'Personalizar cores e aparência'
-    }
+    },
+    {
+      id: 'email' as AbaAtiva,
+      nome: 'E-mail',
+      icone: Mail,
+      descricao: 'Configurar servidor SMTP'
+    },
   ]
 
   return (
@@ -74,6 +81,7 @@ export const Configuracoes: React.FC = () => {
       <div className="bg-white shadow rounded-lg">
         {abaAtiva === 'usuarios' && <GerenciarUsuarios />}
         {abaAtiva === 'tema' && <TemaSistema />}
+        {abaAtiva === 'email' && <ConfiguracaoEmail />}
       </div>
     </div>
   )

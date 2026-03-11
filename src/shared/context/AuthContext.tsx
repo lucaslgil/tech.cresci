@@ -103,6 +103,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }
 
+
   const value = {
     user,
     session,
@@ -111,7 +112,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signUp,
     signOut,
   }
-
   return (
     <AuthContext.Provider value={value}>
       {children}
