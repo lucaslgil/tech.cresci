@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase, isSupabaseConfigured } from '../../lib/supabase'
 
 interface Item {
@@ -875,7 +876,7 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
 
   if (!isOpen) return null
 
-  return (
+  const ModalContent = (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
       <div className="relative bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
@@ -1455,4 +1456,6 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
       </div>
     </div>
   )
+
+  return createPortal(ModalContent, document.body)
 }

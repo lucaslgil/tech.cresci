@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Loader2, CheckCircle2, AlertCircle, Mail } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { gerarNotificacaoPDFBase64, type DadosNotificacao } from './notificacaoService'
@@ -96,7 +97,7 @@ export const Modal2aNotificacao: React.FC<Props> = ({ notificacaoId, notificacao
 
   if (!aberto) return null
 
-  return (
+  const ModalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
 
@@ -308,4 +309,6 @@ export const Modal2aNotificacao: React.FC<Props> = ({ notificacaoId, notificacao
       </div>
     </div>
   )
+
+  return createPortal(ModalContent, document.body)
 }

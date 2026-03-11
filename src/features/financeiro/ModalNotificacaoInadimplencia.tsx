@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Search, FileText, Mail, Loader2, CheckCircle2, AlertCircle, Plus, Trash2, Save } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { gerarNotificacaoPDF, gerarNotificacaoPDFBase64, type TipoNotificacao, type DadosNotificacao, type ItemDebitoNotificacao } from './notificacaoService'
@@ -419,7 +420,7 @@ export const ModalNotificacaoInadimplencia: React.FC<Props> = ({ tipo, aberto, o
   if (!aberto) return null
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  return (
+  const ModalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[94vh] overflow-y-auto">
 
@@ -797,4 +798,6 @@ export const ModalNotificacaoInadimplencia: React.FC<Props> = ({ tipo, aberto, o
       </div>
     </div>
   )
+
+  return createPortal(ModalContent, document.body)
 }
