@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { X, Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle2, Clock, RefreshCw } from 'lucide-react'
+import { X, Upload, Download, FileSpreadsheet, AlertCircle, RefreshCw } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import type { ClienteFormData } from './types'
 import type { ProgressoCallback } from './importacaoService'
