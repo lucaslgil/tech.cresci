@@ -228,10 +228,31 @@ export async function buscarClientePorCNPJ(cnpj: string) {
  */
 export async function criarCliente(cliente: Partial<Cliente>) {
   try {
-    // Filtra apenas os campos que existem na tabela
-    const dadosCliente = filtrarCamposCliente(cliente)
+    // Obtém usuário autenticado
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Usuário não autenticado')
 
-    // ✅ SEGURANÇA: Sanitizar dados antes de inserir
+    // Obtém empresa_id do usuário
+    const { data: usuarioData, error: usuarioError } = await supabase
+      .from('usuarios')
+      .select('empresa_id')
+      .eq('id', user.id)
+      .single()
+
+    if (usuarioError) {
+      console.error('Erro ao buscar usuário:', usuarioError)
+      throw new Error(`Erro ao buscar dados do usuário: ${usuarioError.message}`)
+    }
+
+    if (!usuarioData?.empresa_id) {
+      console.warn('Usuário sem empresa_id:', { userId: user.id, usuarioData })
+      throw new Error('Usuário não possui empresa associada')
+    }
+
+    // Filtra apenas os campos que existem na tabela
+    let dadosCliente = filtrarCamposCliente(cliente)
+
+    // ✅ SEGURANÇA: Sanitizar e normalizar dados ANTES de tudo
     if (dadosCliente.nome_completo) {
       dadosCliente.nome_completo = sanitizeText(dadosCliente.nome_completo)
     }
@@ -254,15 +275,87 @@ export async function criarCliente(cliente: Partial<Cliente>) {
       dadosCliente.observacoes_internas = sanitizeText(dadosCliente.observacoes_internas)
     }
 
+    // ⚠️ CRÍTICO: Setá empresa_id para cumprir RLS policy
+    dadosCliente.empresa_id = usuarioData.empresa_id
+
+    // Verificar se cliente já existe (por CNPJ para PJ ou CPF para PF)
+    let clienteExistente = null
+    
+    // Buscar por documento (CNPJ tem prioridade)
+    if (dadosCliente.cnpj && dadosCliente.cnpj.length > 0) {
+      const { data: existente } = await supabase
+        .from('clientes')
+        .select('id')
+        .eq('cnpj', dadosCliente.cnpj)
+        .eq('empresa_id', usuarioData.empresa_id)
+        .maybeSingle()
+      clienteExistente = existente
+    } else if (dadosCliente.cpf && dadosCliente.cpf.length > 0) {
+      const { data: existente } = await supabase
+        .from('clientes')
+        .select('id')
+        .eq('cpf', dadosCliente.cpf)
+        .eq('empresa_id', usuarioData.empresa_id)
+        .maybeSingle()
+      clienteExistente = existente
+    }
+
+    // Se cliente existe, atualizar
+    if (clienteExistente?.id) {
+      const { data, error } = await supabase
+        .from('clientes')
+        .update(dadosCliente)
+        .eq('id', clienteExistente.id)
+        .select()
+        .single()
+
+      if (error) throw error
+      logger.info('Cliente atualizado (upsert)', { id: data.id, cnpj: dadosCliente.cnpj, cpf: dadosCliente.cpf })
+      return data as Cliente
+    }
+
+    // Senão, criar novo cliente
     const { data, error } = await supabase
       .from('clientes')
       .insert(dadosCliente)
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      // Se for erro de duplicate key, tentar buscar novamente (race condition)
+      if (error.code === '23505') {
+        console.warn('Duplicate key detectado durante insert, tentando buscar cliente:', { cnpj: dadosCliente.cnpj, cpf: dadosCliente.cpf })
+        
+        // Tentar buscar de novo
+        let busca = null
+        if (dadosCliente.cnpj && dadosCliente.cnpj.length > 0) {
+          const { data: encontrado } = await supabase
+            .from('clientes')
+            .select('*')
+            .eq('cnpj', dadosCliente.cnpj)
+            .eq('empresa_id', usuarioData.empresa_id)
+            .maybeSingle()
+          busca = encontrado
+        } else if (dadosCliente.cpf && dadosCliente.cpf.length > 0) {
+          const { data: encontrado } = await supabase
+            .from('clientes')
+            .select('*')
+            .eq('cpf', dadosCliente.cpf)
+            .eq('empresa_id', usuarioData.empresa_id)
+            .maybeSingle()
+          busca = encontrado
+        }
 
-    logger.info('Cliente criado', { id: data.id })
+        if (busca) {
+          logger.info('Cliente encontrado após retry', { id: busca.id })
+          return busca as Cliente
+        }
+      }
+      
+      throw error
+    }
+
+    logger.info('Cliente criado (insert)', { id: data.id })
     return data as Cliente
   } catch (error) {
     logger.error('Erro ao criar cliente', error)

@@ -221,7 +221,7 @@ export const Layout: React.FC = () => {
                   {hasPermission('cadastro_clientes') && (
                   <button
                     onClick={() => { tabs.cadastroClientes(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Clientes
                   </button>
@@ -230,7 +230,7 @@ export const Layout: React.FC = () => {
                   {hasPermission('cadastro_colaborador') && (
                   <button
                     onClick={() => { tabs.cadastroColaborador(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Colaborador
                   </button>
@@ -239,7 +239,7 @@ export const Layout: React.FC = () => {
                   {hasPermission('cadastro_empresa') && (
                   <button
                     onClick={() => { tabs.cadastroEmpresa(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Empresa
                   </button>
@@ -248,7 +248,7 @@ export const Layout: React.FC = () => {
                   {hasPermission('cadastro_produtos') && (
                   <button
                     onClick={() => { tabs.cadastroProdutos(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Produtos
                   </button>
@@ -259,7 +259,7 @@ export const Layout: React.FC = () => {
             )}
 
             {/* 3. FINANCEIRO */}
-            {hasAnyPermission(['financeiro_contas_pagar', 'financeiro_contas_receber', 'financeiro_parametros']) && (
+            {hasAnyPermission(['financeiro_contas_pagar', 'financeiro_contas_receber', 'financeiro_parametros', 'financeiro_inadimplencia']) && (
             <div>
               <button
                 onClick={() => toggleMenu(setFinanceiroOpen, financeiroOpen)}
@@ -284,7 +284,7 @@ export const Layout: React.FC = () => {
                   {hasPermission('financeiro_contas_pagar') && (
                   <button
                     onClick={() => { tabs.contasPagar(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Contas a Pagar
                   </button>
@@ -293,7 +293,7 @@ export const Layout: React.FC = () => {
                   {hasPermission('financeiro_contas_receber') && (
                   <button
                     onClick={() => { tabs.contasReceber(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Contas a Receber
                   </button>
@@ -302,9 +302,18 @@ export const Layout: React.FC = () => {
                   {hasPermission('financeiro_parametros') && (
                   <button
                     onClick={() => { tabs.parametrosFinanceiros(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Parâmetros Financeiros
+                  </button>
+                  )}
+
+                  {hasPermission('financeiro_inadimplencia') && (
+                  <button
+                    onClick={() => { tabs.controleInadimplencia(); closeMobileMenu(); }}
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
+                  >
+                    Controle Inadimplência
                   </button>
                   )}
                 </div>
@@ -313,7 +322,7 @@ export const Layout: React.FC = () => {
             )}
 
             {/* 4. FRANQUIAS */}
-            {hasPermission('franquias') && (
+            {hasAnyPermission(['franquias', 'franquias_unidades', 'franquias_parametros']) && (
             <div>
               <button
                 onClick={() => toggleMenu(setFranquiasOpen, franquiasOpen)}
@@ -335,12 +344,30 @@ export const Layout: React.FC = () => {
               
               {franquiasOpen && (
                 <div className="mt-1 space-y-0.5 bg-black bg-opacity-20">
+                  {hasPermission('franquias') && (
                   <button
                     onClick={() => { tabs.franquias(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Gerenciador
                   </button>
+                  )}
+                  {hasPermission('franquias_unidades') && (
+                  <button
+                    onClick={() => { tabs.franquiasUnidades(); closeMobileMenu(); }}
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
+                  >
+                    Unidades
+                  </button>
+                  )}
+                  {hasPermission('franquias_parametros') && (
+                  <button
+                    onClick={() => { tabs.franquiasParametros(); closeMobileMenu(); }}
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
+                  >
+                    Parâmetros
+                  </button>
+                  )}
                 </div>
               )}
             </div>
@@ -372,7 +399,7 @@ export const Layout: React.FC = () => {
                   {hasPermission('inventario_itens') && (
                   <button
                     onClick={() => { tabs.cadastroItem(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Cadastro de Itens
                   </button>
@@ -381,7 +408,7 @@ export const Layout: React.FC = () => {
                   {hasPermission('inventario_linhas') && (
                   <button
                     onClick={() => { tabs.linhasTelefonicas(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Linhas Telefônicas
                   </button>
@@ -390,7 +417,7 @@ export const Layout: React.FC = () => {
                   {hasPermission('inventario_relatorio') && (
                   <button
                     onClick={() => { tabs.relatorioItens(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Relatório
                   </button>
@@ -426,7 +453,7 @@ export const Layout: React.FC = () => {
                   {hasPermission('notas_fiscais_consultar') && (
                   <button
                     onClick={() => { tabs.consultarNotasFiscais(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Consultar Notas Fiscais
                   </button>
@@ -435,7 +462,7 @@ export const Layout: React.FC = () => {
                   {hasPermission('notas_fiscais_emitir') && (
                   <button
                     onClick={() => { tabs.emitirNotaFiscal(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Emitir Nota Fiscal
                   </button>
@@ -444,7 +471,7 @@ export const Layout: React.FC = () => {
                   {hasPermission('notas_fiscais_parametros') && (
                   <button
                     onClick={() => { tabs.parametrosFiscais(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Parâmetros Fiscais
                   </button>
@@ -496,7 +523,7 @@ export const Layout: React.FC = () => {
                   {(hasPermission('vendas_listagem') || hasPermission('vendas_nova')) && (
                   <button
                     onClick={() => { tabs.listagemVendas(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Listar Vendas
                   </button>
@@ -505,7 +532,7 @@ export const Layout: React.FC = () => {
                   {hasPermission('vendas_relatorios') && (
                   <button
                     onClick={() => { tabs.relatoriosVendas(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Relatórios
                   </button>
@@ -514,7 +541,7 @@ export const Layout: React.FC = () => {
                   {hasPermission('movimentacoes_caixa_visualizar') && (
                   <button
                     onClick={() => { tabs.movimentacoesCaixa(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Movimentações de Caixa
                   </button>
@@ -523,7 +550,7 @@ export const Layout: React.FC = () => {
                   {hasPermission('vendas_parametros') && (
                   <button
                     onClick={() => { tabs.parametrosVendas(); closeMobileMenu(); }}
-                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-sm text-gray-400 hover:text-white rounded-md"
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Parâmetros de Vendas
                   </button>

@@ -1246,13 +1246,34 @@ function ModalBuscaCliente({ config, onSelecionar, onFechar }: ModalBuscaCliente
               autoFocus
               className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg"
             />
-            <button
-              onClick={buscarClientes}
-              disabled={buscando}
-              className="px-4 py-2 bg-[#394353] text-white text-sm font-semibold rounded-lg hover:opacity-90 disabled:opacity-50"
-            >
-              {buscando ? '...' : 'Buscar'}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={buscarClientes}
+                disabled={buscando}
+                className="px-4 py-2 bg-[#394353] text-white text-sm font-semibold rounded-lg hover:opacity-90 disabled:opacity-50"
+              >
+                {buscando ? '...' : 'Buscar'}
+              </button>
+
+              <button
+                onClick={async () => {
+                  try {
+                    setBuscando(true)
+                    // Iniciar sincronização com a retaguarda (trará clientes atualizados)
+                    await window.electronAPI.sync.start()
+                    // Reconsultar o DB local após sync
+                    await buscarClientes()
+                  } catch (err) {
+                    console.error('Erro ao sincronizar clientes da retaguarda:', err)
+                  } finally {
+                    setBuscando(false)
+                  }
+                }}
+                className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:opacity-90"
+              >
+                Buscar na Retaguarda
+              </button>
+            </div>
           </div>
 
           <div className="border border-gray-200 rounded-lg overflow-hidden max-h-96 overflow-y-auto">

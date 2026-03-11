@@ -31,7 +31,7 @@ export const GerenciamentoTarefas: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list')
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban')
   
   // Estados para toast
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null)
@@ -43,6 +43,12 @@ export const GerenciamentoTarefas: React.FC = () => {
   const [filterCategoria, setFilterCategoria] = useState<string>('Todas')
   const [searchTerm, setSearchTerm] = useState('')
 
+  // Filtros por datas (usar formato YYYY-MM-DD nos inputs)
+  const [startAbertura, setStartAbertura] = useState<string | null>(null)
+  const [endAbertura, setEndAbertura] = useState<string | null>(null)
+  const [startConclusao, setStartConclusao] = useState<string | null>(null)
+  const [endConclusao, setEndConclusao] = useState<string | null>(null)
+
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
@@ -52,8 +58,13 @@ export const GerenciamentoTarefas: React.FC = () => {
     prioridade: 'Média' as 'Baixa' | 'Média' | 'Alta' | 'Urgente',
     status: 'Aberto' as 'Aberto' | 'Em Andamento' | 'Aguardando' | 'Concluído' | 'Cancelado',
     responsavel_id: null as string | null,
-    observacoes: ''
+    observacoes: '',
+    // Valores para inputs de data (usar YYYY-MM-DD). Converter para ISO ao salvar.
+    created_at: '',
+    data_conclusao: ''
   })
+  // Drag & Drop state
+  const [draggingId, setDraggingId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchTarefas()
@@ -120,9 +131,12 @@ export const GerenciamentoTarefas: React.FC = () => {
     try {
       setLoading(true)
 
+      const toISO = (d?: string | null) => d ? new Date(d + 'T00:00:00').toISOString() : null
+
       const dataToSave = {
         ...formData,
-        data_conclusao: formData.status === 'Concluído' ? new Date().toISOString() : null
+        created_at: formData.created_at ? toISO(formData.created_at) : new Date().toISOString(),
+        data_conclusao: formData.data_conclusao ? toISO(formData.data_conclusao) : (formData.status === 'Concluído' ? new Date().toISOString() : null)
       }
 
       if (editingId) {
@@ -200,7 +214,9 @@ export const GerenciamentoTarefas: React.FC = () => {
         prioridade: tarefa.prioridade,
         status: tarefa.status,
         responsavel_id: tarefa.responsavel_id,
-        observacoes: tarefa.observacoes || ''
+        observacoes: tarefa.observacoes || '',
+        created_at: tarefa.created_at ? tarefa.created_at.slice(0,10) : new Date().toISOString().slice(0,10),
+        data_conclusao: tarefa.data_conclusao ? tarefa.data_conclusao.slice(0,10) : ''
       })
     } else {
       resetForm()
@@ -219,7 +235,9 @@ export const GerenciamentoTarefas: React.FC = () => {
       prioridade: 'Média',
       status: 'Aberto',
       responsavel_id: null,
-      observacoes: ''
+      observacoes: '',
+      created_at: new Date().toISOString().slice(0,10),
+      data_conclusao: ''
     })
   }
 
@@ -234,14 +252,32 @@ export const GerenciamentoTarefas: React.FC = () => {
     const matchPrioridade = filterPrioridade === 'Todas' || tarefa.prioridade === filterPrioridade
     const matchCategoria = filterCategoria === 'Todas' || tarefa.categoria === filterCategoria
 
-    return matchSearch && matchStatus && matchPrioridade && matchCategoria
+    // Filtrar por data de abertura (created_at / data_abertura)
+    let matchAbertura = true
+    if (startAbertura) {
+      matchAbertura = new Date(tarefa.data_abertura) >= new Date(startAbertura)
+    }
+    if (matchAbertura && endAbertura) {
+      matchAbertura = new Date(tarefa.data_abertura) <= new Date(endAbertura)
+    }
+
+    // Filtrar por data de conclusão se informado
+    let matchConclusao = true
+    if (startConclusao) {
+      matchConclusao = tarefa.data_conclusao ? new Date(tarefa.data_conclusao) >= new Date(startConclusao) : false
+    }
+    if (matchConclusao && endConclusao) {
+      matchConclusao = tarefa.data_conclusao ? new Date(tarefa.data_conclusao) <= new Date(endConclusao) : false
+    }
+
+    return matchSearch && matchStatus && matchPrioridade && matchCategoria && matchAbertura && matchConclusao
   })
 
-  // Métricas do dashboard
-  const totalTarefas = tarefas.length
-  const tarefasAbertas = tarefas.filter(t => t.status === 'Aberto').length
-  const tarefasEmAndamento = tarefas.filter(t => t.status === 'Em Andamento').length
-  const tarefasConcluidas = tarefas.filter(t => t.status === 'Concluído').length
+  // Métricas do dashboard (baseadas nas tarefas atualmente exibidas pelos filtros)
+  const totalTarefas = tarefasFiltradas.length
+  const tarefasAbertas = tarefasFiltradas.filter(t => t.status === 'Aberto').length
+  const tarefasEmAndamento = tarefasFiltradas.filter(t => t.status === 'Em Andamento').length
+  const tarefasConcluidas = tarefasFiltradas.filter(t => t.status === 'Concluído').length
 
   // Agrupar tarefas por status para Kanban
   const tarefasPorStatus = {
@@ -263,11 +299,20 @@ export const GerenciamentoTarefas: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Aberto': return 'bg-blue-100 text-blue-800'
-      case 'Em Andamento': return 'bg-purple-100 text-purple-800'
-      case 'Aguardando': return 'bg-yellow-100 text-yellow-800'
+      case 'Em Andamento': return 'bg-yellow-100 text-yellow-800'
+      case 'Aguardando': return 'bg-indigo-100 text-indigo-800'
       case 'Concluído': return 'bg-green-100 text-green-800'
       case 'Cancelado': return 'bg-red-100 text-red-800'
       default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getCardBgByStatus = (status: string) => {
+    switch (status) {
+      case 'Aberto': return 'bg-blue-50'
+      case 'Em Andamento': return 'bg-yellow-50'
+      case 'Concluído': return 'bg-green-50'
+      default: return 'bg-white'
     }
   }
 
@@ -275,10 +320,50 @@ export const GerenciamentoTarefas: React.FC = () => {
     return new Date(data).toLocaleDateString('pt-BR')
   }
 
+  // Drag & Drop handlers
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    e.dataTransfer.setData('text/plain', id)
+    e.dataTransfer.effectAllowed = 'move'
+    setDraggingId(id)
+  }
+
+  const handleDragEnd = () => {
+    setDraggingId(null)
+  }
+
+  const handleDropOnColumn = async (e: React.DragEvent, newStatus: string) => {
+    e.preventDefault()
+    const id = e.dataTransfer.getData('text/plain')
+    if (!id) return
+    setDraggingId(null)
+
+    // Optimistic UI update
+    setTarefas(prev => prev.map(t => t.id === id ? { ...t, status: newStatus as "Aberto" | "Em Andamento" | "Aguardando" | "Concluído" | "Cancelado", data_conclusao: newStatus === 'Concluído' ? new Date().toISOString() : null } : t))
+
+    try {
+      const updates: any = { status: newStatus }
+      if (newStatus === 'Concluído') updates.data_conclusao = new Date().toISOString()
+      else updates.data_conclusao = null
+
+      const { error } = await supabase
+        .from('tarefas')
+        .update(updates)
+        .eq('id', id)
+
+      if (error) throw error
+      setToast({ message: 'Status atualizado', type: 'success' })
+      await fetchTarefas()
+    } catch (err) {
+      console.error('Erro ao atualizar status via drag/drop:', err)
+      setToast({ message: 'Erro ao atualizar status', type: 'error' })
+      await fetchTarefas()
+    }
+  }
+
   const categorias = Array.from(new Set(tarefas.map(t => t.categoria).filter(Boolean))) as string[]
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 w-full">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Gerenciamento de Tarefas</h1>
@@ -287,50 +372,43 @@ export const GerenciamentoTarefas: React.FC = () => {
 
       {/* Dashboard */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-slate-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total de Tarefas</p>
-              <p className="text-3xl font-bold text-slate-700 mt-2">{totalTarefas}</p>
-            </div>
-            <LayoutList className="w-10 h-10 text-slate-500" />
-          </div>
-        </div>
+        {[
+          { title: 'Total de Tarefas', value: totalTarefas, color: '#334155', icon: <LayoutList className="w-6 h-6 text-slate-600" /> },
+          { title: 'Abertas', value: tarefasAbertas, color: '#2563eb', icon: <AlertCircle className="w-6 h-6 text-blue-500" /> },
+          { title: 'Em Andamento', value: tarefasEmAndamento, color: '#d97706', icon: <Clock className="w-6 h-6 text-yellow-600" /> },
+          { title: 'Concluídas', value: tarefasConcluidas, color: '#16a34a', icon: <CheckCircle className="w-6 h-6 text-green-500" /> }
+        ].map((card, idx) => (
+          <div key={idx} className="bg-white rounded-2xl shadow-md p-4 flex items-center justify-between border border-gray-100">
+            <div className="flex items-center gap-3">
+              <div style={{background: `${card.color}20`}} className="w-14 h-14 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-white rounded-md flex items-center justify-center shadow-inner">
+                  {card.icon}
+                </div>
+              </div>
 
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Abertas</p>
-              <p className="text-3xl font-bold text-blue-700 mt-2">{tarefasAbertas}</p>
+              <div>
+                <div className="text-xs text-gray-500">{card.title}</div>
+                <div className="text-2xl font-bold text-gray-900">{card.value}</div>
+              </div>
             </div>
-            <AlertCircle className="w-10 h-10 text-blue-500" />
-          </div>
-        </div>
 
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-purple-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Em Andamento</p>
-              <p className="text-3xl font-bold text-purple-700 mt-2">{tarefasEmAndamento}</p>
+            <div className="flex items-center">
+              <svg width="56" height="56" viewBox="0 0 56 56">
+                <circle cx="28" cy="28" r="22" stroke="#eef2ff" strokeWidth="6" fill="none" />
+                <circle cx="28" cy="28" r="22" stroke={card.color} strokeWidth="6" strokeLinecap="round"
+                  strokeDasharray={`${2 * Math.PI * 22} ${2 * Math.PI * 22}`} strokeDashoffset={`${2 * Math.PI * 22 - ((Number(card.value) || 0)/Math.max(totalTarefas,1)) * 2 * Math.PI * 22}`} transform="rotate(-90 28 28)" fill="none" />
+                <text x="50%" y="50%" textAnchor="middle" dy="0.35em" fontSize={11} fill="#374151">
+                  {totalTarefas === 0 ? '0%' : `${Math.round(((Number(card.value) || 0) / totalTarefas) * 100)}%`}
+                </text>
+              </svg>
             </div>
-            <Clock className="w-10 h-10 text-purple-500" />
           </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Concluídas</p>
-              <p className="text-3xl font-bold text-green-700 mt-2">{tarefasConcluidas}</p>
-            </div>
-            <CheckCircle className="w-10 h-10 text-green-500" />
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Toolbar */}
       <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-        <div className="flex flex-col lg:flex-row gap-4">
+        <div className="flex flex-col lg:flex-row gap-4 items-center">
           {/* Busca */}
           <div className="flex-1">
             <input
@@ -343,7 +421,7 @@ export const GerenciamentoTarefas: React.FC = () => {
           </div>
 
           {/* Filtros */}
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -379,28 +457,63 @@ export const GerenciamentoTarefas: React.FC = () => {
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
+
+            {/* Filtros por datas */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-600">Abertura</label>
+              <input
+                type="date"
+                value={startAbertura || ''}
+                onChange={(e) => setStartAbertura(e.target.value || null)}
+                className="px-2 py-1 h-9 border border-gray-300 rounded-md text-sm"
+              />
+              <input
+                type="date"
+                value={endAbertura || ''}
+                onChange={(e) => setEndAbertura(e.target.value || null)}
+                className="px-2 py-1 h-9 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-600">Conclusão</label>
+              <input
+                type="date"
+                value={startConclusao || ''}
+                onChange={(e) => setStartConclusao(e.target.value || null)}
+                className="px-2 py-1 h-9 border border-gray-300 rounded-md text-sm"
+              />
+              <input
+                type="date"
+                value={endConclusao || ''}
+                onChange={(e) => setEndConclusao(e.target.value || null)}
+                className="px-2 py-1 h-9 border border-gray-300 rounded-md text-sm"
+              />
+            </div>
           </div>
 
           {/* Botões de ação */}
-          <div className="flex gap-2">
-            <div className="flex bg-gray-100 rounded-md p-1">
+          <div className="flex gap-2 items-center">
+            <div className="flex bg-gray-100 rounded-md p-1 items-center">
               <button
                 onClick={() => setViewMode('list')}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                className={`px-3 h-9 flex items-center justify-center w-9 rounded text-sm font-medium transition-colors ${
                   viewMode === 'list' 
                     ? 'bg-white text-blue-600 shadow-sm' 
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
+                aria-label="List view"
               >
                 <LayoutList className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('kanban')}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                className={`px-3 h-9 flex items-center justify-center w-9 rounded text-sm font-medium transition-colors ${
                   viewMode === 'kanban' 
                     ? 'bg-white text-blue-600 shadow-sm' 
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
+                aria-label="Kanban view"
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
@@ -514,9 +627,9 @@ export const GerenciamentoTarefas: React.FC = () => {
 
       {/* Visualização Kanban */}
       {viewMode === 'kanban' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
           {Object.entries(tarefasPorStatus).map(([status, tarefasStatus]) => (
-            <div key={status} className="bg-gray-50 rounded-lg p-4">
+            <div key={status} className="bg-gray-50 rounded-lg p-4 w-full" onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDropOnColumn(e as any, status)}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-900">{status}</h3>
                 <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">
@@ -532,9 +645,12 @@ export const GerenciamentoTarefas: React.FC = () => {
                   tarefasStatus.map((tarefa) => (
                     <div
                       key={tarefa.id}
-                      className="bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, tarefa.id)}
+                      onDragEnd={handleDragEnd}
+                      className={`p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer border-l-4 ${getCardBgByStatus(tarefa.status)} rounded-xl ${draggingId === tarefa.id ? 'opacity-60' : ''}`}
                       style={{
-                        borderLeftColor: 
+                        borderLeftColor:
                           tarefa.prioridade === 'Urgente' ? '#ef4444' :
                           tarefa.prioridade === 'Alta' ? '#f97316' :
                           tarefa.prioridade === 'Média' ? '#eab308' : '#22c55e'
@@ -704,6 +820,28 @@ export const GerenciamentoTarefas: React.FC = () => {
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                </div>
+
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Data de Criação</label>
+                    <input
+                      type="date"
+                      value={formData.created_at || ''}
+                      onChange={(e) => setFormData({ ...formData, created_at: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Data de Conclusão</label>
+                    <input
+                      type="date"
+                      value={formData.data_conclusao || ''}
+                      onChange={(e) => setFormData({ ...formData, data_conclusao: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
               </div>
 

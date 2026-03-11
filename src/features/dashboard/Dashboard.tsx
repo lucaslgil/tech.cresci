@@ -2,13 +2,6 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 
 export const Dashboard: React.FC = () => {
-  const stats = [
-    { label: 'Total de Vendas', value: '0', icon: '💰', color: 'from-blue-500 to-blue-600' },
-    { label: 'Itens em Estoque', value: '0', icon: '📦', color: 'from-purple-500 to-purple-600' },
-    { label: 'Colaboradores', value: '0', icon: '👥', color: 'from-green-500 to-green-600' },
-    { label: 'Empresas', value: '0', icon: '🏢', color: 'from-orange-500 to-orange-600' },
-  ]
-
   const quickActions = [
     { 
       title: 'Nova Venda', 
@@ -57,21 +50,29 @@ export const Dashboard: React.FC = () => {
         <p className="text-sm text-gray-600 mt-1">Visão geral do sistema - Bem-vindo de volta!</p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-        {stats.map((stat, index) => (
-          <div
-            key={index}
-            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-all duration-300"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-600 mb-1">{stat.label}</p>
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+      {/* Compact Indicators (small cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6">
+        {[
+          { title: 'Total Sales', amount: '$25,024', percent: 81, color: '#6366f1', subtitle: 'Last 24 Hours' },
+          { title: 'Total Expenses', amount: '$14,160', percent: 62, color: '#7c3aed', subtitle: 'Last 24 Hours' },
+          { title: 'Total Income', amount: '$10,864', percent: 44, color: '#10b981', subtitle: 'Last 24 Hours' }
+        ].map((it, idx) => (
+          <div key={idx} className="bg-white rounded-2xl shadow p-4 flex items-center gap-3 border border-gray-100">
+            <div className="flex-shrink-0">
+              <div className="w-16 h-16 flex items-center justify-center bg-gray-50 rounded-xl">
+                <svg width="52" height="52" viewBox="0 0 52 52">
+                  <circle cx="26" cy="26" r="22" stroke="#eef2ff" strokeWidth="6" fill="none" />
+                  <circle cx="26" cy="26" r="22" stroke={it.color} strokeWidth="6" strokeLinecap="round"
+                    strokeDasharray={`${2 * Math.PI * 22} ${2 * Math.PI * 22}`} strokeDashoffset={`${2 * Math.PI * 22 - (it.percent/100) * 2 * Math.PI * 22}`} transform="rotate(-90 26 26)" fill="none" />
+                  <text x="50%" y="50%" textAnchor="middle" dy="0.35em" fontSize={11} fill="#374151">{Math.round(it.percent)}%</text>
+                </svg>
               </div>
-              <div className={`w-12 h-12 bg-gradient-to-br ${stat.color} rounded-lg flex items-center justify-center text-xl shadow-lg`}>
-                {stat.icon}
-              </div>
+            </div>
+
+            <div className="flex-1">
+              <div className="text-xs text-gray-500">{it.title}</div>
+              <div className="text-lg font-semibold text-gray-800 mt-1">{it.amount}</div>
+              <div className="text-xs text-gray-400 mt-1">{it.subtitle}</div>
             </div>
           </div>
         ))}

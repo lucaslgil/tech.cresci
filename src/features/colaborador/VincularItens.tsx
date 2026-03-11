@@ -74,9 +74,45 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
   const [loadingItens, setLoadingItens] = useState(false)
   const [loadingVinculados, setLoadingVinculados] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<'disponivel' | 'vinculado' | 'historico'>('disponivel')
+  const [activeTab, setActiveTab] = useState<'disponivel' | 'vinculado' | 'arquivos' | 'historico'>('disponivel')
+  const [anexos, setAnexos] = useState<any[]>([])
+  const [loadingAnexos, setLoadingAnexos] = useState(false)
   const [historico, setHistorico] = useState<HistoricoVinculacao[]>([])
   const [loadingHistorico, setLoadingHistorico] = useState(false)
+
+  // Helper: check if an ID is a UUID
+  const isUuid = (id: string) => {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)
+  }
+
+  // Resolve collaborator UUID when the provided `colaborador.id` may be numeric
+  // Tries to find the canonical UUID by `email` when needed.
+  const resolveColaboradorId = async (): Promise<string> => {
+    if (!isSupabaseConfigured) return colaborador.id
+    if (isUuid(colaborador.id)) return colaborador.id
+
+    try {
+      const { data, error } = await supabase
+        .from('colaboradores')
+        .select('id')
+        .eq('email', colaborador.email)
+        .maybeSingle()
+
+      if (error) {
+        console.warn('Erro ao resolver colaborador UUID:', error)
+        return colaborador.id
+      }
+
+      // If we found a row with UUID, return it, otherwise fall back to original id
+      // (keeps backward compatibility for setups using numeric ids)
+      // @ts-ignore
+      if (data && data.id) return data.id
+      return colaborador.id
+    } catch (err) {
+      console.warn('Erro ao resolver colaborador UUID (catch):', err)
+      return colaborador.id
+    }
+  }
 
   // Buscar itens disponíveis (sem responsável)
   const fetchItens = async () => {
@@ -319,6 +355,32 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
     }
   }, [isOpen, colaborador.id])
 
+  // Buscar anexos (termos/arquivos vinculados ao colaborador)
+  const fetchAnexos = async () => {
+    try {
+      setLoadingAnexos(true)
+      if (!isSupabaseConfigured) {
+        setAnexos([])
+        return
+      }
+
+      const colabId = await resolveColaboradorId()
+      const { data, error } = await supabase
+        .from('colaborador_termos')
+        .select('*')
+        .eq('colaborador_id', colabId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setAnexos(data || [])
+    } catch (error) {
+      console.error('Erro ao carregar anexos:', error)
+      setAnexos([])
+    } finally {
+      setLoadingAnexos(false)
+    }
+  }
+
   // Filtrar itens
   const itensFiltrados = itens.filter(item =>
     item.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -424,6 +486,185 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
       alert('Erro ao desvincular item. Tente novamente.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Assinar documento: cria termo via service, gera token e abre link de assinatura
+  const assumirAssinatura = async (item: Item) => {
+    try {
+      const SIGN_SERVICE = import.meta.env.VITE_SIGN_SERVICE_URL || 'http://localhost:4000'
+
+      // Primeiro tente usar o serviço externo (mais seguro) — se falhar, fallback para Supabase direto
+      try {
+        // ensure we operate with the correct collaborator UUID when creating terms
+        const resolvedColabId = await resolveColaboradorId()
+        // Criar termo no serviço
+        const payload = {
+          colaborador_id: resolvedColabId,
+          item_id: item.id,
+          titulo: `Termo - ${item.item}`,
+          conteudo: { item, colaborador },
+          valor: item.valor || 0
+        }
+
+        const createRes = await fetch(`${SIGN_SERVICE}/terms`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+
+        if (!createRes.ok) {
+          const err = await createRes.json().catch(() => null)
+          throw new Error(err?.error?.message || 'Erro ao criar termo')
+        }
+
+        const createData = await createRes.json()
+        const termId = createData.id
+
+        // Gerar token e link
+        const tokenRes = await fetch(`${SIGN_SERVICE}/terms/${termId}/generate-token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ valid_days: 7 })
+        })
+
+        if (!tokenRes.ok) {
+          const err = await tokenRes.json().catch(() => null)
+          throw new Error(err?.error?.message || 'Erro ao gerar token')
+        }
+
+        const tokenData = await tokenRes.json()
+        const link = tokenData.link || `${import.meta.env.VITE_SIGN_PAGE_BASE_URL || window.location.origin + '/assinatura'}/${tokenData.token || tokenData}`
+
+        // Abrir link de assinatura em nova aba
+        window.open(link, '_blank')
+
+        // Atualizar anexos (pode demorar até serviço gravar)
+        setTimeout(() => fetchAnexos(), 1500)
+
+        return
+      } catch (err) {
+        console.warn('Serviço de assinatura inacessível, usando fallback Supabase:', err)
+        // segue para fallback
+      }
+
+      // --- Fallback: criar termo diretamente no Supabase e gerar token via RPC ---
+      // Verificar se já existe termo para este colaborador+item
+      let termId: string | null = null
+      try {
+        const resolvedColabId = await resolveColaboradorId()
+        const { data: existing } = await supabase
+          .from('colaborador_termos')
+          .select('id')
+          .eq('colaborador_id', resolvedColabId)
+          .eq('item_id', item.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+
+        if (existing && existing.length > 0) {
+          // @ts-ignore
+          termId = existing[0].id
+        } else {
+          const { data: insertData, error: insertError } = await supabase
+            .from('colaborador_termos')
+            .insert([{ colaborador_id: resolvedColabId, item_id: item.id, titulo: `Termo - ${item.item}`, conteudo: { item, colaborador }, valor: item.valor || 0 }])
+            .select('id')
+            .single()
+
+          if (insertError) throw insertError
+          // @ts-ignore
+          termId = insertData.id
+        }
+
+        if (!termId) throw new Error('Não foi possível criar/identificar o termo')
+
+        // Gerar token via RPC
+        const { data: tokenData, error: tokenError } = await supabase.rpc('gerar_token_assinatura', { p_term_id: termId, p_valid_days: 7 })
+        if (tokenError) throw tokenError
+
+        const token = tokenData
+        const link = `${import.meta.env.VITE_SIGN_PAGE_BASE_URL || window.location.origin + '/assinatura'}/${token}`
+        window.open(link, '_blank')
+
+        setTimeout(() => fetchAnexos(), 1500)
+      } catch (error) {
+        console.error('Erro no fluxo de assinatura (fallback):', error)
+        alert('Erro ao iniciar o processo de assinatura. Veja o console para mais detalhes.')
+      }
+    } catch (error) {
+      console.error('Erro ao iniciar assinatura:', error)
+      alert('Erro ao iniciar assinatura. Veja o console para mais detalhes.')
+    }
+  }
+
+  // Permite que a empresa anexe um PDF assinado e registre assinatura da empresa
+  const assinarEmpresa = async (item: Item) => {
+    try {
+      // Encontrar ou criar termo
+      let termId: string | null = null
+      const resolvedColabId = await resolveColaboradorId()
+      const { data: existing } = await supabase
+        .from('colaborador_termos')
+        .select('id')
+        .eq('colaborador_id', resolvedColabId)
+        .eq('item_id', item.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      if (existing && existing.length > 0) {
+        // @ts-ignore
+        termId = existing[0].id
+      } else {
+        const { data: insertData, error: insertError } = await supabase
+          .from('colaborador_termos')
+          .insert([{ colaborador_id: resolvedColabId, item_id: item.id, titulo: `Termo - ${item.item}`, conteudo: { item, colaborador }, valor: item.valor || 0 }])
+          .select('id')
+          .single()
+
+        if (insertError) throw insertError
+        // @ts-ignore
+        termId = insertData.id
+      }
+
+      if (!termId) throw new Error('Erro ao criar/identificar termo')
+
+      // Criar input de arquivo temporário para upload
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = 'application/pdf'
+      input.onchange = async (e: any) => {
+        const file = e.target.files[0]
+        if (!file) return
+
+        const bucket = import.meta.env.VITE_TERMS_BUCKET || 'termos'
+        const filename = `empresa_termo_${termId}_${Date.now()}.pdf`
+
+        const { error: uploadError } = await supabase.storage.from(bucket).upload(filename, file, { contentType: 'application/pdf' })
+        if (uploadError) {
+          console.error('Erro ao subir arquivo:', uploadError)
+          alert('Erro ao enviar arquivo para Storage')
+          return
+        }
+
+        const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(filename)
+        const publicUrl = publicUrlData.publicUrl
+
+        // Chamar RPC para registrar assinatura da empresa
+        const { error: rpcError } = await supabase.rpc('registrar_assinatura_empresa', { p_term_id: termId, p_empresa_signed_url: publicUrl })
+        if (rpcError) {
+          console.error('Erro ao registrar assinatura da empresa:', rpcError)
+          alert('Erro ao registrar assinatura da empresa')
+          return
+        }
+
+        alert('Assinatura da empresa registrada com sucesso')
+        fetchAnexos()
+      }
+
+      input.click()
+    } catch (error) {
+      console.error('Erro no processo de assinatura da empresa:', error)
+      alert('Erro ao processar assinatura da empresa')
     }
   }
 
@@ -696,6 +937,17 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
                 {itensVinculados.length > 0 && <span className="ml-2 bg-blue-100 text-blue-700 py-0.5 px-2 rounded-full text-xs">{itensVinculados.length}</span>}
               </button>
               <button
+                onClick={() => { setActiveTab('arquivos'); fetchAnexos() }}
+                className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'arquivos'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Arquivos Anexados
+                {anexos.length > 0 && <span className="ml-2 bg-gray-200 text-gray-700 py-0.5 px-2 rounded-full text-xs">{anexos.length}</span>}
+              </button>
+              <button
                 onClick={() => setActiveTab('historico')}
                 className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'historico'
@@ -884,6 +1136,26 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
                                   Termo
                                 </button>
                                 <button
+                                  onClick={() => assumirAssinatura(item)}
+                                  className="text-xs px-3 py-1 text-indigo-700 hover:text-indigo-900 hover:bg-indigo-50 border border-indigo-300 rounded-md transition-colors flex items-center gap-1"
+                                  title="Assinar Documento (colaborador)"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0-1.657 1.343-3 3-3s3 1.343 3 3-1.343 3-3 3-3-1.343-3-3zM6 11c0-1.657 1.343-3 3-3s3 1.343 3 3-1.343 3-3 3-3-1.343-3-3z" />
+                                  </svg>
+                                  Assinar Documento
+                                </button>
+                                <button
+                                  onClick={() => assinarEmpresa(item)}
+                                  className="text-xs px-3 py-1 text-yellow-700 hover:text-yellow-900 hover:bg-yellow-50 border border-yellow-300 rounded-md transition-colors flex items-center gap-1"
+                                  title="Assinar como Empresa"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v4m0 8v4m8-12h-4M4 12H0" />
+                                  </svg>
+                                  Assinar (Empresa)
+                                </button>
+                                <button
                                   onClick={() => desvincularItem(item.id)}
                                   disabled={saving}
                                   className="text-xs px-3 py-1 text-red-600 hover:text-red-800 hover:bg-red-50 border border-red-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -918,6 +1190,59 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Conteúdo da Aba: Arquivos Anexados */}
+          {activeTab === 'arquivos' && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Arquivos Anexados</h3>
+              <p className="text-sm text-gray-600 mb-4">Documentos gerados e assinados relacionados a este colaborador.</p>
+
+              <div className="mb-4 flex items-center gap-2">
+                <button
+                  onClick={() => fetchAnexos()}
+                  className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Atualizar
+                </button>
+              </div>
+
+              <div className="border border-gray-200 rounded-lg max-h-96 overflow-y-auto">
+                {loadingAnexos ? (
+                  <div className="p-8 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="text-sm text-gray-500 mt-2">Carregando anexos...</p>
+                  </div>
+                ) : anexos.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500">
+                    <p>Nenhum arquivo anexado encontrado</p>
+                  </div>
+                ) : (
+                  anexos.map((a) => (
+                    <div key={a.id} className="p-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="font-semibold text-gray-900">{a.titulo || 'Termo de Responsabilidade'}</div>
+                          <div className="text-sm text-gray-600">Criado: {new Date(a.created_at).toLocaleString()}</div>
+                          <div className="mt-2 text-sm">
+                            {a.empresa_signed_url && (
+                              <div className="mb-1">Empresa: <a href={a.empresa_signed_url} target="_blank" className="text-blue-600 hover:underline">Abrir PDF</a></div>
+                            )}
+                            {a.colaborador_signed_url && (
+                              <div>Colaborador: <a href={a.colaborador_signed_url} target="_blank" className="text-blue-600 hover:underline">Abrir PDF</a></div>
+                            )}
+                            {!a.empresa_signed_url && !a.colaborador_signed_url && (
+                              <div className="text-xs text-gray-500">Sem arquivos anexados</div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-sm text-gray-500">Status: {a.status}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
 

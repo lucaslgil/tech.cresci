@@ -32,8 +32,11 @@ interface Usuario {
     financeiro_contas_pagar: boolean
     financeiro_contas_receber: boolean
     financeiro_parametros: boolean
+    financeiro_inadimplencia: boolean
     // Outros
     franquias: boolean
+    franquias_unidades: boolean
+    franquias_parametros: boolean
     tarefas: boolean
     documentacao: boolean
     configuracoes: boolean
@@ -88,12 +91,15 @@ export const GerenciarUsuarios: React.FC = () => {
       financeiro_contas_pagar: false,
       financeiro_contas_receber: false,
       financeiro_parametros: false,
+      financeiro_inadimplencia: false,
       // Outros
       franquias: false,
+      franquias_unidades: false,
+      franquias_parametros: false,
       tarefas: false,
       documentacao: false,
-      configuracoes: false
-      ,movimentacoes_caixa_visualizar: false
+      configuracoes: false,
+      movimentacoes_caixa_visualizar: false
     },
     ativo: true
   })
@@ -198,8 +204,11 @@ export const GerenciarUsuarios: React.FC = () => {
         financeiro_contas_pagar: false,
         financeiro_contas_receber: false,
         financeiro_parametros: false,
+        financeiro_inadimplencia: false,
         // Outros
         franquias: false,
+        franquias_unidades: false,
+        franquias_parametros: false,
         tarefas: false,
         documentacao: false,
         configuracoes: false,
@@ -267,46 +276,30 @@ export const GerenciarUsuarios: React.FC = () => {
 
         alert('Usuário atualizado com sucesso!')
       } else {
-        // Criar novo usuário no Supabase Auth
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.senha,
+        // Criar novo usuário via Edge Function (seguro com service_role)
+        const { data: resultado, error: envioError } = await supabase.functions.invoke('create-user', {
+          body: {
+            email: formData.email,
+            password: formData.senha,
+            nome: formData.nome,
+            cargo: formData.cargo,
+            telefone: formData.telefone,
+            permissoes: formData.permissoes,
+            ativo: formData.ativo,
+            empresas: empresasSelecionadas
+          }
         })
 
-        if (authError) throw authError
-
-        if (authData.user) {
-          // Aguardar um pouco para o trigger criar o registro
-          await new Promise(resolve => setTimeout(resolve, 1000))
-          
-          // Atualizar dados adicionais (o trigger já criou o registro básico)
-          const { error: dbError } = await supabase
-            .from('usuarios')
-            .update({
-              nome: formData.nome,
-              cargo: formData.cargo,
-              telefone: formData.telefone,
-              permissoes: formData.permissoes,
-              ativo: formData.ativo
-            })
-            .eq('id', authData.user.id)
-
-          if (dbError) throw dbError
-
-          // Criar vínculos com empresas
-          const vinculos = empresasSelecionadas.map(empresa_id => ({
-            user_id: authData.user!.id,
-            empresa_id
-          }))
-
-          const { error: vinculoError } = await supabase
-            .from('users_empresas')
-            .insert(vinculos)
-
-          if (vinculoError) throw vinculoError
+        if (envioError) {
+          console.error('Erro completo:', envioError)
+          throw new Error(envioError.message || 'Erro ao criar usuário')
         }
+        
+        console.log('Resultado:', resultado)
+        
+        if (!resultado?.sucesso) throw new Error(resultado?.error || 'Erro ao criar usuário')
 
-        alert('Usuário criado com sucesso! Um e-mail de confirmação foi enviado.')
+        alert('Usuário criado com sucesso!')
       }
 
       setShowModal(false)
@@ -375,9 +368,14 @@ export const GerenciarUsuarios: React.FC = () => {
     { key: 'financeiro_contas_pagar' as const, label: 'Contas a Pagar', grupo: 'Financeiro' },
     { key: 'financeiro_contas_receber' as const, label: 'Contas a Receber', grupo: 'Financeiro' },
     { key: 'financeiro_parametros' as const, label: 'Parâmetros Financeiros', grupo: 'Financeiro' },
+      { key: 'financeiro_inadimplencia' as const, label: 'Controle Inadimplência', grupo: 'Financeiro' },
+    
+    // FRANQUIAS
+    { key: 'franquias' as const, label: 'Franquias - Gerenciador', grupo: 'Franquias' },
+    { key: 'franquias_unidades' as const, label: 'Franquias - Unidades', grupo: 'Franquias' },
+    { key: 'franquias_parametros' as const, label: 'Franquias - Parâmetros', grupo: 'Franquias' },
     
     // OUTROS
-    { key: 'franquias' as const, label: 'Franquias', grupo: 'Outros' },
     { key: 'tarefas' as const, label: 'Tarefas', grupo: 'Outros' },
     { key: 'documentacao' as const, label: 'Documentação', grupo: 'Outros' },
     { key: 'configuracoes' as const, label: 'Configurações do Sistema', grupo: 'Outros' }
@@ -719,7 +717,7 @@ export const GerenciarUsuarios: React.FC = () => {
                   <div className="bg-slate-50 rounded-lg p-4">
                     <div className="space-y-4">
                       {/* Agrupar permissões por categoria */}
-                      {['Cadastros', 'Inventário', 'Vendas', 'Notas Fiscais', 'Financeiro', 'Outros'].map((grupo) => {
+                      {['Cadastros', 'Inventário', 'Vendas', 'Notas Fiscais', 'Financeiro', 'Franquias', 'Outros'].map((grupo) => {
                         const permissoesDoGrupo = permissoesModulos.filter(m => m.grupo === grupo)
                         return (
                           <div key={grupo}>

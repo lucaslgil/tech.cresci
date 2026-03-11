@@ -25,8 +25,11 @@ interface Permissoes {
   financeiro_contas_pagar: boolean
   financeiro_contas_receber: boolean
   financeiro_parametros: boolean
+  financeiro_inadimplencia: boolean
   // Outros
   franquias: boolean
+  franquias_unidades: boolean
+  franquias_parametros: boolean
   tarefas: boolean
   documentacao: boolean
   configuracoes: boolean
@@ -51,7 +54,10 @@ const permissoesDefault: Permissoes = {
   financeiro_contas_pagar: false,
   financeiro_contas_receber: false,
   financeiro_parametros: false,
+  financeiro_inadimplencia: false,
   franquias: false,
+  franquias_unidades: false,
+  franquias_parametros: false,
   tarefas: false,
   documentacao: false,
   configuracoes: false

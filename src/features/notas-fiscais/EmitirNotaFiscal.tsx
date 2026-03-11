@@ -131,12 +131,20 @@ export default function EmitirNotaFiscal() {
   const [empresaSelecionada, setEmpresaSelecionada] = useState<Empresa | null>(null)
   
   // Lista de clientes
-  const [clientes, setClientes] = useState<Cliente[]>([])
-  const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null)
+  // Autocomplete Cliente
+  type ClienteSugestao = { id: number; codigo: string; nome_completo?: string; razao_social?: string; nome_fantasia?: string; tipo_pessoa: string };
+  const [clientes, setClientes] = useState<ClienteSugestao[]>([]);
+  // (Removido estado não utilizado)
+  const [buscaCliente, setBuscaCliente] = useState('');
+  const [mostrarSugestoesClientes, setMostrarSugestoesClientes] = useState(false);
 
   // Lista de produtos
-  const [produtos, setProdutos] = useState<Produto[]>([])
-  const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null)
+  // Autocomplete Produto
+  type ProdutoSugestao = { id: string; codigo_interno: string; nome: string };
+  const [produtos, setProdutos] = useState<ProdutoSugestao[]>([]);
+  // (Removido estado não utilizado)
+  const [buscaProduto, setBuscaProduto] = useState('');
+  const [mostrarSugestoesProdutos, setMostrarSugestoesProdutos] = useState(false);
 
   // Lista de operações fiscais
   const [operacoesFiscais, setOperacoesFiscais] = useState<OperacaoFiscal[]>([])
@@ -219,7 +227,7 @@ export default function EmitirNotaFiscal() {
           .single()
           .then(({ data }) => {
             if (data) {
-              setClienteSelecionado(data)
+              // Removido: setClienteSelecionado(data)
               logger.debug('Cliente selecionado', { id: data?.id })
             }
           })
@@ -525,7 +533,7 @@ const carregarClientes = async () => {
         destinatario_codigo_municipio: endereco?.codigo_municipio || ''
       }))
 
-      setClienteSelecionado(cliente)
+      // Removido: setClienteSelecionado(cliente)
       logger.info('Dados do cliente preenchidos com sucesso')
     } catch (error) {
       logger.error('Erro ao preencher dados do cliente', error)
@@ -572,7 +580,7 @@ const carregarClientes = async () => {
       valor_unitario_comercial: produto.preco_venda || 0
     })
 
-    setProdutoSelecionado(produto)
+    // Removido: setProdutoSelecionado(produto)
     logger.debug('Dados do produto preenchidos')
   }
 
@@ -1775,31 +1783,64 @@ const carregarClientes = async () => {
             <h2 className="text-sm font-semibold mb-2" style={{ color: '#394353' }}>2. Destinatário</h2>
             
             {/* Campo de busca de cliente */}
-            <div className="bg-blue-50 border rounded-lg p-2 mb-2" style={{ borderColor: '#C9C4B5' }}>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                🔍 Buscar Cliente
-              </label>
-              <select
-                value={clienteSelecionado?.id || ''}
-                onChange={(e) => {
-                  const cliente = clientes.find(c => c.id === Number(e.target.value))
-                  if (cliente) preencherDadosCliente(cliente)
+            <div className="bg-blue-50 border rounded-lg p-2 mb-2 relative" style={{ borderColor: '#C9C4B5' }}>
+              <label className="block text-xs font-medium text-slate-700 mb-1">🔍 Buscar Cliente</label>
+              <input
+                type="text"
+                value={buscaCliente}
+                onChange={async (e) => {
+                  const value = e.target.value;
+                  setBuscaCliente(value);
+                  if (value.length >= 2) {
+                    const { data } = await supabase
+                      .from('clientes')
+                      .select('id, codigo, nome_completo, razao_social, nome_fantasia, tipo_pessoa')
+                      .or(`nome_completo.ilike.%${value}%,razao_social.ilike.%${value}%,nome_fantasia.ilike.%${value}%,codigo.ilike.%${value}%`)
+                      .limit(5);
+                    setClientes(data || []);
+                    setMostrarSugestoesClientes(true);
+                  } else {
+                    setClientes([]);
+                    setMostrarSugestoesClientes(false);
+                  }
                 }}
                 className="w-full px-2 py-1 border rounded-md text-xs"
                 style={{ borderColor: '#C9C4B5' }}
-              >
-                <option value="">Selecione...</option>
-                {clientes.map(cliente => {
-                  const nome = cliente.tipo_pessoa === 'FISICA' 
-                    ? cliente.nome_completo 
-                    : (cliente.razao_social || cliente.nome_fantasia)
-                  return (
-                    <option key={cliente.id} value={cliente.id}>
-                      {cliente.codigo} - {nome}
-                    </option>
-                  )
-                })}
-              </select>
+                placeholder="Digite nome, razão ou código..."
+                autoComplete="off"
+                onFocus={() => {
+                  if (buscaCliente.length >= 2 && clientes.length > 0) setMostrarSugestoesClientes(true);
+                }}
+                onBlur={() => setTimeout(() => setMostrarSugestoesClientes(false), 150)}
+              />
+              {mostrarSugestoesClientes && clientes.length > 0 && (
+                <ul className="absolute z-10 bg-white border rounded-md mt-1 w-full shadow-lg max-h-48 overflow-auto" style={{ borderColor: '#C9C4B5' }}>
+                  {clientes.map(cliente => {
+                    const nome = cliente.tipo_pessoa === 'FISICA'
+                      ? cliente.nome_completo
+                      : (cliente.razao_social || cliente.nome_fantasia);
+                    return (
+                      <li
+                        key={cliente.id}
+                        className="px-3 py-2 text-xs cursor-pointer hover:bg-slate-100"
+                        onMouseDown={async () => {
+                          // Buscar cliente completo ao selecionar
+                          const { data } = await supabase
+                            .from('clientes')
+                            .select('*')
+                            .eq('id', cliente.id)
+                            .maybeSingle();
+                          if (data) preencherDadosCliente(data);
+                          setBuscaCliente(nome || '');
+                          setMostrarSugestoesClientes(false);
+                        }}
+                      >
+                        {cliente.codigo} - {nome}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
             
             <div className="grid grid-cols-2 gap-2">
@@ -1934,28 +1975,61 @@ const carregarClientes = async () => {
           <h2 className="text-sm font-semibold mb-2" style={{ color: '#394353' }}>3. Produtos/Serviços</h2>
             
             {/* Buscar Produto do Cadastro */}
-            <div className="bg-blue-50 p-2 rounded-md border" style={{ borderColor: '#C9C4B5' }}>
+            <div className="bg-blue-50 p-2 rounded-md border relative" style={{ borderColor: '#C9C4B5' }}>
               <label className="block text-xs font-medium text-slate-700 mb-1">
                 🔍 Produto
               </label>
-              <select
-                value={produtoSelecionado?.id || ''}
-                onChange={(e) => {
-                  const produto = produtos.find(p => p.id === e.target.value)
-                  if (produto) {
-                    preencherDadosProduto(produto)
+              <input
+                type="text"
+                value={buscaProduto}
+                onChange={async (e) => {
+                  const value = e.target.value;
+                  setBuscaProduto(value);
+                  if (value.length >= 2) {
+                    const { data } = await supabase
+                      .from('produtos')
+                      .select('id, codigo_interno, nome')
+                      .or(`nome.ilike.%${value}%,codigo_interno.ilike.%${value}%`)
+                      .limit(5);
+                    setProdutos(data || []);
+                    setMostrarSugestoesProdutos(true);
+                  } else {
+                    setProdutos([]);
+                    setMostrarSugestoesProdutos(false);
                   }
                 }}
                 className="w-full px-2 py-1 text-xs border rounded-md"
                 style={{ borderColor: '#C9C4B5' }}
-              >
-                <option value="">Buscar produto cadastrado...</option>
-                {produtos.map(produto => (
-                  <option key={produto.id} value={produto.id}>
-                    {produto.codigo_interno} - {produto.nome}
-                  </option>
-                ))}
-              </select>
+                placeholder="Buscar produto cadastrado..."
+                autoComplete="off"
+                onFocus={() => {
+                  if (buscaProduto.length >= 2 && produtos.length > 0) setMostrarSugestoesProdutos(true);
+                }}
+                onBlur={() => setTimeout(() => setMostrarSugestoesProdutos(false), 150)}
+              />
+              {mostrarSugestoesProdutos && produtos.length > 0 && (
+                <ul className="absolute z-10 bg-white border rounded-md mt-1 w-full shadow-lg max-h-48 overflow-auto" style={{ borderColor: '#C9C4B5' }}>
+                  {produtos.map(produto => (
+                    <li
+                      key={produto.id}
+                      className="px-3 py-2 text-xs cursor-pointer hover:bg-slate-100"
+                      onMouseDown={async () => {
+                        // Buscar produto completo ao selecionar
+                        const { data } = await supabase
+                          .from('produtos')
+                          .select('*')
+                          .eq('id', produto.id)
+                          .maybeSingle();
+                        if (data) preencherDadosProduto(data);
+                        setBuscaProduto(produto.nome);
+                        setMostrarSugestoesProdutos(false);
+                      }}
+                    >
+                      {produto.codigo_interno} - {produto.nome}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             
             {/* Formulário de Item */}

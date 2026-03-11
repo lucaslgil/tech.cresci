@@ -9,8 +9,11 @@ import {
   StatusCliente,
   StatusClienteLabels,
   type Cliente,
-  type ClienteFiltros
+  type ClienteFiltros,
+  type ClienteFormData
 } from './types'
+import ModalImportacaoClientes from './ModalImportacaoClientes'
+import { importarClientesEmLote, type ProgressoCallback } from './importacaoService'
 import {
   listarClientes,
   buscarEstatisticas
@@ -22,7 +25,7 @@ export function ListagemClientes() {
   
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [filtros, setFiltros] = useState<ClienteFiltros>({
-    limite: 20,
+    limite: 1000,
     offset: 0,
     ordenar_por: 'codigo',
     ordem_direcao: 'desc'
@@ -30,6 +33,7 @@ export function ListagemClientes() {
   const [total, setTotal] = useState(0)
   const [carregando, setCarregando] = useState(true)
   const [estatisticas, setEstatisticas] = useState<any>(null)
+  const [modalImportOpen, setModalImportOpen] = useState(false)
 
   useEffect(() => {
     carregarClientes()
@@ -60,6 +64,21 @@ export function ListagemClientes() {
 
   function handleNovo() {
     navigate('/cadastro/clientes/novo')
+  }
+
+  async function handleImportClientes(clientes: ClienteFormData[], onProgress?: (progresso: ProgressoCallback) => void) {
+    try {
+      const resultado = await importarClientesEmLote(clientes, onProgress)
+      await carregarClientes()
+      return resultado
+    } catch (erro: any) {
+      console.error('Erro na importação:', erro)
+      return {
+        sucesso: 0,
+        erros: [{ linha: 0, cliente: 'Geral', erro: erro.message || 'Erro desconhecido' }],
+        clientesImportados: []
+      }
+    }
   }
 
   function handleEditar(id: number | string) {
@@ -108,13 +127,23 @@ export function ListagemClientes() {
               Gerencie o cadastro de clientes do sistema
             </p>
           </div>
-          <button
-            onClick={handleNovo}
-            style={{ backgroundColor: '#394353' }}
-            className="px-4 py-2 text-sm text-white rounded-md hover:opacity-90 transition-opacity font-semibold"
-          >
-            + Novo Cliente
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setModalImportOpen(true)}
+              className="px-3 py-2 text-sm bg-white border rounded-md font-semibold"
+              style={{ borderColor: '#C9C4B5' }}
+            >
+              Importar Clientes
+            </button>
+
+            <button
+              onClick={handleNovo}
+              style={{ backgroundColor: '#394353' }}
+              className="px-4 py-2 text-sm text-white rounded-md hover:opacity-90 transition-opacity font-semibold"
+            >
+              + Novo Cliente
+            </button>
+          </div>
         </div>
 
         {/* Estatísticas */}
@@ -302,30 +331,92 @@ export function ListagemClientes() {
         </div>
 
         {/* Paginação */}
-        {total > (filtros.limite || 20) && (
-          <div className="px-4 py-3 flex items-center justify-between bg-gray-50 border-t" style={{ borderColor: '#C9C4B5' }}>
-            <div className="text-xs text-gray-700">
-              Mostrando {filtros.offset! + 1} a {Math.min(filtros.offset! + (filtros.limite || 20), total)} de {total} resultados
+        {(() => {
+          const limite = filtros.limite || 1000
+          const offset = filtros.offset || 0
+          const paginaAtual = Math.floor(offset / limite) + 1
+          const totalPaginas = Math.ceil(total / limite)
+
+          // Calcula janela de páginas: mostra até 7 botões ao redor da página atual
+          const gerarPaginas = () => {
+            if (totalPaginas <= 7) return Array.from({ length: totalPaginas }, (_, i) => i + 1)
+            const paginas: (number | '...')[] = []
+            paginas.push(1)
+            if (paginaAtual > 4) paginas.push('...')
+            for (let p = Math.max(2, paginaAtual - 2); p <= Math.min(totalPaginas - 1, paginaAtual + 2); p++) paginas.push(p)
+            if (paginaAtual < totalPaginas - 3) paginas.push('...')
+            paginas.push(totalPaginas)
+            return paginas
+          }
+
+          return (
+            <div className="px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-gray-50 border-t" style={{ borderColor: '#C9C4B5' }}>
+              {/* Info + seletor de itens por página */}
+              <div className="flex items-center gap-3">
+                <p className="text-xs text-gray-600">
+                  Mostrando <span className="font-semibold text-gray-900">{Math.min(offset + 1, total)}</span>–<span className="font-semibold text-gray-900">{Math.min(offset + limite, total)}</span> de <span className="font-semibold text-gray-900">{total}</span> registros
+                </p>
+                <select
+                  value={limite}
+                  onChange={e => setFiltros(prev => ({ ...prev, limite: Number(e.target.value), offset: 0 }))}
+                  className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                >
+                  {[50, 100, 250, 500, 1000].map(n => (
+                    <option key={n} value={n}>{n} por página</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Botões de página */}
+              {totalPaginas > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setFiltros(prev => ({ ...prev, offset: Math.max(0, offset - limite) }))}
+                    disabled={paginaAtual === 1}
+                    className="px-2 py-1 text-xs border border-gray-300 rounded font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    ‹
+                  </button>
+
+                  {gerarPaginas().map((p, i) =>
+                    p === '...' ? (
+                      <span key={`ellipsis-${i}`} className="px-2 py-1 text-xs text-gray-400">…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => setFiltros(prev => ({ ...prev, offset: (Number(p) - 1) * limite }))}
+                        className={`min-w-[28px] px-2 py-1 text-xs rounded font-semibold transition-colors ${
+                          p === paginaAtual
+                            ? 'text-white'
+                            : 'border border-gray-300 text-gray-700 hover:bg-gray-100'
+                        }`}
+                        style={p === paginaAtual ? { backgroundColor: '#394353' } : {}}
+                      >
+                        {p}
+                      </button>
+                    )
+                  )}
+
+                  <button
+                    onClick={() => setFiltros(prev => ({ ...prev, offset: offset + limite }))}
+                    disabled={paginaAtual === totalPaginas}
+                    className="px-2 py-1 text-xs border border-gray-300 rounded font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    ›
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setFiltros(prev => ({ ...prev, offset: Math.max(0, prev.offset! - (prev.limite || 20)) }))}
-                disabled={filtros.offset === 0}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-md font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Anterior
-              </button>
-              <button
-                onClick={() => setFiltros(prev => ({ ...prev, offset: prev.offset! + (prev.limite || 20) }))}
-                disabled={filtros.offset! + (filtros.limite || 20) >= total}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-md font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Próxima
-              </button>
-            </div>
-          </div>
-        )}
+          )
+        })()}
       </div>
+      {modalImportOpen && (
+        <ModalImportacaoClientes
+          onClose={() => setModalImportOpen(false)}
+          onImport={handleImportClientes}
+          onComplete={() => setModalImportOpen(false)}
+        />
+      )}
     </div>
   )
 }

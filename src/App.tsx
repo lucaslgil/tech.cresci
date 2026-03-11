@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import { AuthProvider } from './shared/context/AuthContext'
 import { TabsProvider } from './shared/context/TabsContext'
 import { LoginForm } from './features/auth/LoginForm'
@@ -15,16 +16,20 @@ import { LinhasTelefonicas } from './features/inventario/LinhasTelefonicas'
 import { GerenciamentoTarefas } from './features/tarefas/GerenciamentoTarefas'
 import { NovaSolicitacao } from './features/tarefas/NovaSolicitacao'
 import { Documentacao } from './features/documentacao/Documentacao'
+import AssinaturaPage from './features/assinatura/AssinaturaPage'
 import { Configuracoes } from './features/configuracoes/Configuracoes'
 import ConfiguracaoUsuario from './features/perfil/ConfiguracaoUsuario'
 import { CadastroClientes, ListagemClientes } from './features/clientes'
 import { EmitirNotaFiscal, ParametrosFiscais, ConsultarNotasFiscais } from './features/notas-fiscais'
 import { NovaVenda, ListagemVendas, RelatoriosVendas, ParametrosVendas, MovimentacoesCaixa } from './features/vendas'
 import Franquias from './features/franquias/Franquias'
+import { ListagemUnidades } from './features/franquias/unidades/ListagemUnidades'
+import { CadastroUnidade } from './features/franquias/unidades/CadastroUnidade'
+import { ParametrosFranquia } from './features/franquias/parametros/ParametrosFranquia'
 import { ContasPagar } from './features/financeiro/ContasPagar'
 import { ContasReceber } from './features/financeiro/ContasReceber'
 import { ParametrosFinanceiros } from './features/financeiro/ParametrosFinanceiros'
-import { useTema } from './shared/hooks/useTema'
+import { ControleInadimplencia } from './features/financeiro/ControleInadimplencia'
 
 function App() {
   console.log('🚀 App.tsx carregando...')
@@ -33,8 +38,24 @@ function App() {
     VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Definida' : 'NÃO DEFINIDA'
   })
   
-  // Aplicar tema ao iniciar
-  useTema()
+  // Carregar tema ao montar o componente
+  useEffect(() => {
+    const temaSalvo = localStorage.getItem('tema-sistema-ativo')
+    if (temaSalvo) {
+      try {
+        const tema = JSON.parse(temaSalvo)
+        const root = document.documentElement
+        root.style.setProperty('--cor-primaria', tema.cores.primaria)
+        root.style.setProperty('--cor-secundaria', tema.cores.secundaria)
+        root.style.setProperty('--cor-destaque', tema.cores.destaque)
+        root.style.setProperty('--cor-fundo', tema.cores.fundo)
+        root.style.setProperty('--cor-texto', tema.cores.texto)
+        root.style.setProperty('--cor-borda', tema.cores.borda)
+      } catch (error) {
+        console.error('Erro ao carregar tema:', error)
+      }
+    }
+  }, [])
   
   return (
     <AuthProvider>
@@ -166,6 +187,26 @@ function App() {
                 <Franquias />
               </PermissionGuard>
             } />
+            <Route path="franquias/unidades" element={
+              <PermissionGuard requiredPermissions={['franquias_unidades']}>
+                <ListagemUnidades />
+              </PermissionGuard>
+            } />
+            <Route path="franquias/unidades/nova" element={
+              <PermissionGuard requiredPermissions={['franquias_unidades']}>
+                <CadastroUnidade />
+              </PermissionGuard>
+            } />
+            <Route path="franquias/unidades/:id" element={
+              <PermissionGuard requiredPermissions={['franquias_unidades']}>
+                <CadastroUnidade />
+              </PermissionGuard>
+            } />
+            <Route path="franquias/parametros" element={
+              <PermissionGuard requiredPermissions={['franquias_parametros']}>
+                <ParametrosFranquia />
+              </PermissionGuard>
+            } />
             
             {/* FINANCEIRO */}
             <Route path="financeiro/contas-pagar" element={
@@ -181,6 +222,11 @@ function App() {
             <Route path="financeiro/parametros" element={
               <PermissionGuard requiredPermissions={['financeiro_parametros']}>
                 <ParametrosFinanceiros />
+              </PermissionGuard>
+            } />
+            <Route path="financeiro/controle-inadimplencia" element={
+              <PermissionGuard requiredPermissions={['financeiro_inadimplencia']}>
+                <ControleInadimplencia />
               </PermissionGuard>
             } />
             
@@ -212,6 +258,8 @@ function App() {
                 <Documentacao />
               </PermissionGuard>
             } />
+            {/* Página de Assinatura (rota pública pois é acessada via link) */}
+            <Route path="assinatura/:token" element={<AssinaturaPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

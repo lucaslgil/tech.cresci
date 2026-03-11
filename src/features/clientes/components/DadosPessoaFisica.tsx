@@ -137,6 +137,36 @@ export function DadosPessoaFisica({ formData, onChange, erros, onConsultarCPF, c
         </div>
       </div>
 
+      <div className="grid grid-cols-2 gap-4">
+        {/* E-mail */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            E-mail
+          </label>
+          <input
+            type="email"
+            value={formData.email || ''}
+            onChange={(e) => onChange('email', e.target.value || undefined)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="email@exemplo.com.br"
+          />
+        </div>
+
+        {/* Telefone */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Telefone
+          </label>
+          <input
+            type="text"
+            value={formData.telefone || ''}
+            onChange={(e) => onChange('telefone', e.target.value || undefined)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="(00) 00000-0000"
+          />
+        </div>
+      </div>
+
       {/* Observações */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
