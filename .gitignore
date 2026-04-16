@@ -30,3 +30,6 @@ dist-ssr
 # Arquivos de ambiente com credenciais
 .env
 
+# Chaves de API e segredos — nunca versionar
+chave api nuvem fiscal.txt
+

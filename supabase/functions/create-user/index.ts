@@ -54,21 +54,22 @@ serve(async (req: Request) => {
 
     console.log('🔴 [8] Usuário criado:', authData.user?.id)
 
-    console.log('🔴 [9] Atualizando usuarios')
+    console.log('🔴 [9] Upserting usuarios')
     const { error: updateError } = await supabaseAdmin
       .from('usuarios')
-      .update({ 
+      .upsert({ 
+        id: authData.user!.id,
+        email,
         nome, 
         cargo, 
         telefone, 
         permissoes, 
         ativo,
         empresa_id: empresas[0]  // Atribuir a primeira empresa como empresa_id
-      })
-      .eq('id', authData.user!.id)
+      }, { onConflict: 'id' })
 
     if (updateError) {
-      console.log('🔴 [ERRO] ao atualizar usuarios:', updateError.message)
+      console.log('🔴 [ERRO] ao upsert usuarios:', updateError.message)
       throw updateError
     }
 

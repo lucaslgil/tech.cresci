@@ -126,6 +126,10 @@ export const CadastroItem: React.FC = () => {
   const [startX, setStartX] = useState(0)
   const [startWidth, setStartWidth] = useState(0)
 
+  // Paginação
+  const [paginaAtual, setPaginaAtual] = useState(1)
+  const REGISTROS_POR_PAGINA = 100
+
   const statusOptions = [
     'Ativo',
     'Inativo',
@@ -646,6 +650,18 @@ export const CadastroItem: React.FC = () => {
   const uniqueSetores = [...new Set(itens.map(item => item.setor))].filter(Boolean).sort()
   const uniqueStatus = [...new Set(itens.map(item => item.status))].filter(Boolean).sort()
 
+  // Implementar paginação
+  const itemsPaginados = filteredItens.slice(
+    (paginaAtual - 1) * REGISTROS_POR_PAGINA,
+    paginaAtual * REGISTROS_POR_PAGINA
+  )
+  const totalPages = Math.ceil(filteredItens.length / REGISTROS_POR_PAGINA)
+
+  // Resetar para primeira página quando filtros mudam
+  useEffect(() => {
+    setPaginaAtual(1)
+  }, [searchTerm, filters])
+
   const getStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
       'Ativo': 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white',
@@ -972,146 +988,74 @@ export const CadastroItem: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       {/* Cabeçalho com informações e botões */}
-      <div className="mb-4">
-        <h1 className="text-xl font-bold text-gray-900">Itens do Inventário</h1>
-        <p className="text-sm text-gray-600">
-          {filteredItens.length} {filteredItens.length === 1 ? 'item cadastrado' : 'itens cadastrados'}
-        </p>
-      </div>
-
-      {/* Barra de Ações */}
-      <div className="bg-white rounded-lg border border-[#C9C4B5] p-3 mb-4">
-        <div className="flex flex-wrap gap-2 items-center justify-between">
+      <div className="mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Inventário</h1>
+            <p className="text-sm text-gray-600 mt-1">
+              Gerenciamento de itens e cadastro 
+            </p>
+          </div>
           <div className="flex gap-2">
             <button
-              onClick={() => setShowModal(true)}
-              style={{ backgroundColor: '#394353' }}
-              className="px-3 py-2 text-sm text-white rounded-md hover:opacity-90 transition-opacity flex items-center gap-2 font-semibold"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Novo Item
-            </button>
-            
-            <button
               onClick={() => setShowImportModal(true)}
-              className="px-3 py-2 text-sm border border-[#C9C4B5] rounded-md hover:bg-gray-50 transition-colors flex items-center gap-2"
+              className="px-4 py-2 text-sm border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors flex items-center gap-2 font-medium"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
               </svg>
               Importar
             </button>
+            <button
+              onClick={() => setShowModal(true)}
+              style={{ backgroundColor: '#394353' }}
+              className="px-4 py-2 text-sm text-white rounded-md hover:opacity-90 transition-opacity flex items-center gap-2 font-semibold"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Novo Item
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Dashboard Compacto */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-        {/* Total de Itens */}
-        <div className="group bg-gradient-to-br from-blue-50 to-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-blue-100 hover:border-blue-200 overflow-hidden">
-          <div className="p-3">
-            <div className="flex items-center justify-between">
-              <div className="flex-shrink-0 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-2 shadow-md group-hover:scale-105 transition-transform duration-300">
-                <Package className="h-5 w-5 text-white" />
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Total de Itens</p>
-                <p className="text-2xl font-bold text-gray-900 mt-0.5">{filteredItens.length}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Atribuídos */}
-        <div className="group bg-gradient-to-br from-green-50 to-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-green-100 hover:border-green-200 overflow-hidden">
-          <div className="p-3">
-            <div className="flex items-center justify-between">
-              <div className="flex-shrink-0 bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-2 shadow-md group-hover:scale-105 transition-transform duration-300">
-                <Users className="h-5 w-5 text-white" />
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-semibold text-green-600 uppercase tracking-wider">Atribuídos</p>
-                <p className="text-2xl font-bold text-gray-900 mt-0.5">
-                  {filteredItens.filter(item => item.responsavel_id).length}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Não Atribuídos */}
-        <div className="group bg-gradient-to-br from-amber-50 to-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-amber-100 hover:border-amber-200 overflow-hidden">
-          <div className="p-3">
-            <div className="flex items-center justify-between">
-              <div className="flex-shrink-0 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg p-2 shadow-md group-hover:scale-105 transition-transform duration-300">
-                <AlertCircle className="h-5 w-5 text-white" />
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Não Atribuídos</p>
-                <p className="text-2xl font-bold text-gray-900 mt-0.5">
-                  {filteredItens.filter(item => !item.responsavel_id).length}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Barra de Filtros */}
-      <div className="bg-white rounded-lg border border-[#C9C4B5] p-3 mb-4">
-        <div className="flex flex-wrap gap-2 items-center justify-between">
-          <div className="flex gap-2">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Buscar itens..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-64 px-3 py-2 text-sm border border-[#C9C4B5] rounded-md focus:outline-none focus:ring-2 focus:ring-[#394353]"
-              />
-            </div>
-          </div>
-
+      {/* Barra de Filtros e Busca */}
+      <div className="bg-white rounded-lg shadow-md p-4 mb-6 border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-gray-900">Filtros de Pesquisa</h2>
           <div className="flex gap-2">
             <button
               onClick={() => {
-                setViewMode('list')
-                localStorage.setItem('inventario-view-mode', 'list')
+                setSearchTerm('')
+                setFilters({ categoria: '', setor: '', status: '', responsavel: '' })
               }}
-              className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
-                viewMode === 'list'
-                  ? 'bg-gray-800 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
             >
-              Lista
-            </button>
-            <button
-              onClick={() => {
-                setViewMode('cards')
-                localStorage.setItem('inventario-view-mode', 'cards')
-              }}
-              className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
-                viewMode === 'cards'
-                  ? 'bg-gray-800 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              Cards
+              Limpar filtros
             </button>
           </div>
         </div>
 
-        {/* Filtros Expandidos */}
-        <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-1 md:grid-cols-4 gap-3">
+        {/* Grid de Filtros */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Categoria</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Buscar</label>
+            <input
+              type="text"
+              placeholder="Nome ou código..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Categoria</label>
             <select
               value={filters.categoria}
               onChange={(e) => setFilters({ ...filters, categoria: e.target.value })}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">Todas</option>
               {uniqueCategories.map((cat) => (
@@ -1121,11 +1065,11 @@ export const CadastroItem: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Setor</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Setor</label>
             <select
               value={filters.setor}
               onChange={(e) => setFilters({ ...filters, setor: e.target.value })}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">Todos</option>
               {uniqueSetores.map((setor) => (
@@ -1135,11 +1079,11 @@ export const CadastroItem: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Status</label>
             <select
               value={filters.status}
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">Todos</option>
               {uniqueStatus.map((status) => (
@@ -1149,19 +1093,144 @@ export const CadastroItem: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Responsável</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Responsável</label>
             <input
               type="text"
-              placeholder="Nome do responsável..."
+              placeholder="Nome..."
               value={filters.responsavel}
               onChange={(e) => setFilters({ ...filters, responsavel: e.target.value })}
-              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+          </div>
+        </div>
+
+        {/* Botões de Ação */}
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            onClick={() => {
+              setViewMode('list')
+              localStorage.setItem('inventario-view-mode', 'list')
+            }}
+            className={`px-4 py-2 text-sm rounded-md font-medium transition-colors ${
+              viewMode === 'list'
+                ? 'text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+            style={{ backgroundColor: viewMode === 'list' ? '#394353' : undefined }}
+          >
+            Visualização: Lista
+          </button>
+          <button
+            onClick={() => {
+              setViewMode('cards')
+              localStorage.setItem('inventario-view-mode', 'cards')
+            }}
+            className={`px-4 py-2 text-sm rounded-md font-medium transition-colors ${
+              viewMode === 'cards'
+                ? 'text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+            style={{ backgroundColor: viewMode === 'cards' ? '#394353' : undefined }}
+          >
+            Visualização: Cards
+          </button>
+        </div>
+      </div>
+
+      {/* Indicadores de Dashboard */}
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Card Total de Itens */}
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Total de Itens</p>
+              <p className="text-2xl font-bold text-blue-900 mt-1">{filteredItens.length}</p>
+              <p className="text-xs text-blue-700 mt-2">Registros no filtro</p>
+            </div>
+            <div className="text-blue-300 opacity-20">
+              <Package className="w-12 h-12" />
+            </div>
+          </div>
+        </div>
+
+        {/* Card Categoria */}
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-purple-600 uppercase tracking-wide">Categorias</p>
+              <p className="text-2xl font-bold text-purple-900 mt-1">{uniqueCategories.length}</p>
+              <p className="text-xs text-purple-700 mt-2">Diferentes categorias</p>
+            </div>
+            <div className="text-purple-300 opacity-20">
+              <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M4 3h16a2 2 0 012 2v14a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Card Atribuídos */}
+        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-green-600 uppercase tracking-wide">Atribuídos</p>
+              <p className="text-2xl font-bold text-green-900 mt-1">{filteredItens.filter(item => item.responsavel_id).length}</p>
+              <p className="text-xs text-green-700 mt-2">
+                {filteredItens.length > 0 
+                  ? `${((filteredItens.filter(item => item.responsavel_id).length / filteredItens.length) * 100).toFixed(1)}% do total`
+                  : "-"
+                }
+              </p>
+            </div>
+            <div className="text-green-300 opacity-20">
+              <Users className="w-12 h-12" />
+            </div>
+          </div>
+        </div>
+
+        {/* Card Não Atribuídos */}
+        <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg p-4 border border-amber-200 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-amber-600 uppercase tracking-wide">Não Atribuídos</p>
+              <p className="text-2xl font-bold text-amber-900 mt-1">{filteredItens.filter(item => !item.responsavel_id).length}</p>
+              <p className="text-xs text-amber-700 mt-2">
+                {filteredItens.length > 0 
+                  ? `${((filteredItens.filter(item => !item.responsavel_id).length / filteredItens.length) * 100).toFixed(1)}% do total`
+                  : "-"
+                }
+              </p>
+            </div>
+            <div className="text-amber-300 opacity-20">
+              <AlertCircle className="w-12 h-12" />
+            </div>
+          </div>
+        </div>
+
+        {/* Card Valor Total */}
+        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-lg p-4 border border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-emerald-600 uppercase tracking-wide">Valor Total</p>
+              <p className="text-2xl font-bold text-emerald-900 mt-1">
+                R$ {filteredItens.reduce((sum, item) => sum + Number(item.valor), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-emerald-700 mt-2">
+                {filteredItens.length > 0 
+                  ? `Média: R$ ${(filteredItens.reduce((sum, item) => sum + Number(item.valor), 0) / filteredItens.length).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : "-"
+                }
+              </p>
+            </div>
+            <div className="text-emerald-300 opacity-20">
+              <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" />
+              </svg>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Conteúdo baseado no modo de visualização */}
       {viewMode === 'list' ? (
         // Visualização em Lista
         <div className="bg-white rounded-lg shadow-sm border border-[#C9C4B5]">
@@ -1273,7 +1342,7 @@ export const CadastroItem: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-              {filteredItens.length === 0 ? (
+              {itemsPaginados.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center">
                     <div className="text-center">
@@ -1286,7 +1355,7 @@ export const CadastroItem: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                filteredItens.map((item) => (
+                itemsPaginados.map((item) => (
                   <tr key={item.id} id={`item-${item.id}`} className="hover:bg-gray-50">
                     <td className="px-2 sm:px-3 py-3 text-xs text-gray-900" style={{ width: `${columnWidths.codigo}px` }}>
                       <div className="overflow-hidden text-ellipsis">{item.codigo}</div>
@@ -1353,6 +1422,37 @@ export const CadastroItem: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Paginação */}
+          {filteredItens.length > REGISTROS_POR_PAGINA && (
+            <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t" style={{ borderColor: '#C9C4B5' }}>
+              <div className="text-xs text-gray-600">
+                Mostrando <span className="font-semibold">{((paginaAtual - 1) * REGISTROS_POR_PAGINA) + 1}</span> a <span className="font-semibold">{Math.min(paginaAtual * REGISTROS_POR_PAGINA, filteredItens.length)}</span> de <span className="font-semibold">{filteredItens.length}</span> registros
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPaginaAtual(paginaAtual - 1)}
+                  disabled={paginaAtual === 1}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  ← Anterior
+                </button>
+                
+                <span className="text-xs text-gray-700 font-medium px-3 py-1.5">
+                  Página <span className="font-semibold">{paginaAtual}</span> de <span className="font-semibold">{totalPages}</span>
+                </span>
+                
+                <button
+                  onClick={() => setPaginaAtual(paginaAtual + 1)}
+                  disabled={paginaAtual >= totalPages}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-md hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Próxima →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         // Visualização em Cards
@@ -1437,7 +1537,7 @@ export const CadastroItem: React.FC = () => {
       {/* Modal de Cadastro */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-          <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-gray-100">
             <div style={{ backgroundColor: '#394353' }} className="sticky top-0 px-4 py-3 flex items-center justify-between">
               <div>
                 <h2 className="text-sm font-bold text-white">
