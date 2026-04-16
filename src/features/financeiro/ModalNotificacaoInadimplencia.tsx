@@ -9,6 +9,7 @@ import { X, Search, FileText, Mail, Loader2, CheckCircle2, AlertCircle, Plus, Tr
 import { supabase } from '../../lib/supabase'
 import { gerarNotificacaoPDF, gerarNotificacaoPDFBase64, type TipoNotificacao, type DadosNotificacao, type ItemDebitoNotificacao } from './notificacaoService'
 import { enviarEmailNotificacao, gerarHtmlEmailNotificacao } from './emailService'
+import { DatePickerInput } from '../../shared/components/DatePicker'
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 
@@ -642,10 +643,9 @@ export const ModalNotificacaoInadimplencia: React.FC<Props> = ({ tipo, aberto, o
                       <label className="block text-xs font-medium text-gray-600 mb-1 uppercase tracking-wide">
                         Data de Vencimento
                       </label>
-                      <input
-                        type="date"
+                      <DatePickerInput
                         value={item.dataVencimentoISO}
-                        onChange={(e) => atualizarItem(item.id, 'dataVencimentoISO', e.target.value)}
+                        onChange={(v) => atualizarItem(item.id, 'dataVencimentoISO', v)}
                         className="w-full px-3 py-2 text-sm border border-[#C9C4B5] rounded focus:outline-none focus:ring-1 focus:ring-[#394353]"
                       />
                     </div>

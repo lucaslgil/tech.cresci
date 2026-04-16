@@ -13,6 +13,7 @@ import {
   type ClienteFormData
 } from './types'
 import ModalImportacaoClientes from './ModalImportacaoClientes'
+import ModalSyncSolutto from './ModalSyncSolutto'
 import { importarClientesEmLote, type ProgressoCallback } from './importacaoService'
 import {
   listarClientes,
@@ -34,6 +35,7 @@ export function ListagemClientes() {
   const [carregando, setCarregando] = useState(true)
   const [estatisticas, setEstatisticas] = useState<any>(null)
   const [modalImportOpen, setModalImportOpen] = useState(false)
+  const [modalSyncOpen, setModalSyncOpen] = useState(false)
 
   useEffect(() => {
     carregarClientes()
@@ -128,6 +130,13 @@ export function ListagemClientes() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setModalSyncOpen(true)}
+              className="px-3 py-2 text-sm bg-white border rounded-md font-semibold hover:bg-gray-50 transition-colors"
+              style={{ borderColor: '#C9C4B5' }}
+            >
+              Atualizar Cadastros
+            </button>
             <button
               onClick={() => setModalImportOpen(true)}
               className="px-3 py-2 text-sm bg-white border rounded-md font-semibold"
@@ -415,6 +424,12 @@ export function ListagemClientes() {
           onClose={() => setModalImportOpen(false)}
           onImport={handleImportClientes}
           onComplete={() => setModalImportOpen(false)}
+        />
+      )}
+      {modalSyncOpen && (
+        <ModalSyncSolutto
+          onClose={() => setModalSyncOpen(false)}
+          onSucesso={() => { carregarClientes(); carregarEstatisticas() }}
         />
       )}
     </div>

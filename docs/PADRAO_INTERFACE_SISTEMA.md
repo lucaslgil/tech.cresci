@@ -81,6 +81,37 @@ SECONDARY:                   #1E293B (descontinuado)
 />
 ```
 
+### Campo de Data (OBRIGATÓRIO — nunca usar `<input type="date">`)
+
+Sempre usar o componente `DatePickerInput` (quando o valor é `string YYYY-MM-DD`) ou `DatePicker` (quando o valor é `Date | null`). Eles exibem o calendário visual com localização pt-BR.
+
+```tsx
+import { DatePickerInput, DateRangePicker } from '../../shared/components/DatePicker'
+
+// Campo único (string YYYY-MM-DD)
+<DatePickerInput
+  value={dataString}          // 'yyyy-MM-dd' ou ''
+  onChange={setDataString}    // (value: string) => void
+  placeholder="dd/mm/aaaa"
+/>
+
+// Range de datas (início e fim)
+<DateRangePicker
+  startDate={inicio}          // Date | null
+  endDate={fim}               // Date | null
+  onStartDateChange={setInicio}
+  onEndDateChange={setFim}
+  startPlaceholder="Data início"
+  endPlaceholder="Data fim"
+/>
+```
+
+**Localização:** calendário em português (pt-BR), semana começa no domingo.  
+**Arquivo fonte:** `src/shared/components/DatePicker.tsx`  
+**Referência de uso:** `src/features/vendas/NovaVenda.tsx`
+
+> ❌ Nunca usar `<input type="date" />` diretamente — o seletor nativo é diferente em cada navegador e não segue o padrão visual do sistema.
+
 ### Select/Dropdown
 ```tsx
 <select
@@ -266,6 +297,7 @@ Consulte os seguintes arquivos como referência:
 
 ## 🚫 Evitar
 
+- ❌ `<input type="date" />` diretamente — usar sempre `DatePickerInput` ou `DatePicker`
 - ❌ Cores antigas: `#1E293B`, `bg-blue-600`, `text-blue-600`
 - ❌ Fontes grandes: `text-2xl`, `text-xl`, `text-lg`
 - ❌ Padding excessivo: `p-6`, `px-8`

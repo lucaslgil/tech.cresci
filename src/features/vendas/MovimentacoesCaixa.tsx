@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react'
 import { movimentacoesCaixaService, type MovimentacaoCaixa, type StatusCaixa } from './movimentacoesCaixaService'
 import { supabase } from '../../lib/supabase'
+import { DatePickerInput } from '../../shared/components/DatePicker'
 
 export function MovimentacoesCaixa() {
   // Remover uso de useAuth já que não existe
@@ -287,19 +288,17 @@ export function MovimentacoesCaixa() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Data Início</label>
-            <input
-              type="date"
+            <DatePickerInput
               value={dataInicio}
-              onChange={(e) => setDataInicio(e.target.value)}
+              onChange={(v) => setDataInicio(v)}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
             />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Data Fim</label>
-            <input
-              type="date"
+            <DatePickerInput
               value={dataFim}
-              onChange={(e) => setDataFim(e.target.value)}
+              onChange={(v) => setDataFim(v)}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg"
             />
           </div>

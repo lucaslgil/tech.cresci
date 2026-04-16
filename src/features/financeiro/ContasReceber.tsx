@@ -11,6 +11,7 @@ import {
   CheckCircle, XCircle, Clock, AlertCircle, ExternalLink
 } from 'lucide-react'
 import { Toast } from '../../shared/components/Toast'
+import { DatePickerInput } from '../../shared/components/DatePicker'
 import {
   listarContasReceber,
   criarContaReceber,
@@ -479,16 +480,14 @@ export const ContasReceber: React.FC = () => {
                 Período de Emissão
               </label>
               <div className="flex gap-2">
-                <input
-                  type="date"
+                <DatePickerInput
                   value={filtros.data_inicio || ''}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, data_inicio: e.target.value }))}
+                  onChange={(v) => setFiltros(prev => ({ ...prev, data_inicio: v }))}
                   className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md"
                 />
-                <input
-                  type="date"
+                <DatePickerInput
                   value={filtros.data_fim || ''}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, data_fim: e.target.value }))}
+                  onChange={(v) => setFiltros(prev => ({ ...prev, data_fim: v }))}
                   className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md"
                 />
               </div>
@@ -499,16 +498,14 @@ export const ContasReceber: React.FC = () => {
                 Período de Vencimento
               </label>
               <div className="flex gap-2">
-                <input
-                  type="date"
+                <DatePickerInput
                   value={filtros.vencimento_inicio || ''}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, vencimento_inicio: e.target.value }))}
+                  onChange={(v) => setFiltros(prev => ({ ...prev, vencimento_inicio: v }))}
                   className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md"
                 />
-                <input
-                  type="date"
+                <DatePickerInput
                   value={filtros.vencimento_fim || ''}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, vencimento_fim: e.target.value }))}
+                  onChange={(v) => setFiltros(prev => ({ ...prev, vencimento_fim: v }))}
                   className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md"
                 />
               </div>
@@ -741,10 +738,9 @@ export const ContasReceber: React.FC = () => {
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Data de Emissão <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="date"
+                  <DatePickerInput
                     value={formData.data_emissao}
-                    onChange={(e) => setFormData(prev => ({ ...prev, data_emissao: e.target.value }))}
+                    onChange={(v) => setFormData(prev => ({ ...prev, data_emissao: v }))}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#394353]"
                   />
                 </div>
@@ -753,10 +749,9 @@ export const ContasReceber: React.FC = () => {
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Data de Vencimento <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="date"
+                  <DatePickerInput
                     value={formData.data_vencimento}
-                    onChange={(e) => setFormData(prev => ({ ...prev, data_vencimento: e.target.value }))}
+                    onChange={(v) => setFormData(prev => ({ ...prev, data_vencimento: v }))}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#394353]"
                   />
                 </div>
@@ -901,10 +896,9 @@ export const ContasReceber: React.FC = () => {
                     <label className="block text-xs font-medium text-gray-700 mb-1">
                       Data do Pagamento <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="date"
+                    <DatePickerInput
                       value={pagamentoData.data_pagamento}
-                      onChange={(e) => setPagamentoData(prev => ({ ...prev, data_pagamento: e.target.value }))}
+                      onChange={(v) => setPagamentoData(prev => ({ ...prev, data_pagamento: v }))}
                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#394353]"
                     />
                   </div>

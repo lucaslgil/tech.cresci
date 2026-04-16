@@ -14,6 +14,7 @@ import {
 import { Toast } from '../../../shared/components/Toast'
 import { useUnidades, type ClienteInfo } from './useUnidades'
 import { useParametros } from '../parametros/useParametros'
+import { DatePickerInput } from '../../../shared/components/DatePicker'
 import {
   INITIAL_FORM, STATUS_LABELS, ETAPA_LABELS, MODELO_LABELS,
   ESTADOS_BR, TIPOS_SOCIO,
@@ -674,10 +675,10 @@ export const CadastroUnidade: React.FC = () => {
                     placeholder="Nome de exibição (opcional)" className={inputCls} maxLength={200} />
                 </Field>
                 <Field label="Data de Abertura">
-                  <input type="date" name="data_abertura" value={formData.data_abertura} onChange={handleChange} className={inputCls} />
+                  <DatePickerInput value={formData.data_abertura} onChange={(v) => handleChange({ target: { name: 'data_abertura', value: v } } as React.ChangeEvent<HTMLInputElement>)} className={inputCls} />
                 </Field>
                 <Field label="Data de Assinatura do Contrato">
-                  <input type="date" name="data_assinatura_contrato" value={formData.data_assinatura_contrato} onChange={handleChange} className={inputCls} />
+                  <DatePickerInput value={formData.data_assinatura_contrato} onChange={(v) => handleChange({ target: { name: 'data_assinatura_contrato', value: v } } as React.ChangeEvent<HTMLInputElement>)} className={inputCls} />
                 </Field>
               </div>
 
@@ -982,10 +983,10 @@ export const CadastroUnidade: React.FC = () => {
                     placeholder="60" className={inputCls} min={1} />
                 </Field>
                 <Field label="Data de Início">
-                  <input type="date" name="data_inicio_contrato" value={formData.data_inicio_contrato} onChange={handleChange} className={inputCls} />
+                  <DatePickerInput value={formData.data_inicio_contrato} onChange={(v) => handleChange({ target: { name: 'data_inicio_contrato', value: v } } as React.ChangeEvent<HTMLInputElement>)} className={inputCls} />
                 </Field>
                 <Field label="Data de Término">
-                  <input type="date" name="data_termino_contrato" value={formData.data_termino_contrato} onChange={handleChange} className={inputCls} />
+                  <DatePickerInput value={formData.data_termino_contrato} onChange={(v) => handleChange({ target: { name: 'data_termino_contrato', value: v } } as React.ChangeEvent<HTMLInputElement>)} className={inputCls} />
                 </Field>
                 <Field label="Taxa de Franquia (R$)">
                   <input type="number" step="0.01" name="taxa_franquia" value={formData.taxa_franquia} onChange={handleChange}

@@ -33,6 +33,8 @@ import { Toast } from '../../shared/components/Toast'
 import type { NotaFiscal } from './types'
 import { notasFiscaisService } from './notasFiscaisService'
 import { NuvemFiscalClient } from '../../services/nfe/nuvemFiscalClient'
+import { DatePickerInput } from '../../shared/components/DatePicker'
+import { supabase } from '../../lib/supabase'
 import ModalEditarNota from './ModalEditarNota'
 import * as XLSX from 'xlsx'
 
@@ -51,7 +53,7 @@ interface DashboardData {
 }
 
 interface Filters {
-  periodo: 'hoje' | '7dias' | '30dias' | '90dias' | 'custom'
+  periodo: 'todos' | 'hoje' | '7dias' | '30dias' | '90dias' | 'custom'
   dataInicio: string
   dataFim: string
   status: string
@@ -133,7 +135,7 @@ export const ConsultarNotasFiscais: React.FC = () => {
   // Filtros
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState<Filters>({
-    periodo: '30dias',
+    periodo: 'todos',
     dataInicio: '',
     dataFim: '',
     status: '',
@@ -173,7 +175,19 @@ export const ConsultarNotasFiscais: React.FC = () => {
   const fetchNotas = async () => {
     setLoading(true)
     try {
-      const data = await notasFiscaisService.listar()
+      const { data, error, count } = await supabase
+        .from('notas_fiscais')
+        .select('*, notas_fiscais_itens(count)', { count: 'exact' })
+        .order('data_emissao', { ascending: false })
+
+      console.log('🔍 notas_fiscais — data:', data, '| error:', error, '| count:', count)
+
+      if (error) {
+        console.error('❌ Erro Supabase:', error)
+        setToast({ message: `Erro ao carregar notas fiscais: ${error.message}`, type: 'error' })
+        return
+      }
+
       setNotas(data || [])
     } catch (error) {
       console.error('Erro ao buscar notas:', error)
@@ -188,40 +202,27 @@ export const ConsultarNotasFiscais: React.FC = () => {
     let resultado = [...notas]
 
     // Filtro de período
-    if (filters.periodo !== 'custom') {
-      const hoje = new Date()
-      const dataLimite = new Date()
-      
-      switch (filters.periodo) {
-        case 'hoje':
-          dataLimite.setHours(0, 0, 0, 0)
-          break
-        case '7dias':
-          dataLimite.setDate(hoje.getDate() - 7)
-          break
-        case '30dias':
-          dataLimite.setDate(hoje.getDate() - 30)
-          break
-        case '90dias':
-          dataLimite.setDate(hoje.getDate() - 90)
-          break
-      }
-      
-      resultado = resultado.filter(nota => 
-        new Date(nota.data_emissao) >= dataLimite
-      )
-    } else {
-      // Filtro de data customizado
+    if (filters.periodo === 'custom') {
       if (filters.dataInicio) {
-        resultado = resultado.filter(nota => 
+        resultado = resultado.filter(nota =>
           new Date(nota.data_emissao) >= new Date(filters.dataInicio)
         )
       }
       if (filters.dataFim) {
-        resultado = resultado.filter(nota => 
-          new Date(nota.data_emissao) <= new Date(filters.dataFim)
+        resultado = resultado.filter(nota =>
+          new Date(nota.data_emissao) <= new Date(filters.dataFim + 'T23:59:59')
         )
       }
+    } else if (filters.periodo !== 'todos') {
+      const hoje = new Date()
+      const dataLimite = new Date()
+      switch (filters.periodo) {
+        case 'hoje': dataLimite.setHours(0, 0, 0, 0); break
+        case '7dias': dataLimite.setDate(hoje.getDate() - 7); break
+        case '30dias': dataLimite.setDate(hoje.getDate() - 30); break
+        case '90dias': dataLimite.setDate(hoje.getDate() - 90); break
+      }
+      resultado = resultado.filter(nota => new Date(nota.data_emissao) >= dataLimite)
     }
 
     // Filtro de status
@@ -312,7 +313,7 @@ export const ConsultarNotasFiscais: React.FC = () => {
   // Limpar filtros
   const limparFiltros = () => {
     setFilters({
-      periodo: '30dias',
+      periodo: 'todos',
       dataInicio: '',
       dataFim: '',
       status: '',
@@ -680,6 +681,7 @@ export const ConsultarNotasFiscais: React.FC = () => {
                   className="w-full border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-opacity-50"
                   style={{borderColor: '#C9C4B5'}}
                 >
+                  <option value="todos">Todos</option>
                   <option value="hoje">Hoje</option>
                   <option value="7dias">Últimos 7 dias</option>
                   <option value="30dias">Últimos 30 dias</option>
@@ -694,12 +696,10 @@ export const ConsultarNotasFiscais: React.FC = () => {
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Data Início
                   </label>
-                  <input
-                    type="date"
+                  <DatePickerInput
                     value={filters.dataInicio}
-                    onChange={(e) => setFilters(prev => ({ ...prev, dataInicio: e.target.value }))}
+                    onChange={(v) => setFilters(prev => ({ ...prev, dataInicio: v }))}
                     className="w-full border rounded-md px-3 py-2 text-sm"
-                    style={{borderColor: '#C9C4B5'}}
                   />
                 </div>
               )}
@@ -710,12 +710,10 @@ export const ConsultarNotasFiscais: React.FC = () => {
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Data Fim
                   </label>
-                  <input
-                    type="date"
+                  <DatePickerInput
                     value={filters.dataFim}
-                    onChange={(e) => setFilters(prev => ({ ...prev, dataFim: e.target.value }))}
+                    onChange={(v) => setFilters(prev => ({ ...prev, dataFim: v }))}
                     className="w-full border rounded-md px-3 py-2 text-sm"
-                    style={{borderColor: '#C9C4B5'}}
                   />
                 </div>
               )}

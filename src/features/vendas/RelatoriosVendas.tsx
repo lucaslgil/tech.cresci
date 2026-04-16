@@ -4,15 +4,17 @@
  */
 
 import React, { useState, useEffect } from 'react'
-import { FileText } from 'lucide-react'
+import { FileText, Activity } from 'lucide-react'
 import { vendasService } from './vendasService'
 import type { Venda } from './types'
 import { Toast } from '../../shared/components/Toast'
+import { RadarInatividade } from './RadarInatividade'
 
 export const RelatoriosVendas: React.FC = () => {
   const [vendas, setVendas] = useState<Venda[]>([])
   const [carregando, setCarregando] = useState(true)
   const [toast, setToast] = useState<{ tipo: 'success' | 'error'; mensagem: string } | null>(null)
+  const [abaSelecionada, setAbaSelecionada] = useState<'dashboard' | 'radar'>('dashboard')
 
   useEffect(() => {
     carregarVendas()
@@ -35,7 +37,7 @@ export const RelatoriosVendas: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-3 mb-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h1 className="text-base font-semibold text-gray-900 flex items-center gap-2">
                 <FileText className="w-5 h-5" style={{color: '#394353'}} />
@@ -45,11 +47,39 @@ export const RelatoriosVendas: React.FC = () => {
                 Análises e relatórios de vendas
               </p>
             </div>
+
+            {/* Abas */}
+            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setAbaSelecionada('dashboard')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                  abaSelecionada === 'dashboard'
+                    ? 'bg-white shadow-sm text-gray-900'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Dashboard
+              </button>
+              <button
+                onClick={() => setAbaSelecionada('radar')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                  abaSelecionada === 'radar'
+                    ? 'bg-white shadow-sm text-gray-900'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Activity className="w-3.5 h-3.5" />
+                Radar de Inatividade
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Dashboard de Vendas */}
-        {carregando ? (
+        {/* Conteúdo por aba */}
+        {abaSelecionada === 'radar' ? (
+          <RadarInatividade />
+        ) : carregando ? (
           <div className="bg-white rounded-lg shadow-sm p-12">
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800"></div>

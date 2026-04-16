@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Edit, Trash2, CheckCircle, Clock, AlertCircle, LayoutList, LayoutGrid, Plus, UserPlus } from 'lucide-react'
 import { Toast } from '../../shared/components/Toast'
+import { DatePickerInput } from '../../shared/components/DatePicker'
 
 interface Tarefa {
   id: string
@@ -461,32 +462,28 @@ export const GerenciamentoTarefas: React.FC = () => {
             {/* Filtros por datas */}
             <div className="flex items-center gap-2">
               <label className="text-xs text-gray-600">Abertura</label>
-              <input
-                type="date"
+              <DatePickerInput
                 value={startAbertura || ''}
-                onChange={(e) => setStartAbertura(e.target.value || null)}
+                onChange={(v) => setStartAbertura(v || null)}
                 className="px-2 py-1 h-9 border border-gray-300 rounded-md text-sm"
               />
-              <input
-                type="date"
+              <DatePickerInput
                 value={endAbertura || ''}
-                onChange={(e) => setEndAbertura(e.target.value || null)}
+                onChange={(v) => setEndAbertura(v || null)}
                 className="px-2 py-1 h-9 border border-gray-300 rounded-md text-sm"
               />
             </div>
 
             <div className="flex items-center gap-2">
               <label className="text-xs text-gray-600">Conclusão</label>
-              <input
-                type="date"
+              <DatePickerInput
                 value={startConclusao || ''}
-                onChange={(e) => setStartConclusao(e.target.value || null)}
+                onChange={(v) => setStartConclusao(v || null)}
                 className="px-2 py-1 h-9 border border-gray-300 rounded-md text-sm"
               />
-              <input
-                type="date"
+              <DatePickerInput
                 value={endConclusao || ''}
-                onChange={(e) => setEndConclusao(e.target.value || null)}
+                onChange={(v) => setEndConclusao(v || null)}
                 className="px-2 py-1 h-9 border border-gray-300 rounded-md text-sm"
               />
             </div>
@@ -825,20 +822,18 @@ export const GerenciamentoTarefas: React.FC = () => {
                 <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Data de Criação</label>
-                    <input
-                      type="date"
+                    <DatePickerInput
                       value={formData.created_at || ''}
-                      onChange={(e) => setFormData({ ...formData, created_at: e.target.value })}
+                      onChange={(v) => setFormData({ ...formData, created_at: v })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Data de Conclusão</label>
-                    <input
-                      type="date"
+                    <DatePickerInput
                       value={formData.data_conclusao || ''}
-                      onChange={(e) => setFormData({ ...formData, data_conclusao: e.target.value })}
+                      onChange={(v) => setFormData({ ...formData, data_conclusao: v })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
