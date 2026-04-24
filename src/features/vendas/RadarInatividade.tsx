@@ -241,7 +241,7 @@ const LinhaCliente: React.FC<{ cliente: ClienteRadar }> = ({ cliente }) => {
 
 interface RadarInativiadeProps {
   resultadoInicial?: ResultadoRadar | null
-  onGravar?: (resultado: ResultadoRadar, titulo: string, resumo: string) => void
+  onGravar?: (resultado: ResultadoRadar, titulo: string, resumo: string) => void | Promise<void>
 }
 
 export const RadarInatividade: React.FC<RadarInativiadeProps> = ({ resultadoInicial, onGravar }) => {
