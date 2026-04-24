@@ -45,7 +45,6 @@ function calcularKPIs(r: ResultadoRadar) {
 }
 
 export const RelatoriosVendas: React.FC = () => {
-  const [carregando, setCarregando] = useState(false)
   const [toast, setToast] = useState<{ tipo: 'success' | 'error'; mensagem: string } | null>(null)
   const [abaSelecionada, setAbaSelecionada] = useState<'dashboard' | 'radar'>('dashboard')
 
@@ -150,13 +149,6 @@ export const RelatoriosVendas: React.FC = () => {
             resultadoInicial={resultadoRestaurado}
             onGravar={handleGravar}
           />
-        ) : carregando ? (
-          <div className="bg-white rounded-lg shadow-sm p-12">
-            <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800"></div>
-              <p className="text-sm text-gray-600 mt-3">Carregando dados...</p>
-            </div>
-          </div>
         ) : (
           <>
             {/* ---- Cards de KPI ---- */}
