@@ -119,8 +119,8 @@ function montarPayload(c: ClienteSolutto): Record<string, any> | null {
   // Sem nenhuma informação de identificação → descarta
   if (!temNome && !temCnpj && !temCpf) return null
 
-  // PF: tem CPF válido e não tem CNPJ
-  const tipoPessoa = (temCpf && !temCnpj) ? 'FISICA' : 'JURIDICA'
+  // PJ: somente quando tem CNPJ válido. Sem documento → FISICA por padrão
+  const tipoPessoa = temCnpj ? 'JURIDICA' : 'FISICA'
 
   const payload: Record<string, any> = {
     tipo_pessoa:         tipoPessoa,

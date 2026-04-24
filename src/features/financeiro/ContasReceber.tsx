@@ -8,8 +8,10 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
   DollarSign, Plus, Search, Filter,
-  CheckCircle, XCircle, Clock, AlertCircle, ExternalLink
+  CheckCircle, XCircle, Clock, AlertCircle, ExternalLink, RefreshCw
 } from 'lucide-react'
+import ModalSyncContasReceber from './ModalSyncContasReceber'
+import ModalSyncTodosClientes from './ModalSyncTodosClientes'
 import { Toast } from '../../shared/components/Toast'
 import { DatePickerInput } from '../../shared/components/DatePicker'
 import {
@@ -47,6 +49,10 @@ export const ContasReceber: React.FC = () => {
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   
+  // Modal de sincronização Solutto
+  const [showSyncModal, setShowSyncModal] = useState(false)
+  const [showSyncTodosModal, setShowSyncTodosModal] = useState(false)
+
   // Modal de nova conta
   const [showModal, setShowModal] = useState(false)
   const [modoEdicao, setModoEdicao] = useState(false)
@@ -435,6 +441,24 @@ export const ContasReceber: React.FC = () => {
               <Plus className="w-4 h-4" />
               Nova Conta
             </button>
+
+            <button
+              onClick={() => setShowSyncModal(true)}
+              className="px-3 py-2 text-sm border border-[#C9C4B5] rounded-md hover:bg-gray-50 transition-colors flex items-center gap-2"
+              title="Importar contas de um cliente específico da Solutto"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Sincronizar Solutto
+            </button>
+
+            <button
+              onClick={() => setShowSyncTodosModal(true)}
+              className="px-3 py-2 text-sm border border-[#C9C4B5] rounded-md hover:bg-gray-50 transition-colors flex items-center gap-2"
+              title="Importar contas de TODOS os clientes da Solutto"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Sincronizar Todos
+            </button>
             
             <button
               onClick={() => setMostrarFiltros(!mostrarFiltros)}
@@ -585,7 +609,16 @@ export const ContasReceber: React.FC = () => {
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-xs">{conta.cliente_nome}</td>
+                      <td className="px-3 py-2 text-xs">
+                        <div className="flex items-center gap-1">
+                          <span>{conta.cliente_nome}</span>
+                          {(conta as any).origem === 'SOLUTTO' && (
+                            <span className="flex-shrink-0 px-1.5 py-0.5 text-[10px] font-semibold rounded bg-purple-100 text-purple-700">
+                              Solutto
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-3 py-2 text-xs">{conta.descricao}</td>
                       <td className="px-3 py-2 text-center">
                         {conta.venda_id && conta.numero_venda ? (
@@ -1000,6 +1033,28 @@ export const ContasReceber: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de Sincronização Solutto - cliente único */}
+      {showSyncModal && (
+        <ModalSyncContasReceber
+          onClose={() => setShowSyncModal(false)}
+          onSucesso={() => {
+            carregarDados()
+            setToast({ message: 'Contas importadas da Solutto com sucesso!', type: 'success' })
+          }}
+        />
+      )}
+
+      {/* Modal de Sincronização Solutto - todos os clientes */}
+      {showSyncTodosModal && (
+        <ModalSyncTodosClientes
+          onClose={() => setShowSyncTodosModal(false)}
+          onSucesso={() => {
+            carregarDados()
+            setToast({ message: 'Sincronização concluída! Contas atualizadas.', type: 'success' })
+          }}
+        />
       )}
     </div>
   )
