@@ -7,16 +7,178 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   FileText, Activity, BookMarked, Trash2, ChevronRight, BarChart2,
   Users, AlertTriangle, ShoppingCart, Package, TrendingDown, CheckCircle2,
+  X,
 } from 'lucide-react'
 import { Toast } from '../../shared/components/Toast'
 import { RadarInatividade } from './RadarInatividade'
-import type { ResultadoRadar } from './radarInativiadeService'
+import type { ResultadoRadar, ClienteRadar, ProdutoRadar } from './radarInativiadeService'
 import {
   listarRelatoriosSalvos,
   salvarRelatorio,
   excluirRelatorio,
   type RelatorioSalvo,
 } from './radarRelatoriosSalvos'
+
+// =====================================================
+// TIPOS DO MODAL
+// =====================================================
+
+type TipoModalKPI =
+  | 'total'
+  | 'inativos90'
+  | 'inativos60'
+  | 'inativos30'
+  | 'semCompras'
+  | 'ativos30'
+  | 'cobertura'
+  | 'produtos'
+
+interface DadosModal {
+  tipo: TipoModalKPI
+  titulo: string
+  clientes?: ClienteRadar[]
+  produtos?: ProdutoRadar[]
+}
+
+// =====================================================
+// MODAL DE DETALHES DO KPI
+// =====================================================
+
+const ModalKPI: React.FC<{ dados: DadosModal; onClose: () => void }> = ({ dados, onClose }) => {
+  const [busca, setBusca] = useState('')
+
+  const clientesFiltrados = useMemo(() => {
+    if (!dados.clientes) return []
+    if (!busca) return dados.clientes
+    const t = busca.toLowerCase()
+    return dados.clientes.filter(c =>
+      c.nome.toLowerCase().includes(t) ||
+      (c.nome_fantasia || '').toLowerCase().includes(t) ||
+      c.codigo.toLowerCase().includes(t)
+    )
+  }, [dados.clientes, busca])
+
+  const produtosFiltrados = useMemo(() => {
+    if (!dados.produtos) return []
+    if (!busca) return dados.produtos
+    const t = busca.toLowerCase()
+    return dados.produtos.filter(p =>
+      (p.descricao || '').toLowerCase().includes(t) ||
+      p.codigo.toLowerCase().includes(t)
+    )
+  }, [dados.produtos, busca])
+
+  const total = dados.clientes?.length ?? dados.produtos?.length ?? 0
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#C9C4B5' }}>
+          <div>
+            <h2 className="text-base font-semibold" style={{ color: '#394353' }}>{dados.titulo}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {dados.clientes ? `${total} cliente${total !== 1 ? 's' : ''}` : `${total} produto${total !== 1 ? 's' : ''}`}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Busca */}
+        <div className="px-5 py-3 border-b" style={{ borderColor: '#C9C4B5' }}>
+          <input
+            type="text"
+            placeholder={dados.clientes ? 'Buscar por nome, fantasia ou código...' : 'Buscar produto...'}
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            className="w-full text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2"
+            style={{ borderColor: '#C9C4B5', focusRingColor: '#394353' }}
+            autoFocus
+          />
+        </div>
+
+        {/* Lista */}
+        <div className="overflow-y-auto flex-1">
+          {dados.clientes && (
+            <table className="w-full text-xs">
+              <thead className="sticky top-0" style={{ backgroundColor: '#394353' }}>
+                <tr>
+                  <th className="text-left px-4 py-2 text-white font-semibold">#</th>
+                  <th className="text-left px-4 py-2 text-white font-semibold">Razão Social</th>
+                  <th className="text-left px-4 py-2 text-white font-semibold">Nome Fantasia</th>
+                  <th className="text-left px-4 py-2 text-white font-semibold">Cód.</th>
+                  {(dados.tipo !== 'semCompras' && dados.tipo !== 'total') && (
+                    <th className="text-right px-4 py-2 text-white font-semibold">Dias s/ compra</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {clientesFiltrados.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-gray-400">Nenhum resultado encontrado.</td>
+                  </tr>
+                ) : clientesFiltrados.map((c, i) => (
+                  <tr key={c.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="px-4 py-2 text-gray-400">{i + 1}</td>
+                    <td className="px-4 py-2 font-medium text-gray-800">{c.nome}</td>
+                    <td className="px-4 py-2 text-gray-500">{c.nome_fantasia || '—'}</td>
+                    <td className="px-4 py-2 text-gray-400">{c.codigo}</td>
+                    {(dados.tipo !== 'semCompras' && dados.tipo !== 'total') && (
+                      <td className="px-4 py-2 text-right font-semibold text-gray-700">
+                        {c.dias_sem_compra != null ? `${c.dias_sem_compra}d` : '—'}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {dados.produtos && (
+            <table className="w-full text-xs">
+              <thead className="sticky top-0" style={{ backgroundColor: '#394353' }}>
+                <tr>
+                  <th className="text-left px-4 py-2 text-white font-semibold">#</th>
+                  <th className="text-left px-4 py-2 text-white font-semibold">Código</th>
+                  <th className="text-left px-4 py-2 text-white font-semibold">Descrição</th>
+                  <th className="text-right px-4 py-2 text-white font-semibold">Total Compras</th>
+                </tr>
+              </thead>
+              <tbody>
+                {produtosFiltrados.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-gray-400">Nenhum resultado encontrado.</td>
+                  </tr>
+                ) : produtosFiltrados.map((p, i) => (
+                  <tr key={p.codigo} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="px-4 py-2 text-gray-400">{i + 1}</td>
+                    <td className="px-4 py-2 font-medium text-gray-700">{p.codigo}</td>
+                    <td className="px-4 py-2 text-gray-800">{p.descricao || '—'}</td>
+                    <td className="px-4 py-2 text-right font-semibold text-blue-600">
+                      {p.total_compras != null ? p.total_compras : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // =====================================================
 // KPIs derivados de um ResultadoRadar
@@ -104,8 +266,33 @@ export const RelatoriosVendas: React.FC = () => {
     if (!relatorioSelecionadoId) return null
     const rel = relatoriosSalvos.find(r => r.id === relatorioSelecionadoId)
     if (!rel) return null
-    return { ...calcularKPIs(rel.resultado), titulo: rel.titulo, dataConsulta: rel.resultado.data_consulta }
+    return { ...calcularKPIs(rel.resultado), titulo: rel.titulo, dataConsulta: rel.resultado.data_consulta, resultado: rel.resultado }
   }, [relatorioSelecionadoId, relatoriosSalvos])
+
+  // Modal de detalhes de KPI
+  const [modalKPI, setModalKPI] = useState<DadosModal | null>(null)
+
+  const abrirModalKPI = useCallback((tipo: TipoModalKPI) => {
+    if (!kpis) return
+    const r = kpis.resultado
+    const mapa: Record<TipoModalKPI, DadosModal> = {
+      total:      { tipo, titulo: 'Total de Clientes',                   clientes: r.clientes },
+      inativos90: { tipo, titulo: 'Clientes Inativos há +90 dias',       clientes: r.clientes.filter(c => c.dias_sem_compra !== null && c.dias_sem_compra >= 90) },
+      inativos60: { tipo, titulo: 'Clientes Inativos há +60 dias',       clientes: r.clientes.filter(c => c.dias_sem_compra !== null && c.dias_sem_compra >= 60) },
+      inativos30: { tipo, titulo: 'Clientes Inativos há +30 dias',       clientes: r.clientes.filter(c => c.dias_sem_compra !== null && c.dias_sem_compra >= 30) },
+      semCompras: { tipo, titulo: 'Clientes Sem Compras Registradas',    clientes: r.clientes.filter(c => c.dias_sem_compra === null) },
+      ativos30:   { tipo, titulo: 'Clientes Ativos (últimos 30 dias)',   clientes: r.clientes.filter(c => c.dias_sem_compra !== null && c.dias_sem_compra < 30) },
+      cobertura:  { tipo, titulo: 'Cobertura por Cliente',               clientes: [...r.clientes].sort((a, b) => {
+        const pa = a.produtos_comprados.length + a.produtos_nao_comprados.length
+        const pb = b.produtos_comprados.length + b.produtos_nao_comprados.length
+        const ca = pa > 0 ? a.produtos_comprados.length / pa : 0
+        const cb = pb > 0 ? b.produtos_comprados.length / pb : 0
+        return cb - ca
+      })},
+      produtos:   { tipo, titulo: 'Universo de Produtos',                produtos: r.universo_produtos },
+    }
+    setModalKPI(mapa[tipo])
+  }, [kpis])
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -173,7 +360,7 @@ export const RelatoriosVendas: React.FC = () => {
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {/* Total Clientes */}
-                  <div className="bg-white rounded-lg shadow-sm p-3 border" style={{borderColor: '#C9C4B5'}}>
+                  <div onClick={() => abrirModalKPI('total')} className="bg-white rounded-lg shadow-sm p-3 border cursor-pointer hover:shadow-md hover:border-gray-300 transition-all" style={{borderColor: '#C9C4B5'}}>
                     <div className="flex items-center gap-2 mb-2">
                       <Users className="w-4 h-4 text-gray-400 flex-shrink-0" />
                       <p className="text-xs text-gray-500">Total Clientes</p>
@@ -182,7 +369,7 @@ export const RelatoriosVendas: React.FC = () => {
                   </div>
 
                   {/* Inativos +90 dias */}
-                  <div className="bg-white rounded-lg shadow-sm p-3 border border-red-200">
+                  <div onClick={() => abrirModalKPI('inativos90')} className="bg-white rounded-lg shadow-sm p-3 border border-red-200 cursor-pointer hover:shadow-md hover:border-red-300 transition-all">
                     <div className="flex items-center gap-2 mb-2">
                       <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
                       <p className="text-xs text-gray-500">Inativos +90 dias</p>
@@ -194,7 +381,7 @@ export const RelatoriosVendas: React.FC = () => {
                   </div>
 
                   {/* Inativos +60 dias */}
-                  <div className="bg-white rounded-lg shadow-sm p-3 border border-orange-200">
+                  <div onClick={() => abrirModalKPI('inativos60')} className="bg-white rounded-lg shadow-sm p-3 border border-orange-200 cursor-pointer hover:shadow-md hover:border-orange-300 transition-all">
                     <div className="flex items-center gap-2 mb-2">
                       <AlertTriangle className="w-4 h-4 text-orange-400 flex-shrink-0" />
                       <p className="text-xs text-gray-500">Inativos +60 dias</p>
@@ -206,7 +393,7 @@ export const RelatoriosVendas: React.FC = () => {
                   </div>
 
                   {/* Inativos +30 dias */}
-                  <div className="bg-white rounded-lg shadow-sm p-3 border border-yellow-200">
+                  <div onClick={() => abrirModalKPI('inativos30')} className="bg-white rounded-lg shadow-sm p-3 border border-yellow-200 cursor-pointer hover:shadow-md hover:border-yellow-300 transition-all">
                     <div className="flex items-center gap-2 mb-2">
                       <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0" />
                       <p className="text-xs text-gray-500">Inativos +30 dias</p>
@@ -218,7 +405,7 @@ export const RelatoriosVendas: React.FC = () => {
                   </div>
 
                   {/* Sem compras */}
-                  <div className="bg-white rounded-lg shadow-sm p-3 border border-slate-200">
+                  <div onClick={() => abrirModalKPI('semCompras')} className="bg-white rounded-lg shadow-sm p-3 border border-slate-200 cursor-pointer hover:shadow-md hover:border-slate-300 transition-all">
                     <div className="flex items-center gap-2 mb-2">
                       <ShoppingCart className="w-4 h-4 text-slate-400 flex-shrink-0" />
                       <p className="text-xs text-gray-500">Sem Compras Registradas</p>
@@ -228,7 +415,7 @@ export const RelatoriosVendas: React.FC = () => {
                   </div>
 
                   {/* Ativos últimos 30d */}
-                  <div className="bg-white rounded-lg shadow-sm p-3 border border-green-200">
+                  <div onClick={() => abrirModalKPI('ativos30')} className="bg-white rounded-lg shadow-sm p-3 border border-green-200 cursor-pointer hover:shadow-md hover:border-green-300 transition-all">
                     <div className="flex items-center gap-2 mb-2">
                       <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
                       <p className="text-xs text-gray-500">Ativos (últimos 30 dias)</p>
@@ -238,7 +425,7 @@ export const RelatoriosVendas: React.FC = () => {
                   </div>
 
                   {/* Cobertura média */}
-                  <div className="bg-white rounded-lg shadow-sm p-3 border" style={{borderColor: '#C9C4B5'}}>
+                  <div onClick={() => abrirModalKPI('cobertura')} className="bg-white rounded-lg shadow-sm p-3 border cursor-pointer hover:shadow-md hover:border-purple-200 transition-all" style={{borderColor: '#C9C4B5'}}>
                     <div className="flex items-center gap-2 mb-2">
                       <TrendingDown className="w-4 h-4 text-purple-400 flex-shrink-0" />
                       <p className="text-xs text-gray-500">Cobertura Média</p>
@@ -248,7 +435,7 @@ export const RelatoriosVendas: React.FC = () => {
                   </div>
 
                   {/* Universo de Produtos */}
-                  <div className="bg-white rounded-lg shadow-sm p-3 border" style={{borderColor: '#C9C4B5'}}>
+                  <div onClick={() => abrirModalKPI('produtos')} className="bg-white rounded-lg shadow-sm p-3 border cursor-pointer hover:shadow-md hover:border-blue-200 transition-all" style={{borderColor: '#C9C4B5'}}>
                     <div className="flex items-center gap-2 mb-2">
                       <Package className="w-4 h-4 text-blue-400 flex-shrink-0" />
                       <p className="text-xs text-gray-500">Universo de Produtos</p>
@@ -382,6 +569,10 @@ export const RelatoriosVendas: React.FC = () => {
           message={toast.mensagem}
           onClose={() => setToast(null)}
         />
+      )}
+
+      {modalKPI && (
+        <ModalKPI dados={modalKPI} onClose={() => setModalKPI(null)} />
       )}
     </div>
   )
