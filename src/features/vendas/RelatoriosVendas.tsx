@@ -103,8 +103,8 @@ const ModalKPI: React.FC<{ dados: DadosModal; onClose: () => void }> = ({ dados,
             placeholder={dados.clientes ? 'Buscar por nome, fantasia ou código...' : 'Buscar produto...'}
             value={busca}
             onChange={e => setBusca(e.target.value)}
-            className="w-full text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2"
-            style={{ borderColor: '#C9C4B5', focusRingColor: '#394353' }}
+            className="w-full text-sm border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-slate-400"
+            style={{ borderColor: '#C9C4B5' }}
             autoFocus
           />
         </div>
