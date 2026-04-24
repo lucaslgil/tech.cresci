@@ -56,18 +56,22 @@ export const RelatoriosVendas: React.FC = () => {
   const [resultadoRestaurado, setResultadoRestaurado] = useState<ResultadoRadar | null>(null)
 
   useEffect(() => {
-    const salvos = listarRelatoriosSalvos()
-    setRelatoriosSalvos(salvos)
-    // Pré-seleciona o mais recente se houver
-    if (salvos.length > 0) setRelatorioSelecionadoId(salvos[0].id)
+    listarRelatoriosSalvos().then(salvos => {
+      setRelatoriosSalvos(salvos)
+      if (salvos.length > 0) setRelatorioSelecionadoId(salvos[0].id)
+    })
   }, [])
 
-  const handleGravar = useCallback((resultado: ResultadoRadar, titulo: string, resumo: string) => {
-    const salvo = salvarRelatorio(titulo, resumo, resultado)
-    const lista = listarRelatoriosSalvos()
-    setRelatoriosSalvos(lista)
-    setRelatorioSelecionadoId(salvo.id)
-    setToast({ tipo: 'success', mensagem: `Relatório "${titulo}" gravado com sucesso!` })
+  const handleGravar = useCallback(async (resultado: ResultadoRadar, titulo: string, resumo: string) => {
+    try {
+      const salvo = await salvarRelatorio(titulo, resumo, resultado)
+      const lista = await listarRelatoriosSalvos()
+      setRelatoriosSalvos(lista)
+      setRelatorioSelecionadoId(salvo.id)
+      setToast({ tipo: 'success', mensagem: `Relatório "${titulo}" gravado com sucesso!` })
+    } catch {
+      setToast({ tipo: 'error', mensagem: 'Erro ao gravar relatório. Tente novamente.' })
+    }
   }, [])
 
   const handleAbrirRelatorio = (relatorio: RelatorioSalvo, e: React.MouseEvent) => {
@@ -76,13 +80,17 @@ export const RelatoriosVendas: React.FC = () => {
     setAbaSelecionada('radar')
   }
 
-  const handleExcluirRelatorio = (id: string, e: React.MouseEvent) => {
+  const handleExcluirRelatorio = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    excluirRelatorio(id)
-    const lista = listarRelatoriosSalvos()
-    setRelatoriosSalvos(lista)
-    if (relatorioSelecionadoId === id) {
-      setRelatorioSelecionadoId(lista.length > 0 ? lista[0].id : null)
+    try {
+      await excluirRelatorio(id)
+      const lista = await listarRelatoriosSalvos()
+      setRelatoriosSalvos(lista)
+      if (relatorioSelecionadoId === id) {
+        setRelatorioSelecionadoId(lista.length > 0 ? lista[0].id : null)
+      }
+    } catch {
+      setToast({ tipo: 'error', mensagem: 'Erro ao excluir relatório.' })
     }
   }
 

@@ -1,12 +1,11 @@
 /**
  * SERVIÇO - RELATÓRIOS DO RADAR DE INATIVIDADE SALVOS
- * Persiste relatórios consultados no localStorage do navegador.
+ * Persiste relatórios no Supabase (tabela radar_relatorios_salvos),
+ * vinculados à empresa e ao usuário autenticado.
  */
 
+import { supabase } from '../../lib/supabase'
 import type { ResultadoRadar } from './radarInativiadeService'
-
-const STORAGE_KEY = 'radar_relatorios_salvos'
-const MAX_RELATORIOS = 20
 
 // =====================================================
 // TIPOS
@@ -15,70 +14,102 @@ const MAX_RELATORIOS = 20
 export interface RelatorioSalvo {
   id: string
   titulo: string
-  data_gravacao: string
-  resumo: string   // ex: "42 clientes · 01/01/2025 – 30/01/2025"
+  data_gravacao: string   // = created_at da tabela
+  resumo: string
   resultado: ResultadoRadar
 }
 
-// =====================================================
-// HELPERS
-// =====================================================
-
-function gerarId(): string {
-  return `radar_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+// Formato retornado pelo Supabase
+interface RelatorioRow {
+  id: string
+  titulo: string
+  resumo: string
+  resultado: ResultadoRadar
+  created_at: string
 }
 
 // =====================================================
-// API PÚBLICA
+// HELPERS INTERNOS
 // =====================================================
 
-export function listarRelatoriosSalvos(): RelatorioSalvo[] {
+async function obterEmpresaEUsuario(): Promise<{ empresaId: number; usuarioId: string }> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Usuário não autenticado')
+
+  const { data, error } = await supabase
+    .from('usuarios')
+    .select('empresa_id')
+    .eq('id', user.id)
+    .single()
+
+  if (error || !data?.empresa_id) {
+    throw new Error('Usuário não possui empresa associada')
+  }
+
+  return { empresaId: data.empresa_id as number, usuarioId: user.id }
+}
+
+function rowParaRelatorio(row: RelatorioRow): RelatorioSalvo {
+  return {
+    id:            row.id,
+    titulo:        row.titulo,
+    resumo:        row.resumo,
+    data_gravacao: row.created_at,
+    resultado:     row.resultado,
+  }
+}
+
+// =====================================================
+// API PÚBLICA (async — usa Supabase)
+// =====================================================
+
+export async function listarRelatoriosSalvos(): Promise<RelatorioSalvo[]> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    return JSON.parse(raw) as RelatorioSalvo[]
+    const { empresaId } = await obterEmpresaEUsuario()
+
+    const { data, error } = await supabase
+      .from('radar_relatorios_salvos')
+      .select('id, titulo, resumo, resultado, created_at')
+      .eq('empresa_id', empresaId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+
+    if (error) throw error
+    return (data as RelatorioRow[]).map(rowParaRelatorio)
   } catch {
     return []
   }
 }
 
-export function salvarRelatorio(
+export async function salvarRelatorio(
   titulo: string,
   resumo: string,
   resultado: ResultadoRadar
-): RelatorioSalvo {
-  const novo: RelatorioSalvo = {
-    id: gerarId(),
-    titulo: titulo.trim() || 'Relatório sem título',
-    data_gravacao: new Date().toISOString(),
-    resumo,
-    resultado,
-  }
+): Promise<RelatorioSalvo> {
+  const { empresaId, usuarioId } = await obterEmpresaEUsuario()
 
-  const lista = listarRelatoriosSalvos()
-  // Insere no topo e limita ao máximo
-  const atualizada = [novo, ...lista].slice(0, MAX_RELATORIOS)
+  const { data, error } = await supabase
+    .from('radar_relatorios_salvos')
+    .insert({
+      empresa_id: empresaId,
+      usuario_id: usuarioId,
+      titulo:     titulo.trim() || 'Relatório sem título',
+      resumo,
+      resultado,
+    })
+    .select('id, titulo, resumo, resultado, created_at')
+    .single()
 
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(atualizada))
-  } catch {
-    // localStorage cheio: tenta remover o mais antigo e reinserir
-    try {
-      const reduzida = [novo, ...lista.slice(0, MAX_RELATORIOS - 2)]
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(reduzida))
-    } catch {
-      // ignora silenciosamente
-    }
-  }
-
-  return novo
+  if (error) throw error
+  return rowParaRelatorio(data as RelatorioRow)
 }
 
-export function excluirRelatorio(id: string): void {
-  const lista = listarRelatoriosSalvos().filter(r => r.id !== id)
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(lista))
-  } catch {
-    // ignora
-  }
+export async function excluirRelatorio(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('radar_relatorios_salvos')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
 }
+
