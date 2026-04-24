@@ -8,8 +8,6 @@ import {
   FileText, Activity, BookMarked, Trash2, ChevronRight, BarChart2,
   Users, AlertTriangle, ShoppingCart, Package, TrendingDown, CheckCircle2,
 } from 'lucide-react'
-import { vendasService } from './vendasService'
-import type { Venda } from './types'
 import { Toast } from '../../shared/components/Toast'
 import { RadarInatividade } from './RadarInatividade'
 import type { ResultadoRadar } from './radarInativiadeService'
@@ -47,8 +45,7 @@ function calcularKPIs(r: ResultadoRadar) {
 }
 
 export const RelatoriosVendas: React.FC = () => {
-  const [vendas, setVendas] = useState<Venda[]>([])
-  const [carregando, setCarregando] = useState(true)
+  const [carregando, setCarregando] = useState(false)
   const [toast, setToast] = useState<{ tipo: 'success' | 'error'; mensagem: string } | null>(null)
   const [abaSelecionada, setAbaSelecionada] = useState<'dashboard' | 'radar'>('dashboard')
 
@@ -60,24 +57,11 @@ export const RelatoriosVendas: React.FC = () => {
   const [resultadoRestaurado, setResultadoRestaurado] = useState<ResultadoRadar | null>(null)
 
   useEffect(() => {
-    carregarVendas()
     const salvos = listarRelatoriosSalvos()
     setRelatoriosSalvos(salvos)
     // Pré-seleciona o mais recente se houver
     if (salvos.length > 0) setRelatorioSelecionadoId(salvos[0].id)
   }, [])
-
-  const carregarVendas = async () => {
-    setCarregando(true)
-    try {
-      const dados = await vendasService.listar({})
-      setVendas(dados)
-    } catch {
-      setToast({ tipo: 'error', mensagem: 'Erro ao carregar vendas' })
-    } finally {
-      setCarregando(false)
-    }
-  }
 
   const handleGravar = useCallback((resultado: ResultadoRadar, titulo: string, resumo: string) => {
     const salvo = salvarRelatorio(titulo, resumo, resultado)
