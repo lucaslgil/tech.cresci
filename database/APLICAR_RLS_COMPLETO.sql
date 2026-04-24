@@ -21,7 +21,7 @@ ON empresas FOR UPDATE
 USING (
   id IN (
     SELECT empresa_id FROM usuarios 
-    WHERE id = auth.uid() AND perfil = 'admin'
+    WHERE id = auth.uid()
   )
 );
 
@@ -43,7 +43,7 @@ ON usuarios FOR INSERT
 WITH CHECK (
   empresa_id IN (
     SELECT empresa_id FROM usuarios 
-    WHERE id = auth.uid() AND perfil = 'admin'
+    WHERE id = auth.uid()
   )
 );
 

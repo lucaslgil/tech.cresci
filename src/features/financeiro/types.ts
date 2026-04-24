@@ -46,6 +46,9 @@ export interface ContaReceber {
   status: StatusConta
   forma_pagamento?: string
   observacoes?: string
+  origem?: 'MANUAL' | 'SOLUTTO'
+  solutto_id?: number
+  solutto_sincronizado_em?: string
   created_at?: string
   updated_at?: string
 }

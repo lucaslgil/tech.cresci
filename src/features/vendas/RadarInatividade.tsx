@@ -23,6 +23,7 @@ import {
   X,
   Calendar,
   Package,
+  Save,
 } from 'lucide-react'
 import { DatePickerInput } from '../../shared/components/DatePicker'
 import {
@@ -238,13 +239,28 @@ const LinhaCliente: React.FC<{ cliente: ClienteRadar }> = ({ cliente }) => {
 // COMPONENTE PRINCIPAL
 // =====================================================
 
-export const RadarInatividade: React.FC = () => {
+interface RadarInativiadeProps {
+  resultadoInicial?: ResultadoRadar | null
+  onGravar?: (resultado: ResultadoRadar, titulo: string, resumo: string) => void
+}
+
+export const RadarInatividade: React.FC<RadarInativiadeProps> = ({ resultadoInicial, onGravar }) => {
   // --- Resultado e execução ---
-  const [resultado, setResultado] = useState<ResultadoRadar | null>(null)
+  const [resultado, setResultado] = useState<ResultadoRadar | null>(resultadoInicial ?? null)
   const [progresso, setProgresso] = useState<ProgressoRadar | null>(null)
   const [executando, setExecutando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+
+  // Quando o relatório inicial muda (usuário clicou em um salvo no dashboard)
+  useEffect(() => {
+    setResultado(resultadoInicial ?? null)
+  }, [resultadoInicial])
+
+  // --- Modal Gravar ---
+  const [modalGravar, setModalGravar] = useState(false)
+  const [tituloGravar, setTituloGravar] = useState('')
+  const [gravacaoOk, setGravacaoOk] = useState(false)
 
   // --- Filtros pré-geração ---
   const [clientesDisponiveis, setClientesDisponiveis] = useState<ClienteDisponivelRadar[]>([])
@@ -440,6 +456,13 @@ export const RadarInatividade: React.FC = () => {
     link.download = `radar-inatividade-${new Date().toISOString().slice(0, 10)}.csv`
     link.click()
     URL.revokeObjectURL(url)
+  }
+
+  const confirmarGravacao = () => {
+    if (!resultado || !onGravar) return
+    const resumo = `${resultado.total_clientes} clientes · Consulta em ${new Date(resultado.data_consulta).toLocaleString('pt-BR')}`
+    onGravar(resultado, tituloGravar || 'Relatório sem título', resumo)
+    setGravacaoOk(true)
   }
 
   // =====================================================
@@ -854,6 +877,15 @@ export const RadarInatividade: React.FC = () => {
               <Download className="w-3.5 h-3.5" />
               Exportar CSV
             </button>
+            {onGravar && (
+              <button
+                onClick={() => { setTituloGravar(''); setGravacaoOk(false); setModalGravar(true) }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs border border-green-600 text-green-700 bg-white hover:bg-green-50 rounded font-medium transition-colors"
+              >
+                <Save className="w-3.5 h-3.5" />
+                Gravar Relatório
+              </button>
+            )}
             <button
               onClick={() => { setResultado(null); setErro(null) }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-white rounded font-semibold hover:opacity-90 transition-opacity"
@@ -929,6 +961,67 @@ export const RadarInatividade: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Modal Gravar Relatório */}
+      {modalGravar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl border p-6 w-full max-w-md mx-4" style={{ borderColor: '#C9C4B5' }}>
+            {gravacaoOk ? (
+              <div className="text-center py-4">
+                <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                <h3 className="text-base font-semibold text-gray-900 mb-1">Relatório gravado!</h3>
+                <p className="text-xs text-gray-500 mb-4">
+                  O relatório foi salvo e estará disponível na aba <strong>Dashboard</strong>.
+                </p>
+                <button
+                  onClick={() => setModalGravar(false)}
+                  className="px-5 py-2 text-sm font-semibold text-white rounded hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: '#394353' }}
+                >
+                  Fechar
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-semibold text-gray-900">Gravar Relatório</h3>
+                  <button onClick={() => setModalGravar(false)} className="text-gray-400 hover:text-gray-600">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mb-3">
+                  Dê um nome para identificar este relatório na lista de salvos.
+                </p>
+                <input
+                  type="text"
+                  value={tituloGravar}
+                  onChange={e => setTituloGravar(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && confirmarGravacao()}
+                  placeholder="Ex: Clientes inativos – Jan/2026"
+                  className="w-full text-sm border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-slate-500 mb-4"
+                  autoFocus
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setModalGravar(false)}
+                    className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={confirmarGravacao}
+                    className="px-4 py-2 text-sm font-semibold text-white rounded hover:opacity-90 transition-opacity inline-flex items-center gap-1.5"
+                    style={{ backgroundColor: '#394353' }}
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    Gravar
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
