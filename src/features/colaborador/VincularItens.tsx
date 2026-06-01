@@ -793,60 +793,74 @@ export default function VincularItens({ colaborador, isOpen, onClose, onSuccess 
           </div>
           
           <div class="content">
-            A <span class="bold">EMPREGADORA</span> <span class="bold">${empresaInfo.nome}</span>, inscrita no CNPJ sob o nº <span class="bold">${empresaInfo.cnpj}</span>, 
-            entrega neste ato, os equipamentos descritos abaixo:
+            A <span class="bold">EMPREGADORA</span> <span class="bold">${empresaInfo.nome}</span>, inscrita no CNPJ sob o nº <span class="bold">${empresaInfo.cnpj}</span>,
+            entrega neste ato os equipamentos descritos abaixo, bem como todos os seus componentes e acessórios
+            necessários ao seu funcionamento, incluindo, quando aplicável, carregador, fonte de alimentação, cabos,
+            adaptadores, chips, periféricos e demais itens fornecidos juntamente com o equipamento:
           </div>
-          
+
           <div class="equipment-info">
             <ul style="margin-left: 0; padding-left: 0;">
               ${listaItens}
             </ul>
           </div>
-          
+
           <div class="content">
-            Os equipamentos serão utilizados, exclusivamente, pelo <span class="bold">${colaborador.tipo_pessoa === 'fisica' ? 'EMPREGADO' : 'PRESTADOR DE SERVIÇOS'}</span>, <span class="bold">${colaborador.nome.toUpperCase()}</span>, que exerce a 
-            função <span class="bold">${colaborador.cargo.toUpperCase()}</span>, portador do ${colaborador.tipo_pessoa === 'fisica' ? 'CPF' : 'CNPJ'} <span class="bold">${colaborador.tipo_pessoa === 'fisica' ? colaborador.cpf : colaborador.cnpj}</span>, e sob sua responsabilidade, conforme 
-            as seguintes condições:
+            O <span class="bold">${colaborador.tipo_pessoa === 'fisica' ? 'EMPREGADO' : 'PRESTADOR DE SERVIÇOS'}</span>, <span class="bold">${colaborador.nome.toUpperCase()}</span>, que exerce a
+            função <span class="bold">${colaborador.cargo.toUpperCase()}</span>, portador do ${colaborador.tipo_pessoa === 'fisica' ? 'CPF' : 'CNPJ'} <span class="bold">${colaborador.tipo_pessoa === 'fisica' ? colaborador.cpf : colaborador.cnpj}</span>,
+            declara ter recebido o(s) equipamento(s) acima descrito(s) juntamente com <span class="bold">todos os seus acessórios
+            e periféricos</span>, estando ciente de que todos os itens recebidos — incluindo carregadores, fontes de
+            alimentação, cabos, adaptadores, chips e demais periféricos — fazem parte do patrimônio da
+            <span class="bold">EMPREGADORA</span> e são igualmente de sua responsabilidade, devendo ser conservados e devolvidos
+            nas mesmas condições em que foram entregues, e sob sua responsabilidade, conforme as seguintes condições:
           </div>
-          
+
           <div class="clause">
-            <span class="bold">1.</span> Os equipamentos deverão ser utilizados <span class="bold">ÚNICA E EXCLUSIVAMENTE</span> a serviço da empresa tendo em vista a 
+            <span class="bold">1.</span> Os equipamentos deverão ser utilizados <span class="bold">ÚNICA E EXCLUSIVAMENTE</span> a serviço da empresa tendo em vista a
             atividade exercida pelo <span class="bold">${colaborador.tipo_pessoa === 'fisica' ? 'EMPREGADO' : 'PRESTADOR'}</span>, supra informado.
           </div>
-          
+
           <div class="clause">
-            <span class="bold">2.</span> O <span class="bold">${colaborador.tipo_pessoa === 'fisica' ? 'EMPREGADO' : 'PRESTADOR'}</span> somente utilizará os equipamentos para fins profissionais, 
+            <span class="bold">2.</span> O <span class="bold">${colaborador.tipo_pessoa === 'fisica' ? 'EMPREGADO' : 'PRESTADOR'}</span> somente utilizará os equipamentos para fins profissionais,
             devendo ser respeitado o horário comercial.
           </div>
-          
+
           <div class="clause">
-            <span class="bold">3.</span> A manutenção dos equipamentos será realizada pela empresa, ficando o <span class="bold">${colaborador.tipo_pessoa === 'fisica' ? 'EMPREGADO' : 'PRESTADOR'}</span> isento 
+            <span class="bold">3.</span> A manutenção dos equipamentos será realizada pela empresa, ficando o <span class="bold">${colaborador.tipo_pessoa === 'fisica' ? 'EMPREGADO' : 'PRESTADOR'}</span> isento
             de realizar qualquer pagamento, salvo em casos de mau uso comprovado.
           </div>
-          
+
           <div class="clause">
-            <span class="bold">4.</span> O <span class="bold">${colaborador.tipo_pessoa === 'fisica' ? 'EMPREGADO' : 'PRESTADOR'}</span> tem somente a <span class="bold">POSSE</span> dos equipamentos, supra informados, em razão do uso 
-            exclusivo para prestação de serviços profissionais e <span class="bold">NÃO A PROPRIEDADE</span> dos equipamentos, sendo, 
-            terminantemente, proibidos os empréstimos, aluguel ou cessão destes a terceiros, ou qualquer outro tipo uso, 
-            sem a prévia e expressa autorização da <span class="bold">EMPREGADORA</span>.
+            <span class="bold">4.</span> O <span class="bold">${colaborador.tipo_pessoa === 'fisica' ? 'EMPREGADO' : 'PRESTADOR'}</span> tem somente a <span class="bold">POSSE</span> do equipamento e de todos os seus acessórios e periféricos,
+            supra informados, em razão do uso exclusivo para prestação de serviços profissionais e <span class="bold">NÃO A PROPRIEDADE</span>
+            dos equipamentos, sendo, terminantemente, proibidos os empréstimos, aluguel ou cessão destes a terceiros,
+            ou qualquer outro tipo de uso, sem a prévia e expressa autorização da <span class="bold">EMPREGADORA</span>.
           </div>
-          
+
           <div class="clause">
-            <span class="bold">5.</span> Ao término da prestação de serviço ou do contrato individual de trabalho, o <span class="bold">${colaborador.tipo_pessoa === 'fisica' ? 'EMPREGADO' : 'PRESTADOR'}</span> se compromete a 
-            devolver os equipamentos em perfeito estado de conservação, no mesmo dia em que for comunicado ou que 
-            comunique a rescisão do contrato, ressalvados os desgastes naturais pelo uso normal dos 
-            equipamentos.
+            <span class="bold">5.</span> Ao término da prestação de serviço ou do contrato individual de trabalho, o <span class="bold">${colaborador.tipo_pessoa === 'fisica' ? 'EMPREGADO' : 'PRESTADOR'}</span> se compromete a
+            devolver os equipamentos <span class="bold">e todos os acessórios e periféricos recebidos</span> — incluindo carregador, fonte de
+            alimentação, cabos, adaptadores, chips e demais itens — em perfeito estado de conservação, no mesmo dia
+            em que for comunicado ou que comunique a rescisão do contrato, ressalvados os desgastes naturais pelo
+            uso normal dos equipamentos.
           </div>
-          
+
           <div class="clause">
-            <span class="bold">6.</span> Em caso de dano, inutilização, roubo/furto ou extravio dos equipamentos, a <span class="bold">EMPREGADORA</span> deverá ser, 
-            imediatamente, comunicada.
+            <span class="bold">6.</span> Em caso de dano, inutilização, roubo/furto ou extravio dos equipamentos <span class="bold">ou de quaisquer de seus
+            acessórios e periféricos</span>, a <span class="bold">EMPREGADORA</span> deverá ser, imediatamente, comunicada.
           </div>
-          
+
           <div class="clause">
-            <span class="bold">7.</span> Se os equipamentos forem danificados ou inutilizados, por dolo ou culpa, exclusiva, do <span class="bold">${colaborador.tipo_pessoa === 'fisica' ? 'EMPREGADO' : 'PRESTADOR'}</span>, em 
-            razão de uso inadequado ou mau uso, a <span class="bold">EMPREGADORA</span>, poderá exigir o ressarcimento no valor referente aos 
-            equipamentos e/ou seus acessórios${colaborador.tipo_pessoa === 'fisica' ? ', nos exatos termos do art. 462, § 1º, da CLT' : ''}.
+            <span class="bold">7.</span> Se os equipamentos ou seus acessórios e periféricos forem danificados ou inutilizados, por dolo ou culpa,
+            exclusiva, do <span class="bold">${colaborador.tipo_pessoa === 'fisica' ? 'EMPREGADO' : 'PRESTADOR'}</span>, em razão de uso inadequado ou mau uso, a <span class="bold">EMPREGADORA</span>, poderá exigir o
+            ressarcimento no valor referente aos equipamentos e/ou seus acessórios${colaborador.tipo_pessoa === 'fisica' ? ', nos exatos termos do art. 462, § 1º, da CLT' : ''}.
+          </div>
+
+          <div class="clause">
+            <span class="bold">8.</span> Em caso de perda ou extravio de quaisquer acessórios e periféricos entregues juntamente com o
+            equipamento — incluindo, mas não se limitando a, carregadores, fontes de alimentação, cabos, adaptadores
+            e chips —, o <span class="bold">${colaborador.tipo_pessoa === 'fisica' ? 'EMPREGADO' : 'PRESTADOR'}</span> ficará responsável pelo ressarcimento integral do valor de reposição do(s)
+            item(ns) extraviado(s)${colaborador.tipo_pessoa === 'fisica' ? ', nos termos do art. 462, § 1º, da CLT,' : ','} <span class="bold">independentemente da devolução do equipamento principal</span>.
           </div>
           
           <div class="signatures">
