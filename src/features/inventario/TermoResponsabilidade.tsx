@@ -195,10 +195,12 @@ export default function TermoResponsabilidade({ item, isOpen, onClose }: TermoRe
           </div>
           
           <div class="content">
-            A <span class="bold">EMPREGADORA</span> <span class="bold">${empresaInfo.nome}</span>, inscrita no CNPJ sob o nº <span class="bold">${empresaInfo.cnpj}</span>, 
-            entrega neste ato, o aparelho celular, descrito, abaixo, juntamente com chip corporativo:
+            A <span class="bold">EMPREGADORA</span> <span class="bold">${empresaInfo.nome}</span>, inscrita no CNPJ sob o nº <span class="bold">${empresaInfo.cnpj}</span>,
+            entrega neste ato os equipamentos descritos abaixo, bem como todos os seus componentes e acessórios
+            necessários ao seu funcionamento, incluindo, quando aplicável, carregador, fonte de alimentação, cabos,
+            adaptadores, chips, periféricos e demais itens fornecidos juntamente com o equipamento:
           </div>
-          
+
           <div class="equipment-info">
             <ul style="margin-left: 0; padding-left: 20px;">
               <li><span class="bold">Código:</span> ${item.codigo}</li>
@@ -207,57 +209,71 @@ export default function TermoResponsabilidade({ item, isOpen, onClose }: TermoRe
               <li><span class="bold">Número de Série:</span> ${item.numero_serie || '-'}</li>
             </ul>
           </div>
-          
+
           <div class="content">
-            O aparelho será utilizado, exclusivamente, pelo <span class="bold">EMPREGADO</span>, <span class="bold">${colaboradorSelecionado.nome.toUpperCase()}</span>, que exerce a 
-            função <span class="bold">${colaboradorSelecionado.cargo.toUpperCase()}</span>, portador do CPF <span class="bold">${colaboradorSelecionado.cpf}</span>, e sob sua responsabilidade, conforme 
-            as seguintes condições:
+            O <span class="bold">EMPREGADO</span>, <span class="bold">${colaboradorSelecionado.nome.toUpperCase()}</span>, que exerce a função
+            <span class="bold">${colaboradorSelecionado.cargo.toUpperCase()}</span>, portador do CPF <span class="bold">${colaboradorSelecionado.cpf}</span>,
+            declara ter recebido o(s) equipamento(s) acima descrito(s) juntamente com <span class="bold">todos os seus acessórios
+            e periféricos</span>, estando ciente de que todos os itens recebidos — incluindo carregadores, fontes de
+            alimentação, cabos, adaptadores, chips e demais periféricos — fazem parte do patrimônio da
+            <span class="bold">EMPREGADORA</span> e são igualmente de sua responsabilidade, devendo ser conservados e devolvidos
+            nas mesmas condições em que foram entregues, e sob sua responsabilidade, conforme as seguintes condições:
           </div>
-          
+
           <div class="clause">
-            <span class="bold">1.</span> O equipamento deverá ser utilizado <span class="bold">ÚNICA E EXCLUSIVAMENTE</span> a serviço da empresa tendo em vista a 
+            <span class="bold">1.</span> O equipamento deverá ser utilizado <span class="bold">ÚNICA E EXCLUSIVAMENTE</span> a serviço da empresa tendo em vista a
             atividade exercida pelo <span class="bold">EMPREGADO</span>, supra informado.
           </div>
-          
+
           <div class="clause">
-            <span class="bold">2.</span> O <span class="bold">EMPREGADO</span> somente utilizará o aparelho para se comunicar através de ligação, mensagens 
-            corporativas de "WhatsApp", ou por outro meio disponível, no horário de seu expediente, devendo ser 
+            <span class="bold">2.</span> O <span class="bold">EMPREGADO</span> somente utilizará o aparelho para se comunicar através de ligação, mensagens
+            corporativas de "WhatsApp", ou por outro meio disponível, no horário de seu expediente, devendo ser
             respeitado o horário comercial.
           </div>
-          
+
           <div class="clause">
-            <span class="bold">3.</span> A contratação do plano de telefonia será realizada diretamente pela empresa, ficando o <span class="bold">EMPREGADO</span> isento 
+            <span class="bold">3.</span> A contratação do plano de telefonia será realizada diretamente pela empresa, ficando o <span class="bold">EMPREGADO</span> isento
             de realizar qualquer pagamento referente ao uso do aparelho.
           </div>
-          
+
           <div class="clause">
-            <span class="bold">4.</span> O <span class="bold">EMPREGADO</span> não poderá contratar qualquer pacote adicional, sem a prévia comunicação e autorização 
+            <span class="bold">4.</span> O <span class="bold">EMPREGADO</span> não poderá contratar qualquer pacote adicional, sem a prévia comunicação e autorização
             da <span class="bold">EMPREGADORA</span>.
           </div>
-          
+
           <div class="clause">
-            <span class="bold">5.</span> O <span class="bold">EMPREGADO</span> tem somente a <span class="bold">POSSE</span> do aparelho e do chip, supra informados, em razão do uso 
-            exclusivo para prestação de serviços profissionais e <span class="bold">NÃO A PROPRIEDADE</span> dos equipamentos, sendo, 
-            terminantemente, proibidos os empréstimos, aluguel ou cessão deste a terceiros, ou qualquer outro tipo uso, 
-            sem a prévia e expressa autorização da <span class="bold">EMPREGADORA</span>.
+            <span class="bold">5.</span> O <span class="bold">EMPREGADO</span> tem somente a <span class="bold">POSSE</span> do equipamento e de todos os seus acessórios e periféricos,
+            supra informados, em razão do uso exclusivo para prestação de serviços profissionais e <span class="bold">NÃO A PROPRIEDADE</span>
+            dos equipamentos, sendo, terminantemente, proibidos os empréstimos, aluguel ou cessão deste a terceiros,
+            ou qualquer outro tipo de uso, sem a prévia e expressa autorização da <span class="bold">EMPREGADORA</span>.
           </div>
-          
+
           <div class="clause">
-            <span class="bold">6.</span> Ao término da prestação de serviço ou do contrato individual de trabalho, o <span class="bold">EMPREGADO</span> se compromete a 
-            devolver o equipamento em perfeito estado de conservação, no mesmo dia em que for comunicado ou que 
-            comunique a rescisão do contrato de trabalho, ressalvados os desgastes naturais pelo uso normal dos 
-            equipamentos.
+            <span class="bold">6.</span> Ao término da prestação de serviço ou do contrato individual de trabalho, o <span class="bold">EMPREGADO</span> se compromete a
+            devolver o equipamento <span class="bold">e todos os acessórios e periféricos recebidos</span> — incluindo carregador, fonte de
+            alimentação, cabos, adaptadores, chips e demais itens — em perfeito estado de conservação, no mesmo dia
+            em que for comunicado ou que comunique a rescisão do contrato de trabalho, ressalvados os desgastes
+            naturais pelo uso normal dos equipamentos.
           </div>
-          
+
           <div class="clause">
-            <span class="bold">7.</span> Em caso de dano, inutilização, roubo/furto ou extravio dos equipamentos, a <span class="bold">EMPREGADORA</span> deverá ser, 
-            imediatamente, comunicada.
+            <span class="bold">7.</span> Em caso de dano, inutilização, roubo/furto ou extravio dos equipamentos <span class="bold">ou de quaisquer de seus
+            acessórios e periféricos</span>, a <span class="bold">EMPREGADORA</span> deverá ser, imediatamente, comunicada.
           </div>
-          
+
           <div class="clause">
-            <span class="bold">8.</span> Se os equipamentos forem danificados ou inutilizados, por dolo ou culpa, exclusiva, do <span class="bold">EMPREGADO</span>, em 
-            razão de uso inadequado ou mau uso, a <span class="bold">EMPREGADORA</span>, poderá exigir o ressarcimento no valor referente ao 
-            equipamento e/ou seus acessórios, nos exatos termos do art. 462, § 1º, da CLT.
+            <span class="bold">8.</span> Se os equipamentos ou seus acessórios e periféricos forem danificados ou inutilizados, por dolo ou culpa,
+            exclusiva, do <span class="bold">EMPREGADO</span>, em razão de uso inadequado ou mau uso, a <span class="bold">EMPREGADORA</span>, poderá exigir o
+            ressarcimento no valor referente ao equipamento e/ou seus acessórios, nos exatos termos do art. 462, § 1º,
+            da CLT.
+          </div>
+
+          <div class="clause">
+            <span class="bold">9.</span> Em caso de perda ou extravio de quaisquer acessórios e periféricos entregues juntamente com o
+            equipamento — incluindo, mas não se limitando a, carregadores, fontes de alimentação, cabos, adaptadores
+            e chips —, o <span class="bold">EMPREGADO</span> ficará responsável pelo ressarcimento integral do valor de reposição do(s)
+            item(ns) extraviado(s), nos termos do art. 462, § 1º, da CLT, <span class="bold">independentemente da devolução do
+            equipamento principal</span>.
           </div>
           
           <div class="signatures">
