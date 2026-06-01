@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import {
-  Package, Phone, DollarSign, AlertTriangle, Search,
+  Package, Phone, DollarSign, Search,
   RefreshCw, Printer, Clock, Laptop, ArrowRight, Calendar,
   Users, TrendingUp, CheckSquare, Eye, History,
 } from 'lucide-react'
@@ -187,8 +187,8 @@ export const RelatorioItens: React.FC = () => {
           .limit(5000),
       ])
 
-      setItems((iData as ItemInventario[]) ?? [])
-      setLinhas((lData as LinhaFone[]) ?? [])
+      setItems((iData as unknown as ItemInventario[]) ?? [])
+      setLinhas((lData as unknown as LinhaFone[]) ?? [])
 
       // Resolve nomes dos usuários responsáveis pelas alterações
       const allHistRows = [...(histItemsRes.data ?? []), ...(histLinhasRes.data ?? [])]

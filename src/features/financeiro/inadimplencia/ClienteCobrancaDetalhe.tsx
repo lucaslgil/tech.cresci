@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Plus, FileText, Clock, Calendar,
-  CheckCircle2, AlertTriangle, XCircle, Phone, Mail,
+  CheckCircle2, XCircle, Phone, Mail,
   MessageCircle, Users, Briefcase, RefreshCw, ChevronDown, Edit2,
   Upload, X, Paperclip,
 } from 'lucide-react'
@@ -11,7 +11,7 @@ import {
   sincronizarClienteSolutto, listarContasCliente, obterAcompanhamento,
   listarInteracoes, listarTimeline,
   criarInteracao, criarNegociacao, atualizarNegociacao,
-  upsertAcompanhamento, registrarEventoTimeline, uploadAnexoInteracao,
+  upsertAcompanhamento, uploadAnexoInteracao,
 } from './service'
 import {
   STATUS_OPERACIONAL_LABEL, STATUS_OPERACIONAL_COLOR, FASE_LABEL, FASE_COLOR,

@@ -8,7 +8,7 @@ import type {
   NegociacaoParcela, TimelineEvento, ContaReceberResumo,
   StatusOperacional, Canal, EmpresaResponsavel,
   SnapshotFinanceiro, SnapshotTitulo, TituloNegociado,
-  ClienteSearchResult, Notificacao, NotificacaoTitulo, CanalNotificacao,
+  ClienteSearchResult, Notificacao, CanalNotificacao,
   AnexoInteracao,
 } from './types'
 import { calcularFase, calcularNegociacao, REGRAS_PARCELAMENTO } from './types'

@@ -255,7 +255,7 @@ const ModalNovaNotificacao: React.FC<{
           </div>
           {/* Indicadores de passo */}
           <div className="flex items-center gap-1.5">
-            {(['buscar', 'contas', 'proposta'] as ModalStep[]).map((s, i) => (
+            {(['buscar', 'contas', 'proposta'] as ModalStep[]).map(s => (
               <div key={s} className={`h-2 w-2 rounded-full transition-colors ${step === s ? 'bg-blue-600' : 'bg-gray-200'}`} />
             ))}
           </div>
