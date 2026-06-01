@@ -14,6 +14,7 @@ import {
   type ClienteFormData,
   type ClienteEndereco,
   type ClienteContato,
+  type ClienteImovel,
   type CondicaoPagamento,
   type TabelaPreco
 } from './types'
@@ -40,6 +41,7 @@ import {
   DadosFinanceiros,
   GerenciadorEnderecos,
   GerenciadorContatos,
+  GerenciadorImoveis,
   HistoricoCliente
 } from './components'
 
@@ -58,6 +60,7 @@ export function CadastroClientes() {
   // Dados relacionados
   const [enderecos, setEnderecos] = useState<ClienteEndereco[]>([])
   const [contatos, setContatos] = useState<ClienteContato[]>([])
+  const [imoveis, setImoveis] = useState<ClienteImovel[]>([])
   const [condicoesPagamento, setCondicoesPagamento] = useState<CondicaoPagamento[]>([])
   const [tabelasPreco, setTabelasPreco] = useState<TabelaPreco[]>([])
 
@@ -460,6 +463,18 @@ export function CadastroClientes() {
               >
                 📞 Contatos {!isEdicao && '🔒'}
               </button>
+              <button
+                onClick={() => setAbaAtiva('imoveis')}
+                disabled={!isEdicao}
+                title={!isEdicao ? 'Salve o cliente primeiro para adicionar imóveis' : ''}
+                className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${
+                  abaAtiva === 'imoveis'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300'
+                } ${!isEdicao ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                🏠 Imóveis {!isEdicao && '🔒'}
+              </button>
               {isEdicao && (
                 <button
                   onClick={() => setAbaAtiva('historico')}
@@ -530,6 +545,14 @@ export function CadastroClientes() {
                 clienteId={id}
                 contatos={contatos}
                 onAtualizarContatos={setContatos}
+              />
+            )}
+
+            {abaAtiva === 'imoveis' && isEdicao && id && (
+              <GerenciadorImoveis
+                clienteId={id}
+                imoveis={imoveis}
+                onAtualizarImoveis={setImoveis}
               />
             )}
 

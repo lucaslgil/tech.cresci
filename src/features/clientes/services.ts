@@ -14,7 +14,8 @@ import type {
   ClienteCompleto,
   ClienteFiltros,
   CondicaoPagamento,
-  TabelaPreco
+  TabelaPreco,
+  ClienteImovel,
 } from './types'
 
 // =====================================================
@@ -912,3 +913,81 @@ export async function buscarClientesRecentes(limite: number = 5) {
     throw error
   }
 }
+
+// =====================================================
+// IMÓVEIS DO CLIENTE
+// =====================================================
+
+/**
+ * Lista todos os imóveis de um cliente (padrão primeiro)
+ */
+export async function listarImoveis(clienteId: string) {
+  const { data, error } = await supabase
+    .from('clientes_imoveis')
+    .select('*')
+    .eq('cliente_id', clienteId)
+    .order('padrao', { ascending: false })
+    .order('created_at', { ascending: true })
+
+  if (error) throw error
+  return data as ClienteImovel[]
+}
+
+/**
+ * Cria um novo imóvel para o cliente
+ */
+export async function criarImovel(payload: Partial<ClienteImovel>) {
+  const { data, error } = await supabase
+    .from('clientes_imoveis')
+    .insert(payload)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data as ClienteImovel
+}
+
+/**
+ * Atualiza um imóvel existente
+ */
+export async function atualizarImovel(id: string, payload: Partial<ClienteImovel>) {
+  const { data, error } = await supabase
+    .from('clientes_imoveis')
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data as ClienteImovel
+}
+
+/**
+ * Exclui um imóvel
+ */
+export async function excluirImovel(id: string) {
+  const { error } = await supabase
+    .from('clientes_imoveis')
+    .delete()
+    .eq('id', id)
+
+  if (error) throw error
+}
+
+/**
+ * Define um imóvel como padrão (remove padrão dos demais do mesmo cliente)
+ */
+export async function definirImovelPadrao(clienteId: string, imovelId: string) {
+  await supabase
+    .from('clientes_imoveis')
+    .update({ padrao: false })
+    .eq('cliente_id', clienteId)
+
+  const { error } = await supabase
+    .from('clientes_imoveis')
+    .update({ padrao: true })
+    .eq('id', imovelId)
+
+  if (error) throw error
+}
+

@@ -62,6 +62,14 @@ export const TipoBloqueio = {
 } as const
 export type TipoBloqueio = typeof TipoBloqueio[keyof typeof TipoBloqueio]
 
+export const TipoImovel = {
+  APARTAMENTO: 'APARTAMENTO',
+  CASA: 'CASA',
+  COMERCIAL: 'COMERCIAL',
+  OUTRO: 'OUTRO',
+} as const
+export type TipoImovel = typeof TipoImovel[keyof typeof TipoImovel]
+
 // =====================================================
 // INTERFACES PRINCIPAIS
 // =====================================================
@@ -145,6 +153,48 @@ export interface ClienteEndereco {
   observacoes?: string
   created_at: string
   updated_at: string
+}
+
+export interface ClienteImovel {
+  id: number
+  cliente_id: number
+  nome: string
+  tipo: TipoImovel
+  padrao: boolean
+  area_total?: number
+  qtd_quartos: number
+  qtd_banheiros: number
+  qtd_salas: number
+  qtd_cozinhas: number
+  qtd_outros_comodos: number
+  tem_area_servico: boolean
+  tem_garagem: boolean
+  tem_varanda: boolean
+  andar?: number
+  tem_elevador: boolean
+  endereco_id?: number
+  observacoes?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ImovelFormData {
+  nome: string
+  tipo: TipoImovel
+  padrao: boolean
+  area_total?: number
+  qtd_quartos: number
+  qtd_banheiros: number
+  qtd_salas: number
+  qtd_cozinhas: number
+  qtd_outros_comodos: number
+  tem_area_servico: boolean
+  tem_garagem: boolean
+  tem_varanda: boolean
+  andar?: number
+  tem_elevador: boolean
+  endereco_id?: number
+  observacoes?: string
 }
 
 export interface ClienteContato {
@@ -434,6 +484,13 @@ export const TipoBloqueioLabels = {
   'COMERCIAL': 'Comercial',
   'FINANCEIRO': 'Financeiro',
   'COMPLETO': 'Completo'
+} as const
+
+export const TipoImovelLabels: Record<string, string> = {
+  'APARTAMENTO': 'Apartamento',
+  'CASA': 'Casa',
+  'COMERCIAL': 'Comercial',
+  'OUTRO': 'Outro',
 } as const
 
 // =====================================================

@@ -1,791 +1,1178 @@
-import React, { useState, useEffect } from 'react'
-import { supabase, isSupabaseConfigured } from '../../lib/supabase'
-import { Search, Filter, Download, Package, Users, DollarSign, AlertCircle } from 'lucide-react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import {
+  Package, Phone, DollarSign, AlertTriangle, Search,
+  RefreshCw, Printer, Clock, Laptop, ArrowRight, Calendar,
+  Users, TrendingUp, CheckSquare, Eye, History,
+} from 'lucide-react'
+import { supabase } from '../../lib/supabase'
 
-interface Item {
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ColaboradorBasico {
+  id: number
+  nome: string
+  setor?: string
+  cargo?: string
+}
+
+interface ItemInventario {
   id: string
   codigo: string
   item: string
-  modelo: string
-  categoria: string
-  numero_serie: string
-  detalhes: string
-  nota_fiscal: string
-  fornecedor: string
-  setor: string
-  status: string
-  valor: number
+  modelo: string | null
+  categoria: string | null
+  numero_serie: string | null
+  setor: string | null
+  status: string | null
+  valor: number | null
+  responsavel_id: number | null
+  colaborador: ColaboradorBasico | null
   created_at: string
-  responsavel_id?: string | null
-  colaborador?: {
-    nome: string
-    cpf: string
-    email: string
-    telefone: string
-    cargo: string
-    setor: string
-  } | null
-  empresa?: {
-    razao_social: string
-  } | null
 }
 
-export const RelatorioItens: React.FC = () => {
-  const [itens, setItens] = useState<Item[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterSetores, setFilterSetores] = useState<string[]>([])
-  const [filterStatus, setFilterStatus] = useState<string[]>([])
-  const [filterCategorias, setFilterCategorias] = useState<string[]>([])
-  const [showFilters, setShowFilters] = useState(false)
+interface LinhaFone {
+  id: number
+  numero_linha: string
+  tipo: string
+  operadora: string | null
+  plano: string | null
+  valor_plano: number | null
+  status: string
+  usuario_setor: string | null
+  responsavel_id: number | null
+  colaborador: ColaboradorBasico | null
+  aparelho: { codigo: string; item: string; modelo: string | null } | null
+  created_at: string
+}
 
-  const setores = [
-    'Administrativo',
-    'Financeiro',
-    'TI',
-    'RH',
-    'Operacional',
-    'Comercial',
-    'Logística',
-    'Outros',
-  ]
+interface HistoricoUnificado {
+  key: string
+  tipo: 'equipamento' | 'linha'
+  titulo: string
+  subtitulo: string
+  campo_alterado: string
+  valor_anterior: string | null
+  valor_novo: string | null
+  data_alteracao: string
+  usuario_nome?: string | null
+  item_id?: string   // UUID do item; presente apenas para tipo 'equipamento'
+}
 
-  const statusOptions = [
-    'Ativo',
-    'Inativo',
-    'Em Manutenção',
-    'Em Uso',
-    'Disponível',
-    'Descartado',
-  ]
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-  // Buscar categorias do localStorage (mesma fonte do CadastroItem)
-  const categorias = (() => {
-    const saved = localStorage.getItem('categorias-inventario')
-    return saved ? JSON.parse(saved) : [
-      'Eletrônicos',
-      'Mobiliário',
-      'Equipamentos',
-      'Veículos',
-      'Ferramentas',
-      'Material de Escritório',
-      'Informática',
-      'Outros'
-    ]
-  })()
+const R$ = (v: number | null | undefined) =>
+  v == null
+    ? '-'
+    : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
-  useEffect(() => {
-    fetchItens()
-  }, [])
-
-  const fetchItens = async () => {
-    if (!isSupabaseConfigured) {
-      // Mock data para modo demo
-      setItens([
-        {
-          id: '1',
-          codigo: 'ITEM-001',
-          item: 'Notebook Dell Inspiron',
-          modelo: 'Inspiron 15 3000',
-          categoria: 'Informática',
-          numero_serie: 'SN123456789',
-          detalhes: 'Notebook para uso administrativo',
-          nota_fiscal: 'NF-12345',
-          fornecedor: 'Dell Inc.',
-          setor: 'TI',
-          status: 'Em Uso',
-          valor: 3500.00,
-          created_at: '2024-01-15',
-          responsavel_id: '1',
-          colaborador: {
-            nome: 'João Silva',
-            cpf: '123.456.789-00',
-            email: 'joao@crescieperdi.com.br',
-            telefone: '(19) 99999-9999',
-            cargo: 'Desenvolvedor',
-            setor: 'TI'
-          },
-          empresa: {
-            razao_social: 'CRESCI E PERDI FRANCHISING LTDA'
-          }
-        },
-        {
-          id: '2',
-          codigo: 'ITEM-002',
-          item: 'Cadeira Ergonômica',
-          modelo: 'Presidente Plus',
-          categoria: 'Mobiliário',
-          numero_serie: '',
-          detalhes: 'Cadeira com ajuste de altura',
-          nota_fiscal: 'NF-12346',
-          fornecedor: 'Moveis Office',
-          setor: 'Administrativo',
-          status: 'Disponível',
-          valor: 850.00,
-          created_at: '2024-01-20',
-          responsavel_id: null,
-          colaborador: null,
-          empresa: {
-            razao_social: 'CRESCI E PERDI FRANCHISING LTDA'
-          }
-        },
-        {
-          id: '3',
-          codigo: 'ITEM-003',
-          item: 'Monitor LG 24"',
-          modelo: 'LG 24MK430H',
-          categoria: 'Eletrônicos',
-          numero_serie: 'SN987654321',
-          detalhes: 'Monitor Full HD IPS',
-          nota_fiscal: 'NF-12347',
-          fornecedor: 'LG Electronics',
-          setor: 'TI',
-          status: 'Ativo',
-          valor: 650.00,
-          created_at: '2024-02-01',
-          responsavel_id: '2',
-          colaborador: {
-            nome: 'Maria Santos',
-            cpf: '987.654.321-00',
-            email: 'maria@crescieperdi.com.br',
-            telefone: '(19) 88888-8888',
-            cargo: 'Analista de Sistemas',
-            setor: 'TI'
-          },
-          empresa: {
-            razao_social: 'CRESCI E PERDI FRANCHISING LTDA'
-          }
-        },
-      ])
-      setLoading(false)
-      return
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('itens')
-        .select(`
-          *,
-          colaborador:responsavel_id (
-            nome,
-            cpf,
-            email,
-            telefone,
-            cargo,
-            setor,
-            empresas:empresa_id (
-              razao_social
-            )
-          )
-        `)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      
-      // Processar dados para estrutura correta
-      const itensProcessados = (data || []).map(item => ({
-        ...item,
-        colaborador: item.colaborador ? {
-          nome: item.colaborador.nome,
-          cpf: item.colaborador.cpf,
-          email: item.colaborador.email,
-          telefone: item.colaborador.telefone,
-          cargo: item.colaborador.cargo,
-          setor: item.colaborador.setor
-        } : null,
-        empresa: item.colaborador?.empresas ? {
-          razao_social: Array.isArray(item.colaborador.empresas) 
-            ? item.colaborador.empresas[0]?.razao_social 
-            : item.colaborador.empresas.razao_social
-        } : null
-      }))
-      
-      setItens(itensProcessados)
-    } catch (error: any) {
-      console.error('Erro ao carregar itens:', error)
-      // Fallback para dados demo em caso de erro
-      setItens([
-        {
-          id: '1',
-          codigo: 'DEMO-001',
-          item: 'Item Demo',
-          modelo: 'Modelo Demo',
-          categoria: 'Outros',
-          numero_serie: 'SN-DEMO',
-          detalhes: 'Item de demonstração',
-          nota_fiscal: 'NF-DEMO',
-          fornecedor: 'Fornecedor Demo',
-          setor: 'TI',
-          status: 'Disponível',
-          valor: 1000.00,
-          created_at: '2024-01-01',
-          responsavel_id: null,
-          colaborador: null,
-          empresa: { razao_social: 'CRESCI E PERDI FRANCHISING LTDA' }
-        }
-      ])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const filteredItens = itens.filter((item) => {
-    const matchSearch = 
-      item.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.fornecedor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.categoria.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (item.colaborador?.nome.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-      (item.colaborador?.cpf.includes(searchTerm) || false) ||
-      (item.colaborador?.cargo.toLowerCase().includes(searchTerm.toLowerCase()) || false)
-    
-    const matchSetor = filterSetores.length === 0 || filterSetores.includes(item.setor)
-    const matchStatus = filterStatus.length === 0 || filterStatus.includes(item.status)
-    const matchCategoria = filterCategorias.length === 0 || filterCategorias.includes(item.categoria)
-
-    return matchSearch && matchSetor && matchStatus && matchCategoria
+const dtBR = (s: string) =>
+  new Date(s).toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
   })
 
-  const totalValor = filteredItens.reduce((sum, item) => sum + item.valor, 0)
+const fone = (p: string) => {
+  const d = p.replace(/\D/g, '')
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+  return p
+}
 
-  const getStatusColor = (status: string) => {
-    const colors: { [key: string]: string } = {
-      'Ativo': 'bg-green-100 text-green-800',
-      'Inativo': 'bg-gray-100 text-gray-800',
-      'Em Manutenção': 'bg-yellow-100 text-yellow-800',
-      'Em Uso': 'bg-blue-100 text-blue-800',
-      'Disponível': 'bg-purple-100 text-purple-800',
-      'Descartado': 'bg-red-100 text-red-800',
+const mesLabel = (mesRef: string) => {
+  if (!mesRef) return ''
+  const [y, m] = mesRef.split('-')
+  return new Date(+y, +m - 1, 1)
+    .toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
+    .replace(/^\w/, c => c.toUpperCase())
+}
+
+const esc = (s: string | null | undefined) =>
+  (s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+
+const STATUS_CLS: Record<string, string> = {
+  'Ativo':         'bg-green-100 text-green-800',
+  'Ativa':         'bg-green-100 text-green-800',
+  'Inativo':       'bg-gray-100 text-gray-600',
+  'Inativa':       'bg-gray-100 text-gray-600',
+  'Em manutenção': 'bg-yellow-100 text-yellow-800',
+  'Em Manutenção': 'bg-yellow-100 text-yellow-800',
+  'Extraviado':    'bg-red-100 text-red-800',
+  'Baixado':       'bg-gray-100 text-gray-500',
+  'Em estoque':    'bg-blue-100 text-blue-800',
+  'Em Uso':        'bg-blue-100 text-blue-800',
+  'Disponível':    'bg-purple-100 text-purple-800',
+  'Descartado':    'bg-red-100 text-red-700',
+}
+
+const Badge = ({ status }: { status: string | null }) => {
+  if (!status) return <span className="text-gray-400 text-xs">-</span>
+  return (
+    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${STATUS_CLS[status] ?? 'bg-gray-100 text-gray-600'}`}>
+      {status}
+    </span>
+  )
+}
+
+type TabKey = 'overview' | 'conference' | 'history'
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
+export const RelatorioItens: React.FC = () => {
+  const [tab, setTab] = useState<TabKey>('overview')
+  const [items, setItems] = useState<ItemInventario[]>([])
+  const [linhas, setLinhas] = useState<LinhaFone[]>([])
+  const [historico, setHistorico] = useState<HistoricoUnificado[]>([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+
+  // ── Overview filters
+  const [searchItems, setSearchItems] = useState('')
+  const [fSetor, setFSetor] = useState('')
+  const [fStatus, setFStatus] = useState('')
+  const [searchLinhas, setSearchLinhas] = useState('')
+  const [fLinhaStatus, setFLinhaStatus] = useState('')
+
+  // ── Conference
+  const [mesRef, setMesRef] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })
+  const [rSetor,        setRSetor]        = useState('')
+  const [rStatus,       setRStatus]       = useState('')
+  const [rResponsavel,  setRResponsavel]  = useState<'todos' | 'com' | 'sem'>('todos')
+  const [rCategorias,   setRCategorias]   = useState<Set<string>>(new Set())
+
+  // ── History filters
+  const [hTipo, setHTipo] = useState<'todos' | 'equipamento' | 'linha'>('todos')
+  const [hSearch, setHSearch] = useState('')
+  const [hFrom, setHFrom] = useState('')
+  const [hTo, setHTo] = useState('')
+
+  // ─── Data loading ──────────────────────────────────────────────────────────
+
+  const loadData = useCallback(async () => {
+    setRefreshing(true)
+    try {
+      const [{ data: iData }, { data: lData }, histLinhasRes, histItemsRes] = await Promise.all([
+        // Items
+        supabase
+          .from('itens')
+          .select('id, codigo, item, modelo, categoria, numero_serie, setor, status, valor, responsavel_id, created_at, colaborador:responsavel_id(id, nome, setor, cargo)')
+          .order('setor', { ascending: true })
+          .order('item', { ascending: true }),
+
+        // Linhas
+        supabase
+          .from('linhas_telefonicas')
+          .select('id, numero_linha, tipo, operadora, plano, valor_plano, status, usuario_setor, responsavel_id, created_at, colaborador:responsavel_id(id, nome), aparelho:aparelho_id(codigo, item, modelo)')
+          .order('status', { ascending: false })
+          .order('numero_linha', { ascending: true }),
+
+        // Histórico de linhas
+        supabase
+          .from('historico_linhas_telefonicas')
+          .select('id, campo_alterado, valor_anterior, valor_novo, data_alteracao, usuario_id, linha:linha_id(id, numero_linha, operadora)')
+          .order('data_alteracao', { ascending: false })
+          .limit(500),
+
+        // Histórico de itens (pode não existir ainda)
+        supabase
+          .from('historico_itens')
+          .select('id, item_id, campo_alterado, valor_anterior, valor_novo, data_alteracao, usuario_id, item:item_id(id, codigo, item, modelo)')
+          .order('data_alteracao', { ascending: true })   // ASC para facilitar snapshot por mês
+          .limit(5000),
+      ])
+
+      setItems((iData as ItemInventario[]) ?? [])
+      setLinhas((lData as LinhaFone[]) ?? [])
+
+      // Resolve nomes dos usuários responsáveis pelas alterações
+      const allHistRows = [...(histItemsRes.data ?? []), ...(histLinhasRes.data ?? [])]
+      const uniqueUserIds = [...new Set(allHistRows.map((h: any) => h.usuario_id).filter(Boolean))]
+      let nomeMap: Record<string, string> = {}
+      if (uniqueUserIds.length > 0) {
+        const { data: usuariosData } = await supabase
+          .from('usuarios')
+          .select('id, nome')
+          .in('id', uniqueUserIds)
+        ;(usuariosData ?? []).forEach((u: any) => { nomeMap[u.id] = u.nome })
+      }
+
+      const combinado: HistoricoUnificado[] = []
+
+      ;(histItemsRes.data ?? []).forEach((h: any) => {
+        combinado.push({
+          key: `item-${h.id}`,
+          tipo: 'equipamento',
+          titulo: h.item ? `${h.item.item ?? ''}${h.item.modelo ? ` ${h.item.modelo}` : ''}` : '(equipamento removido)',
+          subtitulo: h.item?.codigo ?? '',
+          campo_alterado: h.campo_alterado,
+          valor_anterior: h.valor_anterior,
+          valor_novo: h.valor_novo,
+          data_alteracao: h.data_alteracao,
+          usuario_nome: h.usuario_id ? (nomeMap[h.usuario_id] ?? null) : null,
+          item_id: h.item_id ?? undefined,
+        })
+      })
+
+      ;(histLinhasRes.data ?? []).forEach((h: any) => {
+        if (h.campo_alterado !== 'responsavel') return
+        combinado.push({
+          key: `linha-${h.id}`,
+          tipo: 'linha',
+          titulo: h.linha ? fone(h.linha.numero_linha ?? '') : '(linha removida)',
+          subtitulo: h.linha?.operadora ?? '',
+          campo_alterado: h.campo_alterado,
+          valor_anterior: h.valor_anterior,
+          valor_novo: h.valor_novo,
+          data_alteracao: h.data_alteracao,
+          usuario_nome: h.usuario_id ? (nomeMap[h.usuario_id] ?? null) : null,
+        })
+      })
+
+      combinado.sort((a, b) => new Date(b.data_alteracao).getTime() - new Date(a.data_alteracao).getTime())
+      setHistorico(combinado)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
     }
-    return colors[status] || 'bg-gray-100 text-gray-800'
+  }, [])
+
+  useEffect(() => { loadData() }, [loadData])
+
+  // ─── Stats ─────────────────────────────────────────────────────────────────
+
+  const stats = useMemo(() => ({
+    totalItems: items.length,
+    itemsComResp: items.filter(i => i.colaborador).length,
+    itemsSemResp: items.filter(i => !i.colaborador).length,
+    valorTotal: items.reduce((s, i) => s + (i.valor ?? 0), 0),
+    totalLinhas: linhas.length,
+    linhasAtivas: linhas.filter(l => l.status === 'Ativa').length,
+    linhasInativas: linhas.filter(l => l.status === 'Inativa').length,
+    custoMensal: linhas.reduce((s, l) => s + (l.valor_plano ?? 0), 0),
+  }), [items, linhas])
+
+  // ─── Filtered data ─────────────────────────────────────────────────────────
+
+  const filteredItems = useMemo(() => {
+    const q = searchItems.toLowerCase()
+    return items.filter(i => {
+      const matchQ = !q
+        || (i.item ?? '').toLowerCase().includes(q)
+        || (i.codigo ?? '').toLowerCase().includes(q)
+        || (i.modelo ?? '').toLowerCase().includes(q)
+        || (i.colaborador?.nome ?? '').toLowerCase().includes(q)
+        || (i.numero_serie ?? '').toLowerCase().includes(q)
+      const matchSetor = !fSetor || i.setor === fSetor
+      const matchStatus = !fStatus || i.status === fStatus
+      return matchQ && matchSetor && matchStatus
+    })
+  }, [items, searchItems, fSetor, fStatus])
+
+  const filteredLinhas = useMemo(() => {
+    const q = searchLinhas.toLowerCase()
+    return linhas.filter(l => {
+      const matchQ = !q
+        || l.numero_linha.toLowerCase().includes(q)
+        || (l.operadora ?? '').toLowerCase().includes(q)
+        || (l.colaborador?.nome ?? '').toLowerCase().includes(q)
+        || (l.usuario_setor ?? '').toLowerCase().includes(q)
+        || (l.aparelho?.codigo ?? '').toLowerCase().includes(q)
+      const matchStatus = !fLinhaStatus || l.status === fLinhaStatus
+      return matchQ && matchStatus
+    })
+  }, [linhas, searchLinhas, fLinhaStatus])
+
+  const filteredHistorico = useMemo(() => {
+    const q = hSearch.toLowerCase()
+    return historico.filter(h => {
+      const matchTipo = hTipo === 'todos' || h.tipo === hTipo
+      const matchQ = !q
+        || h.titulo.toLowerCase().includes(q)
+        || h.subtitulo.toLowerCase().includes(q)
+        || (h.valor_anterior ?? '').toLowerCase().includes(q)
+        || (h.valor_novo ?? '').toLowerCase().includes(q)
+      const matchFrom = !hFrom || h.data_alteracao >= hFrom
+      const matchTo = !hTo || h.data_alteracao <= hTo + 'T23:59:59'
+      return matchTipo && matchQ && matchFrom && matchTo
+    })
+  }, [historico, hTipo, hSearch, hFrom, hTo])
+
+  const setores = useMemo(
+    () => [...new Set(items.map(i => i.setor).filter(Boolean))].sort() as string[],
+    [items],
+  )
+
+  const statusItens = useMemo(
+    () => [...new Set(items.map(i => i.status).filter(Boolean))].sort() as string[],
+    [items],
+  )
+
+  const categorias = useMemo(
+    () => [...new Set(items.map(i => i.categoria).filter(Boolean))].sort() as string[],
+    [items],
+  )
+
+  const toggleCategoria = (cat: string) =>
+    setRCategorias(prev => {
+      const next = new Set(prev)
+      next.has(cat) ? next.delete(cat) : next.add(cat)
+      return next
+    })
+
+  // ─── Snapshot histórico por item ───────────────────────────────────────────
+  // Mapa: item_id → lista de alterações ordenadas por data ASC
+  const itemHistMap = useMemo(() => {
+    const map: Record<string, HistoricoUnificado[]> = {}
+    historico.forEach(h => {
+      if (h.tipo !== 'equipamento' || !h.item_id) return
+      if (!map[h.item_id]) map[h.item_id] = []
+      map[h.item_id].push(h)
+    })
+    // Garante ordem ASC dentro de cada item
+    Object.values(map).forEach(arr =>
+      arr.sort((a, b) => new Date(a.data_alteracao).getTime() - new Date(b.data_alteracao).getTime())
+    )
+    return map
+  }, [historico])
+
+  // Retorna o nome do responsável que o item tinha no fim do mês de referência
+  const responsavelEmMes = useCallback((item: ItemInventario, endOfMonth: Date): string | null => {
+    const hist = itemHistMap[item.id] ?? []
+    // Primeira alteração registrada APÓS o fim do mês
+    const firstAfter = hist.find(h => new Date(h.data_alteracao) > endOfMonth)
+    if (firstAfter) return firstAfter.valor_anterior   // estado ANTES dessa troca = estado no mês
+    return item.colaborador?.nome ?? null              // sem trocas depois = estado atual já era o estado no mês
+  }, [itemHistMap])
+
+  // Data final do mês de referência (23:59:59 do último dia)
+  const mesRefEndOfMonth = useMemo(() => {
+    const [y, m] = mesRef.split('-').map(Number)
+    return new Date(y, m, 0, 23, 59, 59)   // new Date(y, m, 0) = último dia do mês anterior ao mês m+1 = último dia do mês m
+  }, [mesRef])
+
+  // ─── Items filtrados para o relatório (conferência) ───────────────────────
+
+  const itemsRelatorio = useMemo(() => items.filter(i => {
+    if (rSetor && i.setor !== rSetor) return false
+    if (rStatus && i.status !== rStatus) return false
+    const respNome = responsavelEmMes(i, mesRefEndOfMonth)
+    if (rResponsavel === 'com' && !respNome) return false
+    if (rResponsavel === 'sem' && respNome) return false
+    if (rCategorias.size > 0 && !rCategorias.has(i.categoria ?? '')) return false
+    return true
+  }), [items, rSetor, rStatus, rResponsavel, rCategorias, responsavelEmMes, mesRefEndOfMonth])
+
+  const itemsPorSetor = useMemo(() => {
+    const sorted = [...itemsRelatorio].sort((a, b) => {
+      const sa = a.setor ?? 'Sem Setor'
+      const sb = b.setor ?? 'Sem Setor'
+      if (sa !== sb) return sa.localeCompare(sb)
+      return (a.codigo ?? '').localeCompare(b.codigo ?? '')
+    })
+    const grupos: Record<string, ItemInventario[]> = {}
+    sorted.forEach(i => {
+      const s = i.setor ?? 'Sem Setor'
+      if (!grupos[s]) grupos[s] = []
+      grupos[s].push(i)
+    })
+    return grupos
+  }, [itemsRelatorio])
+
+  // ─── Print ─────────────────────────────────────────────────────────────────
+
+  const handlePrint = () => {
+    const hoje = new Date().toLocaleDateString('pt-BR')
+    const periodo = mesLabel(mesRef)
+
+    const comResp  = itemsRelatorio.filter(i => !!responsavelEmMes(i, mesRefEndOfMonth)).length
+    const semResp  = itemsRelatorio.filter(i => !responsavelEmMes(i, mesRefEndOfMonth)).length
+    const valorTot = itemsRelatorio.reduce((s, i) => s + (i.valor ?? 0), 0)
+
+    const filtrosAtivos = [
+      rSetor       ? `Setor: ${rSetor}` : '',
+      rStatus      ? `Status: ${rStatus}` : '',
+      rResponsavel === 'com' ? 'Somente com responsável' : rResponsavel === 'sem' ? 'Somente sem responsável' : '',
+      rCategorias.size > 0 ? `Categorias: ${[...rCategorias].join(', ')}` : '',
+    ].filter(Boolean).join(' · ')
+
+    let rowNum = 0
+    const itemRows = Object.entries(itemsPorSetor).map(([setor, sitems]) => `
+      <tr style="background:#e8e8e8">
+        <td colspan="9" style="padding:3px 6px;font-weight:700;font-size:9px">
+          ▸ ${esc(setor)} &nbsp;(${sitems.length} item${sitems.length !== 1 ? 's' : ''})
+        </td>
+      </tr>
+      ${sitems.map(i => {
+        rowNum++
+        const respNome = responsavelEmMes(i, mesRefEndOfMonth)
+        return `<tr>
+          <td>${rowNum}</td>
+          <td>${esc(i.codigo)}</td>
+          <td>${esc(i.item)}</td>
+          <td>${esc(i.modelo)}</td>
+          <td>${esc(i.numero_serie)}</td>
+          <td>${respNome ? esc(respNome) : '<span style="color:#c00">Sem responsável</span>'}</td>
+          <td>${esc(i.colaborador?.cargo)}</td>
+          <td>${esc(i.status)}</td>
+          <td style="text-align:center"><span style="display:inline-block;width:14px;height:14px;border:1px solid #000"></span></td>
+        </tr>`
+      }).join('')}
+    `).join('')
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8">
+<title>Conferência de Inventário – ${periodo}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;font-size:10px;color:#000}
+  @page{margin:1.5cm;size:A4 landscape}
+  .header{text-align:center;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #000}
+  .header h1{font-size:15px;font-weight:700}
+  .header h2{font-size:12px;margin-top:4px}
+  .header p{font-size:9px;margin-top:4px;color:#555}
+  .filtros{font-size:8px;margin-top:3px;color:#777;font-style:italic}
+  .section{margin-top:14px}
+  .section-title{font-size:11px;font-weight:700;background:#ddd;padding:4px 8px;border:1px solid #aaa;margin-bottom:4px}
+  table{width:100%;border-collapse:collapse}
+  th{background:#ccc;font-weight:700;text-align:left;padding:4px 5px;border:1px solid #999;font-size:9px}
+  td{padding:3px 5px;border:1px solid #ccc;font-size:9px;vertical-align:top}
+  tr:nth-child(even){background:#f9f9f9}
+  .footer{margin-top:20px;padding-top:12px;border-top:1px solid #000}
+  .sig-row{display:flex;gap:30px;margin-top:16px}
+  .sig{flex:1;border-bottom:1px solid #000;padding-bottom:2px}
+  .sig-label{font-size:8px;color:#555;margin-top:3px}
+  .totals-bar{display:flex;gap:20px;font-size:9px;color:#444;margin-bottom:8px}
+  .totals-bar span{background:#f0f0f0;border:1px solid #ccc;padding:2px 6px;border-radius:3px}
+</style></head><body>
+<div class="header">
+  <h1>CRESCI &amp; PERDI — RELATÓRIO DE CONFERÊNCIA DE INVENTÁRIO</h1>
+  <h2>Período de Referência: ${periodo}</h2>
+  <p>Data de impressão: ${hoje} &nbsp;|&nbsp; Total de equipamentos: ${itemsRelatorio.length}</p>
+  ${filtrosAtivos ? `<p class="filtros">Filtros aplicados: ${esc(filtrosAtivos)}</p>` : ''}
+</div>
+
+<div class="section">
+  <div class="section-title">EQUIPAMENTOS</div>
+  <div class="totals-bar">
+    <span>Total: ${itemsRelatorio.length}</span>
+    <span>Com responsável: ${comResp}</span>
+    <span style="color:${semResp > 0 ? '#c00' : 'inherit'}">Sem responsável: ${semResp}</span>
+    <span>Valor total: ${R$(valorTot)}</span>
+  </div>
+  <table>
+    <thead><tr>
+      <th style="width:28px">#</th>
+      <th style="width:75px">Código</th>
+      <th style="width:135px">Equipamento</th>
+      <th style="width:110px">Modelo</th>
+      <th style="width:95px">N° Série</th>
+      <th style="width:130px">Responsável</th>
+      <th style="width:100px">Cargo</th>
+      <th style="width:75px">Status</th>
+      <th style="width:32px">Conf.</th>
+    </tr></thead>
+    <tbody>${itemRows}</tbody>
+  </table>
+</div>
+
+<div class="footer">
+  <div class="sig-row">
+    <div><div class="sig"></div><div class="sig-label">Nome / Assinatura do responsável pela conferência</div></div>
+    <div style="max-width:180px"><div class="sig"></div><div class="sig-label">Data: ___/___/______</div></div>
+    <div style="max-width:180px"><div class="sig"></div><div class="sig-label">Cargo</div></div>
+  </div>
+  <p style="margin-top:14px;font-size:8px;color:#888">
+    Documento gerado em ${hoje} pelo sistema de gestão Cresci &amp; Perdi.
+    Este relatório é sigiloso e de uso interno.
+  </p>
+</div>
+
+<script>window.onload=()=>{window.print();}</script>
+</body></html>`
+
+    const w = window.open('', '_blank', 'width=1100,height=800')
+    if (w) { w.document.write(html); w.document.close() }
   }
 
-  const exportToCSV = () => {
-    const headers = ['Código', 'Item', 'Modelo', 'N° Série', 'Fornecedor', 'Setor', 'Status', 'Valor']
-    const rows = filteredItens.map(item => [
-      item.codigo,
-      item.item,
-      item.modelo,
-      item.numero_serie,
-      item.fornecedor,
-      item.setor,
-      item.status,
-      item.valor.toFixed(2),
-    ])
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n')
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', `relatorio_itens_${new Date().toISOString().split('T')[0]}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-600" />
       </div>
     )
   }
 
   return (
-    <div className="p-6">
-      {/* Cabeçalho com botões */}
-      <div className="bg-white shadow rounded-lg mb-6">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Relatório de Inventário</h1>
-              <p className="text-sm text-gray-600 mt-1">
-                {filteredItens.length} {filteredItens.length === 1 ? 'item encontrado' : 'itens encontrados'}
-              </p>
+    <div className="p-6 space-y-6">
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Relatório de Inventário</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Controle completo de equipamentos e linhas telefônicas
+          </p>
+        </div>
+        <button
+          onClick={loadData}
+          disabled={refreshing}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          Atualizar
+        </button>
+      </div>
+
+      {/* ── Stats ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Equipamentos */}
+        <div className="bg-white rounded-2xl shadow-sm border border-blue-100 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="bg-blue-100 rounded-xl p-2.5">
+              <Package className="h-6 w-6 text-blue-600" />
             </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`inline-flex items-center px-4 py-2 border border-slate-300 shadow-sm text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 ${
-                  showFilters ? 'ring-2 ring-slate-500' : ''
-                }`}
-              >
-                <Filter className="h-5 w-5 mr-2" />
-                Filtros
-              </button>
-              <button
-                onClick={exportToCSV}
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-slate-700 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500"
-              >
-                <Download className="h-5 w-5 mr-2" />
-                Exportar CSV
-              </button>
-            </div>
+            <span className="text-3xl font-bold text-gray-900">{stats.totalItems}</span>
+          </div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Equipamentos</p>
+          <div className="flex gap-3 mt-2 text-xs text-gray-500">
+            <span className="text-green-700">✓ {stats.itemsComResp} com resp.</span>
+            {stats.itemsSemResp > 0 && (
+              <span className="text-amber-700">⚠ {stats.itemsSemResp} sem resp.</span>
+            )}
           </div>
         </div>
 
-        {/* Busca */}
-        <div className="px-6 py-5 bg-gradient-to-r from-gray-50 via-white to-gray-50 border-b border-gray-100">
-          <div className="flex items-center justify-between gap-6">
-            {/* Campo de Busca */}
-            <div className="flex-1 relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
+        {/* Linhas */}
+        <div className="bg-white rounded-2xl shadow-sm border border-purple-100 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="bg-purple-100 rounded-xl p-2.5">
+              <Phone className="h-6 w-6 text-purple-600" />
+            </div>
+            <span className="text-3xl font-bold text-gray-900">{stats.totalLinhas}</span>
+          </div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Linhas Telefônicas</p>
+          <div className="flex gap-3 mt-2 text-xs text-gray-500">
+            <span className="text-green-700">● {stats.linhasAtivas} ativas</span>
+            <span className="text-gray-500">● {stats.linhasInativas} inativas</span>
+          </div>
+        </div>
+
+        {/* Valor inventário */}
+        <div className="bg-white rounded-2xl shadow-sm border border-green-100 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="bg-green-100 rounded-xl p-2.5">
+              <TrendingUp className="h-6 w-6 text-green-600" />
+            </div>
+            <span className="text-xl font-bold text-gray-900">{R$(stats.valorTotal)}</span>
+          </div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor do Inventário</p>
+          <p className="text-xs text-gray-400 mt-2">Soma dos equipamentos cadastrados</p>
+        </div>
+
+        {/* Custo mensal linhas */}
+        <div className="bg-white rounded-2xl shadow-sm border border-orange-100 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="bg-orange-100 rounded-xl p-2.5">
+              <DollarSign className="h-6 w-6 text-orange-600" />
+            </div>
+            <span className="text-xl font-bold text-gray-900">{R$(stats.custoMensal)}</span>
+          </div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Custo Mensal</p>
+          <p className="text-xs text-gray-400 mt-2">Soma dos planos de telefonia</p>
+        </div>
+      </div>
+
+      {/* ── Tab Bar ── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div className="flex border-b border-gray-100">
+          {([
+            { key: 'overview',    label: 'Visão Geral',         icon: Eye },
+            { key: 'conference',  label: 'Conferência Mensal',   icon: CheckSquare },
+            { key: 'history',     label: 'Histórico de Vinculações', icon: History },
+          ] as { key: TabKey; label: string; icon: React.ElementType }[]).map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`flex items-center gap-2 px-5 py-4 text-sm font-medium border-b-2 transition-colors ${
+                tab === t.key
+                  ? 'border-slate-700 text-slate-800'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <t.icon className="h-4 w-4" />
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ════════════════════════════════════════
+            TAB 1 – VISÃO GERAL
+            ════════════════════════════════════════ */}
+        {tab === 'overview' && (
+          <div className="p-5 space-y-8">
+
+            {/* Equipamentos */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                  <Laptop className="h-5 w-5 text-blue-500" />
+                  Equipamentos
+                  <span className="text-xs text-gray-400 font-normal">({filteredItems.length} de {items.length})</span>
+                </h2>
               </div>
-              <input
-                type="text"
-                placeholder="Buscar por código, item, fornecedor, responsável, CPF..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="block w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all duration-200 bg-white shadow-sm hover:shadow-md"
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors duration-200"
+
+              {/* Filters */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    value={searchItems}
+                    onChange={e => setSearchItems(e.target.value)}
+                    placeholder="Buscar equipamento..."
+                    className="pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                  />
+                </div>
+                <select
+                  value={fSetor}
+                  onChange={e => setFSetor(e.target.value)}
+                  className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400"
                 >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                  <option value="">Todos os setores</option>
+                  {setores.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <select
+                  value={fStatus}
+                  onChange={e => setFStatus(e.target.value)}
+                  className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                >
+                  <option value="">Todos os status</option>
+                  {statusItens.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                {(searchItems || fSetor || fStatus) && (
+                  <button
+                    onClick={() => { setSearchItems(''); setFSetor(''); setFStatus('') }}
+                    className="text-xs text-gray-500 hover:text-gray-700 px-2"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+
+              {filteredItems.length === 0 ? (
+                <p className="text-sm text-gray-400 py-8 text-center">Nenhum equipamento encontrado</p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-gray-100">
+                  <table className="min-w-full divide-y divide-gray-100 text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {['Código', 'Equipamento / Modelo', 'Setor', 'Responsável', 'Status', 'Valor'].map(h => (
+                          <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {filteredItems.map((i, idx) => (
+                        <tr key={i.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}>
+                          <td className="px-4 py-3">
+                            <span className="font-mono text-xs bg-slate-100 px-2 py-0.5 rounded">{i.codigo}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-gray-900">{i.item}</div>
+                            {i.modelo && <div className="text-xs text-gray-400">{i.modelo}</div>}
+                            {i.numero_serie && <div className="text-xs text-gray-400">S/N: {i.numero_serie}</div>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded">{i.setor ?? '-'}</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {i.colaborador ? (
+                              <div>
+                                <div className="font-medium text-gray-800">{i.colaborador.nome}</div>
+                                {i.colaborador.cargo && <div className="text-xs text-gray-400">{i.colaborador.cargo}</div>}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                Sem responsável
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3"><Badge status={i.status} /></td>
+                          <td className="px-4 py-3 font-semibold text-gray-800">{R$(i.valor)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Linhas Telefônicas */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                  <Phone className="h-5 w-5 text-purple-500" />
+                  Linhas Telefônicas
+                  <span className="text-xs text-gray-400 font-normal">({filteredLinhas.length} de {linhas.length})</span>
+                </h2>
+              </div>
+
+              <div className="flex flex-wrap gap-2 mb-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    value={searchLinhas}
+                    onChange={e => setSearchLinhas(e.target.value)}
+                    placeholder="Buscar linha..."
+                    className="pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                  />
+                </div>
+                <select
+                  value={fLinhaStatus}
+                  onChange={e => setFLinhaStatus(e.target.value)}
+                  className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                >
+                  <option value="">Todos os status</option>
+                  <option value="Ativa">Ativa</option>
+                  <option value="Inativa">Inativa</option>
+                </select>
+                {(searchLinhas || fLinhaStatus) && (
+                  <button
+                    onClick={() => { setSearchLinhas(''); setFLinhaStatus('') }}
+                    className="text-xs text-gray-500 hover:text-gray-700 px-2"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+
+              {filteredLinhas.length === 0 ? (
+                <p className="text-sm text-gray-400 py-8 text-center">Nenhuma linha encontrada</p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-gray-100">
+                  <table className="min-w-full divide-y divide-gray-100 text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {['Número', 'Tipo / Operadora', 'Plano', 'Responsável', 'Usuário / Setor', 'Aparelho', 'Status', 'Custo'].map(h => (
+                          <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {filteredLinhas.map((l, idx) => (
+                        <tr key={l.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}>
+                          <td className="px-4 py-3 font-mono font-medium">{fone(l.numero_linha)}</td>
+                          <td className="px-4 py-3">
+                            <div className="text-xs font-medium">{l.tipo}</div>
+                            <div className="text-xs text-gray-400">{l.operadora ?? '-'}</div>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-700">{l.plano ?? '-'}</td>
+                          <td className="px-4 py-3">
+                            {l.colaborador ? (
+                              <span className="font-medium text-gray-800">{l.colaborador.nome}</span>
+                            ) : (
+                              <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                Sem responsável
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-gray-600">{l.usuario_setor ?? '-'}</td>
+                          <td className="px-4 py-3 text-xs text-gray-600">
+                            {l.aparelho ? `${l.aparelho.codigo} – ${l.aparelho.item}` : '-'}
+                          </td>
+                          <td className="px-4 py-3"><Badge status={l.status} /></td>
+                          <td className="px-4 py-3 font-semibold">{R$(l.valor_plano)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Filtros Expansíveis com Checkboxes */}
-        {showFilters && (
-          <div className="px-6 py-5 bg-gradient-to-r from-slate-50 via-gray-50 to-slate-50 border-t border-gray-100">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {/* Filtro de Setores */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3">
-                  <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                  </svg>
-                  Setores ({filterSetores.length})
-                </label>
-                <div className="space-y-2 max-h-48 overflow-y-auto bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
-                  {setores.map((setor) => (
-                    <label key={setor} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1.5 rounded transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={filterSetores.includes(setor)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFilterSetores([...filterSetores, setor])
-                          } else {
-                            setFilterSetores(filterSetores.filter(s => s !== setor))
-                          }
-                        }}
-                        className="w-4 h-4 text-slate-600 border-gray-300 rounded focus:ring-slate-500"
-                      />
-                      <span className="text-sm text-gray-700">{setor}</span>
-                    </label>
-                  ))}
+        {/* ════════════════════════════════════════
+            TAB 2 – CONFERÊNCIA MENSAL
+            ════════════════════════════════════════ */}
+        {tab === 'conference' && (
+          <div className="p-5">
+            {/* Controls row */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <Calendar className="h-5 w-5 text-gray-400" />
+                <div>
+                  <label className="text-xs text-gray-500 font-medium">Mês de referência</label>
+                  <input
+                    type="month"
+                    value={mesRef}
+                    onChange={e => setMesRef(e.target.value)}
+                    className="block text-sm border border-gray-200 rounded-lg px-3 py-1.5 mt-0.5 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                  />
                 </div>
-              </div>
-
-              {/* Filtro de Categorias */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3">
-                  <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                  </svg>
-                  Categorias ({filterCategorias.length})
-                </label>
-                <div className="space-y-2 max-h-48 overflow-y-auto bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
-                  {categorias.map((categoria: string) => (
-                    <label key={categoria} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1.5 rounded transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={filterCategorias.includes(categoria)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFilterCategorias([...filterCategorias, categoria])
-                          } else {
-                            setFilterCategorias(filterCategorias.filter(c => c !== categoria))
-                          }
-                        }}
-                        className="w-4 h-4 text-slate-600 border-gray-300 rounded focus:ring-slate-500"
-                      />
-                      <span className="text-sm text-gray-700">{categoria}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Filtro de Status */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3">
-                  <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Status ({filterStatus.length})
-                </label>
-                <div className="space-y-2 max-h-48 overflow-y-auto bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
-                  {statusOptions.map((status) => (
-                    <label key={status} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1.5 rounded transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={filterStatus.includes(status)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFilterStatus([...filterStatus, status])
-                          } else {
-                            setFilterStatus(filterStatus.filter(s => s !== status))
-                          }
-                        }}
-                        className="w-4 h-4 text-slate-600 border-gray-300 rounded focus:ring-slate-500"
-                      />
-                      <span className="text-sm text-gray-700">{status}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Botão Limpar Filtros */}
-              <div className="flex flex-col justify-end">
-                <button
-                  onClick={() => {
-                    setSearchTerm('')
-                    setFilterSetores([])
-                    setFilterCategorias([])
-                    setFilterStatus([])
-                  }}
-                  className="w-full inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-slate-500 transition-all duration-200 shadow-sm hover:shadow-md"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Limpar Filtros
-                </button>
-                
-                {/* Indicador de filtros ativos */}
-                {(filterSetores.length > 0 || filterCategorias.length > 0 || filterStatus.length > 0) && (
-                  <div className="mt-3 text-center">
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
-                      {filterSetores.length + filterCategorias.length + filterStatus.length} filtro(s) ativo(s)
-                    </span>
+                {mesRef && (
+                  <div className="text-base font-semibold text-gray-700 capitalize mt-4">
+                    {mesLabel(mesRef)}
                   </div>
                 )}
+              </div>
+              <button
+                onClick={handlePrint}
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-slate-700 hover:bg-slate-800 rounded-xl shadow"
+              >
+                <Printer className="h-4 w-4" />
+                Imprimir Relatório
+              </button>
+            </div>
+
+            {/* Filter panel */}
+            <div className="bg-white border border-gray-200 rounded-xl p-4 mb-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filtros do Relatório</p>
+                <div className="flex items-center gap-3">
+                  {(rSetor || rStatus || rResponsavel !== 'todos' || rCategorias.size > 0) && (
+                    <button
+                      onClick={() => { setRSetor(''); setRStatus(''); setRResponsavel('todos'); setRCategorias(new Set()) }}
+                      className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5 border border-gray-200 rounded-lg"
+                    >
+                      Limpar filtros
+                    </button>
+                  )}
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-400">Serão impressos:</span>
+                    <span className="font-semibold text-slate-700 bg-slate-100 px-3 py-1 rounded-lg">
+                      {itemsRelatorio.length} equipamento{itemsRelatorio.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dropdowns row */}
+              <div className="flex flex-wrap gap-3">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Setor</label>
+                  <select
+                    value={rSetor}
+                    onChange={e => setRSetor(e.target.value)}
+                    className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400 min-w-[180px]"
+                  >
+                    <option value="">Todos os setores</option>
+                    {setores.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Status</label>
+                  <select
+                    value={rStatus}
+                    onChange={e => setRStatus(e.target.value)}
+                    className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                  >
+                    <option value="">Todos os status</option>
+                    {statusItens.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Responsável</label>
+                  <select
+                    value={rResponsavel}
+                    onChange={e => setRResponsavel(e.target.value as 'todos' | 'com' | 'sem')}
+                    className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                  >
+                    <option value="todos">Todos</option>
+                    <option value="com">Com responsável</option>
+                    <option value="sem">Sem responsável</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Categorias checkboxes */}
+              {categorias.length > 0 && (
+                <div>
+                  <label className="block text-xs text-gray-500 mb-2">
+                    Categorias
+                    {rCategorias.size > 0 && (
+                      <span className="ml-2 text-slate-600 font-medium">({rCategorias.size} selecionada{rCategorias.size !== 1 ? 's' : ''})</span>
+                    )}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {categorias.map(cat => {
+                      const checked = rCategorias.has(cat)
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => toggleCategoria(cat)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                            checked
+                              ? 'bg-slate-700 text-white border-slate-700'
+                              : 'bg-white text-gray-600 border-gray-200 hover:border-slate-400 hover:text-slate-700'
+                          }`}
+                        >
+                          <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${
+                            checked ? 'bg-white border-white' : 'border-gray-400'
+                          }`}>
+                            {checked && (
+                              <svg viewBox="0 0 10 10" className="w-2.5 h-2.5 text-slate-700" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M1.5 5l2.5 2.5 4.5-4" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </span>
+                          {cat}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Preview */}
+            <div className="border border-dashed border-gray-300 rounded-xl bg-gray-50 p-4">
+              <p className="text-xs text-gray-400 mb-4 text-center">
+                Pré-visualização do conteúdo que será impresso
+              </p>
+
+              {/* Info bar */}
+              <div className="flex flex-wrap gap-3 mb-4 text-xs">
+                <span className="bg-white border border-gray-200 rounded px-3 py-1 text-gray-600">
+                  <strong>{itemsRelatorio.length}</strong> equipamentos
+                </span>
+                <span className="bg-white border border-gray-200 rounded px-3 py-1 text-gray-600">
+                  <strong>{itemsRelatorio.filter(i => !!responsavelEmMes(i, mesRefEndOfMonth)).length}</strong> com responsável
+                </span>
+                {itemsRelatorio.filter(i => !responsavelEmMes(i, mesRefEndOfMonth)).length > 0 && (
+                  <span className="bg-amber-50 border border-amber-200 rounded px-3 py-1 text-amber-700">
+                    <strong>{itemsRelatorio.filter(i => !responsavelEmMes(i, mesRefEndOfMonth)).length}</strong> sem responsável
+                  </span>
+                )}
+              </div>
+
+              {/* Equipamentos preview */}
+              <div className="mb-5">
+                <div className="text-xs font-bold bg-gray-200 px-3 py-1.5 rounded-t border border-gray-300">
+                  EQUIPAMENTOS ({itemsRelatorio.length} itens)
+                </div>
+                <div className="overflow-x-auto border border-gray-200 rounded-b bg-white">
+                  <table className="min-w-full text-xs divide-y divide-gray-100">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="px-2 py-2 text-left font-semibold text-gray-600">#</th>
+                        <th className="px-2 py-2 text-left font-semibold text-gray-600">Código</th>
+                        <th className="px-2 py-2 text-left font-semibold text-gray-600">Equipamento</th>
+                        <th className="px-2 py-2 text-left font-semibold text-gray-600">Setor</th>
+                        <th className="px-2 py-2 text-left font-semibold text-gray-600">Responsável</th>
+                        <th className="px-2 py-2 text-left font-semibold text-gray-600">Status</th>
+                        <th className="px-2 py-2 text-center font-semibold text-gray-600">Conf.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(itemsPorSetor).flatMap(([setor, sItems]) => [
+                        <tr key={`setor-${setor}`} className="bg-gray-100">
+                          <td colSpan={7} className="px-3 py-1 text-xs font-bold text-gray-700">
+                            ▸ {setor} ({sItems.length})
+                          </td>
+                        </tr>,
+                        ...sItems.map((i, idx) => {
+                          const respNome = responsavelEmMes(i, mesRefEndOfMonth)
+                          return (
+                          <tr key={i.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                            <td className="px-2 py-1.5 text-gray-400">{idx + 1}</td>
+                            <td className="px-2 py-1.5 font-mono">{i.codigo}</td>
+                            <td className="px-2 py-1.5">{i.item}</td>
+                            <td className="px-2 py-1.5">{i.setor ?? '-'}</td>
+                            <td className="px-2 py-1.5">
+                              {respNome ?? (
+                                <span className="text-amber-600">Sem responsável</span>
+                              )}
+                            </td>
+                            <td className="px-2 py-1.5"><Badge status={i.status} /></td>
+                            <td className="px-2 py-1.5 text-center">
+                              <span className="inline-block w-4 h-4 border border-gray-400 rounded-sm" />
+                            </td>
+                          </tr>
+                          )
+                        }),
+                      ])}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+
+              {/* Signature area preview */}
+              <div className="mt-5 pt-4 border-t border-gray-300 flex gap-6 text-xs text-gray-500">
+                <div className="flex-1">
+                  <div className="border-b border-gray-400 h-6" />
+                  <div className="mt-1">Nome / Assinatura do responsável pela conferência</div>
+                </div>
+                <div className="w-40">
+                  <div className="border-b border-gray-400 h-6" />
+                  <div className="mt-1">Data: ___/___/______</div>
+                </div>
+                <div className="w-40">
+                  <div className="border-b border-gray-400 h-6" />
+                  <div className="mt-1">Cargo</div>
+                </div>
               </div>
             </div>
           </div>
         )}
-      </div>
 
-      {/* Estatísticas Cards - Estilo Moderno */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <div className="group bg-gradient-to-br from-blue-50 to-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-blue-100 hover:border-blue-200 overflow-hidden transform hover:-translate-y-1">
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex-shrink-0 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-3 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                <Package className="h-7 w-7 text-white" />
+        {/* ════════════════════════════════════════
+            TAB 3 – HISTÓRICO DE VINCULAÇÕES
+            ════════════════════════════════════════ */}
+        {tab === 'history' && (
+          <div className="p-5">
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2 mb-5">
+              <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                {([
+                  { v: 'todos',       label: 'Todos' },
+                  { v: 'equipamento', label: 'Equipamentos' },
+                  { v: 'linha',       label: 'Linhas' },
+                ] as { v: typeof hTipo; label: string }[]).map(o => (
+                  <button
+                    key={o.v}
+                    onClick={() => setHTipo(o.v)}
+                    className={`px-4 py-2 text-xs font-medium transition-colors ${
+                      hTipo === o.v
+                        ? 'bg-slate-700 text-white'
+                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
               </div>
-              <div className="text-right">
-                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider">Total de Itens</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{filteredItens.length}</p>
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-blue-100">
-              <p className="text-xs font-medium text-gray-600">Patrimônio registrado</p>
-            </div>
-          </div>
-        </div>
 
-        <div className="group bg-gradient-to-br from-green-50 to-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-green-100 hover:border-green-200 overflow-hidden transform hover:-translate-y-1">
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex-shrink-0 bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-3 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                <DollarSign className="h-7 w-7 text-white" />
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  value={hSearch}
+                  onChange={e => setHSearch(e.target.value)}
+                  placeholder="Buscar por colaborador ou item..."
+                  className="pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                />
               </div>
-              <div className="text-right">
-                <p className="text-xs font-semibold text-green-600 uppercase tracking-wider">Valor Total</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  R$ {totalValor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-green-100">
-              <p className="text-xs font-medium text-gray-600">Valor do patrimônio</p>
-            </div>
-          </div>
-        </div>
 
-        <div className="group bg-gradient-to-br from-purple-50 to-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-purple-100 hover:border-purple-200 overflow-hidden transform hover:-translate-y-1">
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex-shrink-0 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-3 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                <Users className="h-7 w-7 text-white" />
+              <div className="flex items-center gap-1">
+                <label className="text-xs text-gray-500">De</label>
+                <input
+                  type="date"
+                  value={hFrom}
+                  onChange={e => setHFrom(e.target.value)}
+                  className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                />
               </div>
-              <div className="text-right">
-                <p className="text-xs font-semibold text-purple-600 uppercase tracking-wider">Com Responsável</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">
-                  {filteredItens.filter(item => item.colaborador).length}
-                </p>
+              <div className="flex items-center gap-1">
+                <label className="text-xs text-gray-500">até</label>
+                <input
+                  type="date"
+                  value={hTo}
+                  onChange={e => setHTo(e.target.value)}
+                  className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                />
               </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-purple-100">
-              <p className="text-xs font-medium text-gray-600">
-                {filteredItens.length > 0 
-                  ? `${Math.round((filteredItens.filter(item => item.colaborador).length / filteredItens.length) * 100)}% atribuídos`
-                  : '0% atribuídos'
-                }
-              </p>
-            </div>
-          </div>
-        </div>
 
-        <div className="group bg-gradient-to-br from-amber-50 to-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-amber-100 hover:border-amber-200 overflow-hidden transform hover:-translate-y-1">
-          <div className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex-shrink-0 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-3 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                <AlertCircle className="h-7 w-7 text-white" />
-              </div>
-              <div className="text-right">
-                <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider">Sem Responsável</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">
-                  {filteredItens.filter(item => !item.colaborador).length}
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-amber-100">
-              <p className="text-xs font-medium text-gray-600">
-                {filteredItens.length > 0 
-                  ? `${Math.round((filteredItens.filter(item => !item.colaborador).length / filteredItens.length) * 100)}% pendentes`
-                  : '0% pendentes'
-                }
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+              {(hSearch || hFrom || hTo || hTipo !== 'todos') && (
+                <button
+                  onClick={() => { setHSearch(''); setHFrom(''); setHTo(''); setHTipo('todos') }}
+                  className="text-xs text-gray-500 hover:text-gray-700 px-2"
+                >
+                  Limpar
+                </button>
+              )}
 
-      {/* Conteúdo Principal */}
-      {loading ? (
-        <div className="bg-white shadow-lg rounded-2xl">
-          <div className="px-6 py-20 text-center">
-            <div className="flex flex-col items-center justify-center space-y-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-slate-600"></div>
-              <p className="text-sm font-medium text-gray-600">Carregando itens...</p>
+              <span className="ml-auto text-xs text-gray-400 self-center">
+                {filteredHistorico.length} registro{filteredHistorico.length !== 1 ? 's' : ''}
+              </span>
             </div>
-          </div>
-        </div>
-      ) : filteredItens.length === 0 ? (
-        <div className="bg-white shadow-lg rounded-2xl">
-          <div className="px-6 py-20 text-center">
-            <div className="flex flex-col items-center justify-center space-y-4">
-              <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-full p-8">
-                <Package className="mx-auto h-12 w-12 text-slate-400" />
+
+            {filteredHistorico.length === 0 ? (
+              <div className="text-center py-16">
+                <Clock className="mx-auto h-10 w-10 text-gray-200 mb-3" />
+                <p className="text-sm text-gray-400">Nenhum histórico encontrado</p>
+                {historico.length === 0 && (
+                  <p className="text-xs text-gray-400 mt-2">
+                    O histórico registrará automaticamente toda troca de responsável a partir de agora.
+                  </p>
+                )}
               </div>
+            ) : (
               <div className="space-y-2">
-                <h3 className="text-xl font-semibold text-gray-900">Nenhum item encontrado</h3>
-                <p className="text-gray-600 max-w-md">
-                  Tente ajustar os filtros ou cadastre novos itens no inventário.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Visualização Desktop - Tabela */}
-          <div className="hidden md:block bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-100">
-                <thead className="bg-gradient-to-r from-slate-50 via-gray-50 to-slate-50">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">
-                      <div className="flex items-center space-x-2">
-                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                        </svg>
-                        <span>Item / Código</span>
-                      </div>
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">
-                      <div className="flex items-center space-x-2">
-                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        <span>Responsável</span>
-                      </div>
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">
-                      <div className="flex items-center space-x-2">
-                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                        <span>Setor</span>
-                      </div>
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">
-                      <div className="flex items-center space-x-2">
-                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>Status</span>
-                      </div>
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b border-gray-200">
-                      <div className="flex items-center space-x-2">
-                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>Valor</span>
-                      </div>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
-                  {filteredItens.map((item, index) => (
-                    <tr key={item.id} className={`hover:bg-gradient-to-r hover:from-slate-50 hover:to-transparent transition-all duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                      <td className="px-6 py-4 text-sm">
-                        <div className="font-semibold text-gray-900">{item.item}</div>
-                        <div className="text-xs text-gray-500 mt-1 flex items-center space-x-1">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium">
-                            {item.codigo}
+                {filteredHistorico.map(h => (
+                  <div key={h.key} className="flex gap-4 p-4 bg-white border border-gray-100 rounded-xl hover:border-gray-200 transition-colors">
+                    {/* Icon */}
+                    <div className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${
+                      h.tipo === 'equipamento' ? 'bg-blue-50' : 'bg-purple-50'
+                    }`}>
+                      {h.tipo === 'equipamento'
+                        ? <Laptop className="h-4 w-4 text-blue-500" />
+                        : <Phone className="h-4 w-4 text-purple-500" />
+                      }
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className={`inline-block text-xs px-2 py-0.5 rounded font-medium mr-2 ${
+                            h.tipo === 'equipamento'
+                              ? 'bg-blue-50 text-blue-700'
+                              : 'bg-purple-50 text-purple-700'
+                          }`}>
+                            {h.tipo === 'equipamento' ? 'Equipamento' : 'Linha'}
                           </span>
-                          {item.modelo && (
-                            <>
-                              <span className="text-gray-400">•</span>
-                              <span>{item.modelo}</span>
-                            </>
+                          <span className="font-medium text-gray-900 text-sm">{h.titulo}</span>
+                          {h.subtitulo && (
+                            <span className="ml-2 text-xs text-gray-400 font-mono">{h.subtitulo}</span>
                           )}
                         </div>
-                        {item.numero_serie && (
-                          <div className="text-xs text-gray-400 mt-1">
-                            S/N: {item.numero_serie}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        {item.colaborador ? (
-                          <div>
-                            <div className="font-medium text-gray-900">{item.colaborador.nome}</div>
-                            <div className="text-xs text-gray-500 mt-1">{item.colaborador.cargo}</div>
-                            <div className="text-xs text-gray-400 mt-1">
-                              {item.colaborador.cpf}
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500 italic">
-                            Sem responsável
+                        <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                          <span className="text-xs text-gray-400 whitespace-nowrap">
+                            {dtBR(h.data_alteracao)}
                           </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700">
-                          {item.setor}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1.5 inline-flex items-center text-xs leading-5 font-semibold rounded-lg shadow-sm ${getStatusColor(item.status)}`}>
-                          <div className="w-1.5 h-1.5 rounded-full bg-current mr-1.5 opacity-75"></div>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                        R$ {item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Visualização Mobile - Cards */}
-          <div className="md:hidden space-y-4">
-            {filteredItens.map((item) => (
-              <div key={item.id} className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-gray-200 overflow-hidden transform hover:-translate-y-1">
-                {/* Header do Card */}
-                <div className="relative p-4 bg-gradient-to-br from-gray-50 to-white border-b border-gray-100">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1 pr-3">
-                      <h3 className="text-base font-bold text-gray-900 leading-tight">{item.item}</h3>
-                      <div className="flex items-center space-x-2 mt-1.5">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-700">
-                          {item.codigo}
-                        </span>
-                        {item.modelo && (
-                          <span className="text-xs text-gray-500">{item.modelo}</span>
-                        )}
-                      </div>
-                    </div>
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap shadow-sm ${getStatusColor(item.status)}`}>
-                      <div className="w-1.5 h-1.5 rounded-full bg-current mr-1.5 opacity-75"></div>
-                      {item.status}
-                    </span>
-                  </div>
-                  {item.numero_serie && (
-                    <div className="text-xs text-gray-400 mt-2">
-                      S/N: {item.numero_serie}
-                    </div>
-                  )}
-                </div>
-
-                {/* Conteúdo do Card */}
-                <div className="p-4 space-y-3 text-sm">
-                  <div className="flex items-center text-sm">
-                    <div className="flex-shrink-0 w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center mr-3">
-                      <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Responsável</p>
-                      {item.colaborador ? (
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900 truncate">{item.colaborador.nome}</p>
-                          <p className="text-xs text-gray-500">{item.colaborador.cargo}</p>
+                          {h.usuario_nome && (
+                            <span className="text-xs text-gray-500 whitespace-nowrap">
+                              por <span className="font-medium">{h.usuario_nome}</span>
+                            </span>
+                          )}
                         </div>
-                      ) : (
-                        <p className="text-sm text-gray-400 italic">Sem responsável</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center text-sm">
-                    <div className="flex-shrink-0 w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center mr-3">
-                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Setor</p>
-                      <p className="text-sm font-semibold text-gray-900 truncate">{item.setor}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <div className="flex items-center text-sm">
-                      <div className="flex-shrink-0 w-8 h-8 bg-green-50 rounded-lg flex items-center justify-center mr-3">
-                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
                       </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</p>
-                        <p className="text-lg font-bold text-gray-900">
-                          R$ {item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </p>
+
+                      {/* Change description */}
+                      <div className="flex items-center gap-2 mt-2 text-sm">
+                        <Users className="h-3.5 w-3.5 text-gray-300 flex-shrink-0" />
+                        {h.valor_anterior ? (
+                          <span className="text-gray-500 line-through text-xs">{h.valor_anterior}</span>
+                        ) : (
+                          <span className="text-gray-400 text-xs italic">sem responsável</span>
+                        )}
+                        <ArrowRight className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                        {h.valor_novo ? (
+                          <span className="text-green-700 font-medium text-xs">{h.valor_novo}</span>
+                        ) : (
+                          <span className="text-gray-400 text-xs italic">sem responsável</span>
+                        )}
                       </div>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        </>
-      )}
+        )}
+      </div>
     </div>
   )
 }

@@ -29,7 +29,9 @@ import { ParametrosFranquia } from './features/franquias/parametros/ParametrosFr
 import { ContasPagar } from './features/financeiro/ContasPagar'
 import { ContasReceber } from './features/financeiro/ContasReceber'
 import { ParametrosFinanceiros } from './features/financeiro/ParametrosFinanceiros'
-import { ControleInadimplencia } from './features/financeiro/ControleInadimplencia'
+import { ControleInadimplencia, ClienteCobrancaDetalhe } from './features/financeiro/ControleInadimplencia'
+import { RelatoriosFinanceiros } from './features/financeiro/RelatoriosFinanceiros'
+import { ContasReceberSolutto } from './features/financeiro/ContasReceberSolutto'
 
 function App() {
   console.log('🚀 App.tsx carregando...')
@@ -219,6 +221,11 @@ function App() {
                 <ContasReceber />
               </PermissionGuard>
             } />
+            <Route path="financeiro/contas-receber-solutto" element={
+              <PermissionGuard requiredPermissions={['financeiro_contas_receber_solutto']}>
+                <ContasReceberSolutto />
+              </PermissionGuard>
+            } />
             <Route path="financeiro/parametros" element={
               <PermissionGuard requiredPermissions={['financeiro_parametros']}>
                 <ParametrosFinanceiros />
@@ -227,6 +234,16 @@ function App() {
             <Route path="financeiro/controle-inadimplencia" element={
               <PermissionGuard requiredPermissions={['financeiro_inadimplencia']}>
                 <ControleInadimplencia />
+              </PermissionGuard>
+            } />
+            <Route path="financeiro/cobranca/:clienteId" element={
+              <PermissionGuard requiredPermissions={['financeiro_inadimplencia']}>
+                <ClienteCobrancaDetalhe />
+              </PermissionGuard>
+            } />
+            <Route path="financeiro/relatorios" element={
+              <PermissionGuard requiredPermissions={['financeiro_relatorios']}>
+                <RelatoriosFinanceiros />
               </PermissionGuard>
             } />
             

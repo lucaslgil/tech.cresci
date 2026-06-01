@@ -257,8 +257,57 @@ export async function sincronizarClientesSolutto(
           .from('clientes')
           .insert({ ...payload, empresa_id: empresaId })
 
-        if (insertError) throw new Error(insertError.message)
-        criados++
+        if (insertError) {
+          // Código 23505 = unique_violation (chave duplicada)
+          // Ocorre quando o DB tem duplicatas e o mapa não encontrou a outra cópia.
+          // Recupera: busca o registro conflitante diretamente e faz UPDATE.
+          if (insertError.code === '23505') {
+            const cnpjLimpo2 = c.cnpj.replace(/\D/g, '')
+            const cpfLimpo2  = c.cpf.replace(/\D/g, '')
+
+            let idConflito: number | undefined
+
+            if (!idConflito && cnpjLimpo2.length >= 14) {
+              const { data: r } = await supabase
+                .from('clientes')
+                .select('id')
+                .eq('empresa_id', empresaId)
+                .eq('cnpj', cnpjLimpo2)
+                .limit(1)
+                .maybeSingle()
+              if (r) idConflito = r.id
+            }
+
+            if (!idConflito && cpfLimpo2.length >= 11) {
+              const { data: r } = await supabase
+                .from('clientes')
+                .select('id')
+                .eq('empresa_id', empresaId)
+                .eq('cpf', cpfLimpo2)
+                .limit(1)
+                .maybeSingle()
+              if (r) idConflito = r.id
+            }
+
+            if (idConflito) {
+              const { solutto_cliente_id: _sid, ...camposUpdate2 } = payload
+              delete camposUpdate2.limite_credito
+              const { error: retryError } = await supabase
+                .from('clientes')
+                .update({ ...camposUpdate2, solutto_cliente_id: c.solutto_id })
+                .eq('id', idConflito)
+                .eq('empresa_id', empresaId)
+              if (retryError) throw new Error(retryError.message)
+              atualizados++
+            } else {
+              throw new Error(insertError.message)
+            }
+          } else {
+            throw new Error(insertError.message)
+          }
+        } else {
+          criados++
+        }
       }
     } catch (err) {
       erros++

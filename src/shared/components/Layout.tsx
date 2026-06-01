@@ -259,7 +259,7 @@ export const Layout: React.FC = () => {
             )}
 
             {/* 3. FINANCEIRO */}
-            {hasAnyPermission(['financeiro_contas_pagar', 'financeiro_contas_receber', 'financeiro_parametros', 'financeiro_inadimplencia']) && (
+            {hasAnyPermission(['financeiro_contas_pagar', 'financeiro_contas_receber', 'financeiro_contas_receber_solutto', 'financeiro_parametros', 'financeiro_inadimplencia', 'financeiro_relatorios']) && (
             <div>
               <button
                 onClick={() => toggleMenu(setFinanceiroOpen, financeiroOpen)}
@@ -299,6 +299,15 @@ export const Layout: React.FC = () => {
                   </button>
                   )}
 
+                  {hasPermission('financeiro_contas_receber_solutto') && (
+                  <button
+                    onClick={() => { tabs.contasReceberSolutto(); closeMobileMenu(); }}
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
+                  >
+                    Contas a Receber - Solutto
+                  </button>
+                  )}
+
                   {hasPermission('financeiro_parametros') && (
                   <button
                     onClick={() => { tabs.parametrosFinanceiros(); closeMobileMenu(); }}
@@ -314,6 +323,15 @@ export const Layout: React.FC = () => {
                     className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
                   >
                     Controle Inadimplência
+                  </button>
+                  )}
+
+                  {hasPermission('financeiro_relatorios') && (
+                  <button
+                    onClick={() => { tabs.relatoriosFinanceiros(); closeMobileMenu(); }}
+                    className="submenu-item w-full flex items-center px-4 py-2.5 pl-12 text-xs text-gray-400 hover:text-white rounded-md"
+                  >
+                    Relatórios
                   </button>
                   )}
                 </div>

@@ -145,6 +145,12 @@ export const useTabOpener = () => {
       path: '/financeiro/contas-receber',
       icon: <DollarSign className="w-3.5 h-3.5" />
     }),
+
+    contasReceberSolutto: () => openTab({
+      title: 'Contas a Receber - Solutto',
+      path: '/financeiro/contas-receber-solutto',
+      icon: <DollarSign className="w-3.5 h-3.5" />
+    }),
     
     parametrosFinanceiros: () => openTab({
       title: 'Parâmetros Financeiros',
@@ -156,6 +162,12 @@ export const useTabOpener = () => {
       title: 'Controle Inadimplência',
       path: '/financeiro/controle-inadimplencia',
       icon: <FileText className="w-3.5 h-3.5" />
+    }),
+
+    relatoriosFinanceiros: () => openTab({
+      title: 'Relatórios Financeiros',
+      path: '/financeiro/relatorios',
+      icon: <TrendingUp className="w-3.5 h-3.5" />
     }),
 
     // OUTROS

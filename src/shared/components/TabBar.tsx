@@ -33,6 +33,7 @@ const routePermissions: Record<string, string> = {
   '/financeiro/contas-pagar': 'financeiro_contas_pagar',
   '/financeiro/contas-receber': 'financeiro_contas_receber',
   '/financeiro/parametros': 'financeiro_parametros',
+  '/financeiro/relatorios': 'financeiro_relatorios',
   '/tarefas': 'tarefas',
   '/configuracoes': 'configuracoes',
   '/documentacao': 'documentacao'

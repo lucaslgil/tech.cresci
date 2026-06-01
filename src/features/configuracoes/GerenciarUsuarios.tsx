@@ -31,8 +31,10 @@ interface Usuario {
     // Financeiro
     financeiro_contas_pagar: boolean
     financeiro_contas_receber: boolean
+    financeiro_contas_receber_solutto: boolean
     financeiro_parametros: boolean
     financeiro_inadimplencia: boolean
+    financeiro_relatorios: boolean
     // Outros
     franquias: boolean
     franquias_unidades: boolean
@@ -90,8 +92,10 @@ export const GerenciarUsuarios: React.FC = () => {
       // Financeiro
       financeiro_contas_pagar: false,
       financeiro_contas_receber: false,
+      financeiro_contas_receber_solutto: false,
       financeiro_parametros: false,
       financeiro_inadimplencia: false,
+      financeiro_relatorios: false,
       // Outros
       franquias: false,
       franquias_unidades: false,
@@ -203,8 +207,10 @@ export const GerenciarUsuarios: React.FC = () => {
         // Financeiro
         financeiro_contas_pagar: false,
         financeiro_contas_receber: false,
+        financeiro_contas_receber_solutto: false,
         financeiro_parametros: false,
         financeiro_inadimplencia: false,
+        financeiro_relatorios: false,
         // Outros
         franquias: false,
         franquias_unidades: false,
@@ -367,8 +373,10 @@ export const GerenciarUsuarios: React.FC = () => {
     // FINANCEIRO
     { key: 'financeiro_contas_pagar' as const, label: 'Contas a Pagar', grupo: 'Financeiro' },
     { key: 'financeiro_contas_receber' as const, label: 'Contas a Receber', grupo: 'Financeiro' },
+    { key: 'financeiro_contas_receber_solutto' as const, label: 'Contas a Receber - Solutto', grupo: 'Financeiro' },
     { key: 'financeiro_parametros' as const, label: 'Parâmetros Financeiros', grupo: 'Financeiro' },
       { key: 'financeiro_inadimplencia' as const, label: 'Controle Inadimplência', grupo: 'Financeiro' },
+    { key: 'financeiro_relatorios' as const, label: 'Relatórios Financeiros', grupo: 'Financeiro' },
     
     // FRANQUIAS
     { key: 'franquias' as const, label: 'Franquias - Gerenciador', grupo: 'Franquias' },
