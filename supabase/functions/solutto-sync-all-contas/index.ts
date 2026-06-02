@@ -8,9 +8,21 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
+const ALLOWED_ORIGINS = [
+  'https://tech-cresci.vercel.app',
+  'https://tech.crescieperdi.com.br',
+  'http://localhost:5173',
+  'http://localhost:5174',
+]
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') ?? ''
+  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-application-name',
+    'Access-Control-Allow-Methods': 'POST, GET, PATCH, OPTIONS, PUT, DELETE',
+    'Vary': 'Origin',
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -120,7 +132,7 @@ function mapearStatus(quitada: string, dataPagamento: string, valorSaldo: number
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: getCorsHeaders(req) })
   }
 
   try {
@@ -135,7 +147,7 @@ serve(async (req) => {
     if (!empresa || !usuario || !senha) {
       return new Response(
         JSON.stringify({ error: 'Credenciais Solutto não configuradas' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -157,7 +169,7 @@ serve(async (req) => {
       if (!authHeader) {
         return new Response(
           JSON.stringify({ error: 'Não autorizado' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
 
@@ -168,7 +180,7 @@ serve(async (req) => {
       if (userError || !user) {
         return new Response(
           JSON.stringify({ error: 'Usuário não autenticado' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
 
@@ -181,7 +193,7 @@ serve(async (req) => {
       if (!usuarioData?.empresa_id) {
         return new Response(
           JSON.stringify({ error: 'Usuário sem empresa associada' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
         )
       }
       empresaId = usuarioData.empresa_id as number
@@ -213,14 +225,14 @@ serve(async (req) => {
     if (clientesError) {
       return new Response(
         JSON.stringify({ error: `Erro ao buscar clientes: ${clientesError.message}` }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
     if (!clientes || clientes.length === 0) {
       return new Response(
         JSON.stringify({ processados: 0, criados: 0, atualizados: 0, erros: 0, detalhes_erros: [], tem_mais: false }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -354,13 +366,13 @@ serve(async (req) => {
         detalhes_erros,
         tem_mais: clientes.length === limite,
       }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Erro interno'
     return new Response(
       JSON.stringify({ error: msg }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   }
 })

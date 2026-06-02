@@ -8,9 +8,21 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const ALLOWED_ORIGINS = [
+  'https://tech-cresci.vercel.app',
+  'https://tech.crescieperdi.com.br',
+  'http://localhost:5173',
+  'http://localhost:5174',
+]
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') ?? ''
+  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-application-name',
+    'Access-Control-Allow-Methods': 'POST, GET, PATCH, OPTIONS, PUT, DELETE',
+    'Vary': 'Origin',
+  }
 }
 
 export interface ClienteSolutto {
@@ -150,7 +162,7 @@ function normalizarCliente(r: Record<string, string>): ClienteSolutto | null {
 serve(async (req) => {
   // CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: getCorsHeaders(req) })
   }
 
   try {
@@ -161,7 +173,7 @@ serve(async (req) => {
     if (!empresa || !usuario || !senha) {
       return new Response(
         JSON.stringify({ error: 'Credenciais Solutto não configuradas (SOLUTTO_EMPRESA, SOLUTTO_USUARIO, SOLUTTO_SENHA)' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -186,7 +198,7 @@ serve(async (req) => {
     if (!response.ok) {
       return new Response(
         JSON.stringify({ error: `Solutto retornou status ${response.status}` }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 502, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -196,7 +208,7 @@ serve(async (req) => {
     if (xmlText.includes('Table_Erro') || xmlText.includes('table_erro')) {
       return new Response(
         JSON.stringify({ error: 'Solutto retornou erro de autenticação ou de parâmetros', clientes: [] }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -212,13 +224,13 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({ clientes, total: clientes.length }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Erro interno'
     return new Response(
       JSON.stringify({ error: msg }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   }
 })

@@ -9,15 +9,27 @@ import { gerarXMLNFe } from './xmlGenerator.ts'
 import { assinarXML, validarCertificado } from './assinatura.ts'
 import { enviarNFeSEFAZ } from './soapClient.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+const ALLOWED_ORIGINS = [
+  'https://tech-cresci.vercel.app',
+  'https://tech.crescieperdi.com.br',
+  'http://localhost:5173',
+  'http://localhost:5174',
+]
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') ?? ''
+  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0]
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-application-name',
+    'Access-Control-Allow-Methods': 'POST, GET, PATCH, OPTIONS, PUT, DELETE',
+    'Vary': 'Origin',
+  }
 }
 
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: getCorsHeaders(req) })
   }
 
   try {
@@ -33,7 +45,7 @@ serve(async (req) => {
     if (authError || !user) {
       return new Response(
         JSON.stringify({ error: 'Não autorizado' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -43,7 +55,7 @@ serve(async (req) => {
     if (!notaId) {
       return new Response(
         JSON.stringify({ error: 'ID da nota é obrigatório' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -58,7 +70,7 @@ serve(async (req) => {
       console.error('❌ Erro ao buscar nota:', notaError)
       return new Response(
         JSON.stringify({ error: 'Nota não encontrada', details: notaError?.message }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -73,7 +85,7 @@ serve(async (req) => {
       console.error('❌ Erro ao buscar empresa:', empresaError)
       return new Response(
         JSON.stringify({ error: 'Empresa não encontrada', details: empresaError?.message }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -81,7 +93,7 @@ serve(async (req) => {
     if (!empresa.certificado_digital || !empresa.certificado_senha) {
       return new Response(
         JSON.stringify({ error: 'Certificado digital não configurado para esta empresa' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
       )
     }
 
@@ -114,7 +126,7 @@ serve(async (req) => {
         error: 'Erro ao processar requisição',
         details: error.message 
       }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   }
 })
@@ -282,7 +294,7 @@ async function emitirViaAPI(nota: any, empresa: any, itens: any[], config: any, 
         xml_autorizado: result.xml,
         data_autorizacao: result.data_autorizacao
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   } else if (provider === 'FOCUS') {
     const baseURL = ambiente === 'PRODUCAO' 
@@ -344,7 +356,7 @@ async function emitirViaAPI(nota: any, empresa: any, itens: any[], config: any, 
         protocolo: result.numero_protocolo,
         mensagem: result.mensagem_sefaz
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   }
 
@@ -439,7 +451,7 @@ async function emitirDiretoSEFAZ(nota: any, empresa: any, itens: any[], config: 
         mensagem: resultado.mensagem,
         data_autorizacao: resultado.data_autorizacao
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   } catch (error: any) {
     console.error('❌ Erro no modo direto:', error)
@@ -461,7 +473,7 @@ async function emitirDiretoSEFAZ(nota: any, empresa: any, itens: any[], config: 
         mensagem: error.message,
         detalhes: 'Modo direto ainda em desenvolvimento. Recomendamos usar Focus NFe por enquanto.'
       }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...getCorsHeaders(req), 'Content-Type': 'application/json' } }
     )
   }
 }
