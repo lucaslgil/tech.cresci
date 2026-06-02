@@ -104,8 +104,8 @@ supabase login
 supabase link --project-ref SEU_PROJECT_REF
 
 # Configurar credenciais (SUAS NOVAS CREDENCIAIS)
-supabase secrets set NUVEM_FISCAL_CLIENT_ID=SEU_CLIENT_ID_AQUI
-supabase secrets set NUVEM_FISCAL_CLIENT_SECRET=SEU_CLIENT_SECRET_AQUI
+supabase secrets set NUVEM_FISCAL_CLIENT_ID=WQoXHnGx1dcbwoprcKIw
+supabase secrets set NUVEM_FISCAL_CLIENT_SECRET=gtzrgTGFEdsz87LHQLbqdixmp07qoWFdVcmJb8TU
 
 # Verificar
 supabase secrets list
@@ -252,8 +252,8 @@ const nota = await emitirNFe({
 ## 🚨 IMPORTANTE: Suas Novas Credenciais
 
 ```
-CLIENT_ID: SEU_CLIENT_ID_AQUI
-CLIENT_SECRET: SEU_CLIENT_SECRET_AQUI
+CLIENT_ID: WQoXHnGx1dcbwoprcKIw
+CLIENT_SECRET: gtzrgTGFEdsz87LHQLbqdixmp07qoWFdVcmJb8TU
 ```
 
 **O que fazer com elas:**

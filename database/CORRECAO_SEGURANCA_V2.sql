@@ -145,28 +145,21 @@ DO $$ BEGIN
 END $$;
 
 -- empresa_membros
+-- NOTA: empresa_id aqui é UUID (referência a auth.users/empresas UUID), não BIGINT.
+-- A política correta é filtrar pelo usuario_id (quem é membro).
 ALTER TABLE public.empresa_membros ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "empresa_membros_select" ON public.empresa_membros;
 DROP POLICY IF EXISTS "empresa_membros_insert" ON public.empresa_membros;
 DROP POLICY IF EXISTS "empresa_membros_update" ON public.empresa_membros;
 DROP POLICY IF EXISTS "empresa_membros_delete" ON public.empresa_membros;
-DO $$ BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.columns
-             WHERE table_name='empresa_membros' AND column_name='empresa_id') THEN
-    CREATE POLICY "empresa_membros_select" ON public.empresa_membros
-      FOR SELECT TO authenticated USING (empresa_id = public.get_user_empresa_id());
-    CREATE POLICY "empresa_membros_insert" ON public.empresa_membros
-      FOR INSERT TO authenticated WITH CHECK (empresa_id = public.get_user_empresa_id());
-    CREATE POLICY "empresa_membros_update" ON public.empresa_membros
-      FOR UPDATE TO authenticated USING (empresa_id = public.get_user_empresa_id());
-    CREATE POLICY "empresa_membros_delete" ON public.empresa_membros
-      FOR DELETE TO authenticated USING (empresa_id = public.get_user_empresa_id());
-  ELSE
-    -- Se liga a usuario_id diretamente
-    CREATE POLICY "empresa_membros_select" ON public.empresa_membros
-      FOR SELECT TO authenticated USING (usuario_id = auth.uid());
-  END IF;
-END $$;
+CREATE POLICY "empresa_membros_select" ON public.empresa_membros
+  FOR SELECT TO authenticated USING (usuario_id = auth.uid());
+CREATE POLICY "empresa_membros_insert" ON public.empresa_membros
+  FOR INSERT TO authenticated WITH CHECK (usuario_id = auth.uid());
+CREATE POLICY "empresa_membros_update" ON public.empresa_membros
+  FOR UPDATE TO authenticated USING (usuario_id = auth.uid());
+CREATE POLICY "empresa_membros_delete" ON public.empresa_membros
+  FOR DELETE TO authenticated USING (usuario_id = auth.uid());
 
 -- pdv_sync_log (log interno do PDV — leitura restrita à empresa)
 ALTER TABLE public.pdv_sync_log ENABLE ROW LEVEL SECURITY;

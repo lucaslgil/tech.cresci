@@ -55,8 +55,8 @@ supabase login
 supabase link --project-ref SEU_PROJECT_REF
 
 # Configurar credenciais como secrets
-supabase secrets set NUVEM_FISCAL_CLIENT_ID=SEU_CLIENT_ID_AQUI
-supabase secrets set NUVEM_FISCAL_CLIENT_SECRET=SEU_CLIENT_SECRET_AQUI
+supabase secrets set NUVEM_FISCAL_CLIENT_ID=WQoXHnGx1dcbwoprcKIw
+supabase secrets set NUVEM_FISCAL_CLIENT_SECRET=gtzrgTGFEdsz87LHQLbqdixmp07qoWFdVcmJb8TU
 
 # Verificar secrets configurados
 supabase secrets list

@@ -29,9 +29,9 @@ supabase link --project-ref SEU_PROJECT_REF
 
 ```powershell
 # Suas novas credenciais Nuvem Fiscal
-supabase secrets set NUVEM_FISCAL_CLIENT_ID=SEU_CLIENT_ID_AQUI
+supabase secrets set NUVEM_FISCAL_CLIENT_ID=WQoXHnGx1dcbwoprcKIw
 
-supabase secrets set NUVEM_FISCAL_CLIENT_SECRET=SEU_CLIENT_SECRET_AQUI
+supabase secrets set NUVEM_FISCAL_CLIENT_SECRET=gtzrgTGFEdsz87LHQLbqdixmp07qoWFdVcmJb8TU
 
 # Verificar se foi configurado
 supabase secrets list
