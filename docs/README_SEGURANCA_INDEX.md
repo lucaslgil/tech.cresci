@@ -17,8 +17,8 @@
 npm install -g supabase
 
 # 2. Configurar secrets
-supabase secrets set NUVEM_FISCAL_CLIENT_ID=WQoXHnGx1dcbwoprcKIw
-supabase secrets set NUVEM_FISCAL_CLIENT_SECRET=gtzrgTGFEdsz87LHQLbqdixmp07qoWFdVcmJb8TU
+supabase secrets set NUVEM_FISCAL_CLIENT_ID=SEU_CLIENT_ID_AQUI
+supabase secrets set NUVEM_FISCAL_CLIENT_SECRET=SEU_CLIENT_SECRET_AQUI
 
 # 3. Deploy
 supabase functions deploy nuvem-fiscal
