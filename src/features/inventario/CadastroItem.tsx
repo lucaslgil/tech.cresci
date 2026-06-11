@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase, isSupabaseConfigured } from '../../lib/supabase'
 import TermoResponsabilidade from './TermoResponsabilidade'
-import * as XLSX from 'xlsx'
+import { readSpreadsheet, downloadSpreadsheet } from '../../lib/spreadsheet'
 import { Toast } from '../../shared/components/Toast'
 import { Package, Users, AlertCircle } from 'lucide-react'
 
@@ -372,7 +372,7 @@ export const CadastroItem: React.FC = () => {
   }
 
   // Funções de importação
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
     const templateData = [
       {
         codigo: 'ITEM-001',
@@ -402,71 +402,44 @@ export const CadastroItem: React.FC = () => {
       }
     ]
 
-    const worksheet = XLSX.utils.json_to_sheet(templateData)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Modelo_Itens')
-
-    // Definir larguras das colunas
-    const colWidths = [
-      { wch: 15 }, // codigo
-      { wch: 30 }, // item
-      { wch: 20 }, // modelo
-      { wch: 20 }, // categoria
-      { wch: 20 }, // numero_serie
-      { wch: 40 }, // detalhes
-      { wch: 15 }, // nota_fiscal
-      { wch: 20 }, // fornecedor
-      { wch: 15 }, // setor
-      { wch: 15 }, // status
-      { wch: 12 }  // valor
-    ]
-    worksheet['!cols'] = colWidths
-
-    XLSX.writeFile(workbook, 'modelo_importacao_itens.xlsx')
+    await downloadSpreadsheet(
+      templateData,
+      'Modelo_Itens',
+      'modelo_importacao_itens.xlsx',
+      undefined,
+      { codigo: 15, item: 30, modelo: 20, categoria: 20, numero_serie: 20, detalhes: 40, nota_fiscal: 15, fornecedor: 20, setor: 15, status: 15, valor: 12 }
+    )
   }
 
-  const processImportFile = (file: File) => {
+  const processImportFile = async (file: File) => {
     setImportLoading(true)
     setImportErrors([])
-    
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      try {
-        const data = e.target?.result
-        let jsonData: any[] = []
 
-        if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-          const workbook = XLSX.read(data, { type: 'binary' })
-          const sheetName = workbook.SheetNames[0]
-          const worksheet = workbook.Sheets[sheetName]
-          jsonData = XLSX.utils.sheet_to_json(worksheet)
-        } else if (file.name.endsWith('.csv')) {
-          const text = data as string
-          const lines = text.split('\n')
-          const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
-          jsonData = lines.slice(1)
-            .filter(line => line.trim())
-            .map(line => {
-              const values = line.split(',').map(v => v.trim().replace(/"/g, ''))
-              const obj: any = {}
-              headers.forEach((header, index) => {
-                obj[header] = values[index] || ''
-              })
-              return obj
+    try {
+      let jsonData: any[] = []
+
+      if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+        jsonData = await readSpreadsheet(file)
+      } else if (file.name.endsWith('.csv')) {
+        const text = await file.text()
+        const lines = text.split('\n')
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
+        jsonData = lines.slice(1)
+          .filter(line => line.trim())
+          .map(line => {
+            const values = line.split(',').map(v => v.trim().replace(/"/g, ''))
+            const obj: any = {}
+            headers.forEach((header, index) => {
+              obj[header] = values[index] || ''
             })
-        }
-
-        await validateAndPreviewData(jsonData)
-      } catch (error: any) {
-        setImportErrors(['Erro ao processar arquivo: ' + error.message])
-        setImportLoading(false)
+            return obj
+          })
       }
-    }
 
-    if (file.name.endsWith('.csv')) {
-      reader.readAsText(file)
-    } else {
-      reader.readAsBinaryString(file)
+      await validateAndPreviewData(jsonData)
+    } catch (error: any) {
+      setImportErrors(['Erro ao processar arquivo: ' + error.message])
+      setImportLoading(false)
     }
   }
 

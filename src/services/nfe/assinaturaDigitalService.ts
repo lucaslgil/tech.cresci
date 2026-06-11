@@ -5,7 +5,7 @@
 
 import forge from 'node-forge'
 import { SignedXml } from 'xml-crypto'
-import { DOMParser } from 'xmldom'
+import { DOMParser } from '@xmldom/xmldom'
 
 export class AssinaturaDigitalService {
   private certificado: forge.pki.Certificate | null = null

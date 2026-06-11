@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { X, Upload, Download, FileSpreadsheet, AlertCircle, RefreshCw } from 'lucide-react'
-import * as XLSX from 'xlsx'
+import { readSpreadsheet, downloadSpreadsheet } from '../../lib/spreadsheet'
 import type { ClienteFormData } from './types'
 import type { ProgressoCallback } from './importacaoService'
 import { corrigirEnderecosSemDados, type CorrecaoEnderecoResult } from './importacaoService'
@@ -57,7 +57,7 @@ export const ModalImportacaoClientes: React.FC<ModalImportacaoClientesProps> = (
     'observacoes'
   ]
 
-  const handleDownloadModelo = () => {
+  const handleDownloadModelo = async () => {
     const exemplo: any[] = [
       {
         tipo_pessoa: 'FISICA',
@@ -111,13 +111,13 @@ export const ModalImportacaoClientes: React.FC<ModalImportacaoClientesProps> = (
       }
     ]
 
-    const ws = XLSX.utils.json_to_sheet(exemplo, { header: modeloHeaders })
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Clientes')
-    ws['!cols'] = modeloHeaders.map((h) => ({
-      wch: ['endereco_logradouro', 'razao_social', 'nome_completo'].includes(h) ? 30 : 20
-    }))
-    XLSX.writeFile(wb, 'modelo_importacao_clientes.xlsx')
+    await downloadSpreadsheet(
+      exemplo,
+      'Clientes',
+      'modelo_importacao_clientes.xlsx',
+      modeloHeaders,
+      { endereco_logradouro: 30, razao_social: 30, nome_completo: 30 }
+    )
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -183,10 +183,7 @@ export const ModalImportacaoClientes: React.FC<ModalImportacaoClientesProps> = (
     const clientesValidados: ClienteFormData[] = []
 
     try {
-      const data = await file.arrayBuffer()
-      const wb = XLSX.read(data, { type: 'array' })
-      const sheet = wb.Sheets[wb.SheetNames[0]]
-      const rows: any[] = XLSX.utils.sheet_to_json(sheet)
+      const rows: any[] = await readSpreadsheet(file)
 
       if (rows.length === 0) {
         setResult({ sucesso: 0, erros: [{ linha: 0, cliente: 'Geral', erro: 'Planilha vazia' }], clientesImportados: [] })

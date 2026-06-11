@@ -5,7 +5,7 @@
 
 import React, { useState, useRef } from 'react'
 import { X, Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle2 } from 'lucide-react'
-import * as XLSX from 'xlsx'
+import { readSpreadsheet, downloadSpreadsheet } from '../../../lib/spreadsheet'
 import { supabase } from '../../../lib/supabase'
 
 interface ModalImportacaoUnidadesProps {
@@ -74,7 +74,7 @@ export const ModalImportacaoUnidades: React.FC<ModalImportacaoUnidadesProps> = (
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ── Download do modelo ─────────────────────────────────────────────────────
-  const handleDownloadModelo = () => {
+  const handleDownloadModelo = async () => {
     const exemplo = [
       {
         codigo_unidade: 'UNI-001',
@@ -144,15 +144,13 @@ export const ModalImportacaoUnidades: React.FC<ModalImportacaoUnidadesProps> = (
       },
     ]
 
-    const ws = XLSX.utils.json_to_sheet(exemplo, { header: modeloHeaders })
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Unidades')
-    ws['!cols'] = modeloHeaders.map(h =>
-      ['nome_unidade', 'nome_franqueado', 'rua', 'horario_funcionamento'].includes(h)
-        ? { wch: 35 }
-        : { wch: 22 }
+    const colWidths = Object.fromEntries(
+      modeloHeaders.map(h => [
+        h,
+        ['nome_unidade', 'nome_franqueado', 'rua', 'horario_funcionamento'].includes(h) ? 35 : 22
+      ])
     )
-    XLSX.writeFile(wb, 'modelo_importacao_unidades.xlsx')
+    await downloadSpreadsheet(exemplo, 'Unidades', 'modelo_importacao_unidades.xlsx', modeloHeaders, colWidths)
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -209,11 +207,7 @@ export const ModalImportacaoUnidades: React.FC<ModalImportacaoUnidadesProps> = (
       const empresaId = userData?.empresa_id
       if (!empresaId) throw new Error('Usuário não possui empresa associada')
 
-      // Lê o arquivo Excel
-      const data = await file.arrayBuffer()
-      const wb = XLSX.read(data, { type: 'array' })
-      const sheet = wb.Sheets[wb.SheetNames[0]]
-      const rows: any[] = XLSX.utils.sheet_to_json(sheet)
+      const rows: any[] = await readSpreadsheet(file)
 
       if (rows.length === 0) {
         setResult({ sucesso: 0, erros: [{ linha: 0, unidade: 'Geral', erro: 'Planilha vazia' }], unidadesImportadas: [] })

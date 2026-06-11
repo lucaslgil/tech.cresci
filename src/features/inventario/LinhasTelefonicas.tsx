@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
-import * as XLSX from 'xlsx'
+import { readSpreadsheet, downloadSpreadsheet } from '../../lib/spreadsheet'
 import { Edit, Trash2, Phone, CheckCircle, XCircle, DollarSign, ArrowUpDown, ArrowUp, ArrowDown, History } from 'lucide-react'
 import { Toast } from '../../shared/components/Toast'
 import { SelectAparelho } from '../../shared/components/SelectAparelho'
@@ -508,7 +508,7 @@ export const LinhasTelefonicas: React.FC = () => {
   }
 
   // Função para baixar template de importação
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
     const templateData = [
       {
         'Número da Linha': '(11) 98765-4321',
@@ -532,24 +532,17 @@ export const LinhasTelefonicas: React.FC = () => {
       }
     ]
 
-    const worksheet = XLSX.utils.json_to_sheet(templateData)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Linhas Telefônicas')
-
-    // Ajustar largura das colunas
-    const colWidths = [
-      { wch: 20 }, // Número da Linha
-      { wch: 15 }, // Tipo
-      { wch: 20 }, // Operadora
-      { wch: 25 }, // Usuário/Setor
-      { wch: 25 }, // Plano
-      { wch: 18 }, // Valor do Plano
-      { wch: 15 }, // Status
-      { wch: 30 }  // Responsável
-    ]
-    worksheet['!cols'] = colWidths
-
-    XLSX.writeFile(workbook, 'template_linhas_telefonicas.xlsx')
+    await downloadSpreadsheet(
+      templateData,
+      'Linhas Telefônicas',
+      'template_linhas_telefonicas.xlsx',
+      undefined,
+      {
+        'Número da Linha': 20, 'Tipo': 15, 'Operadora': 20,
+        'Usuário/Setor': 25, 'Plano': 25, 'Valor do Plano': 18,
+        'Status': 15, 'Responsável': 30
+      }
+    )
     alert('Modelo baixado com sucesso! Preencha e importe o arquivo.')
   }
 
@@ -560,10 +553,7 @@ export const LinhasTelefonicas: React.FC = () => {
 
     try {
       setLoading(true)
-      const data = await file.arrayBuffer()
-      const workbook = XLSX.read(data)
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]]
-      const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[]
+      const jsonData = await readSpreadsheet(file)
 
       if (jsonData.length === 0) {
         alert('O arquivo está vazio!')

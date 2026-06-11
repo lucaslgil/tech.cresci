@@ -5,7 +5,7 @@
 
 import React, { useState, useRef } from 'react'
 import { X, Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
-import * as XLSX from 'xlsx'
+import { readSpreadsheet, downloadSpreadsheet } from '../../lib/spreadsheet'
 import type { ProdutoFormData } from './types'
 
 interface ModalImportacaoProdutosProps {
@@ -36,7 +36,7 @@ export const ModalImportacaoProdutos: React.FC<ModalImportacaoProdutosProps> = (
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Gerar planilha exemplo para download
-  const handleDownloadExemplo = () => {
+  const handleDownloadExemplo = async () => {
     const exemploProdutos = [
       {
         codigo_interno: '000001',
@@ -92,42 +92,20 @@ export const ModalImportacaoProdutos: React.FC<ModalImportacaoProdutosProps> = (
       }
     ]
 
-    // Criar workbook
-    const ws = XLSX.utils.json_to_sheet(exemploProdutos)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Produtos')
-
-    // Ajustar largura das colunas
-    const colWidths = [
-      { wch: 15 }, // codigo_interno
-      { wch: 18 }, // codigo_barras
-      { wch: 35 }, // nome
-      { wch: 40 }, // descricao
-      { wch: 15 }, // categoria
-      { wch: 12 }, // unidade_medida
-      { wch: 12 }, // ncm
-      { wch: 10 }, // cest
-      { wch: 18 }, // origem_mercadoria
-      { wch: 15 }, // preco_custo
-      { wch: 15 }, // preco_venda
-      { wch: 15 }, // margem_lucro
-      { wch: 18 }, // permite_desconto
-      { wch: 18 }, // desconto_maximo
-      { wch: 15 }, // estoque_atual
-      { wch: 15 }, // estoque_minimo
-      { wch: 15 }, // estoque_maximo
-      { wch: 12 }, // localizacao
-      { wch: 15 }, // controla_lote
-      { wch: 15 }, // controla_serie
-      { wch: 18 }, // controla_validade
-      { wch: 15 }, // dias_validade
-      { wch: 8 },  // ativo
-      { wch: 40 }  // observacoes
-    ]
-    ws['!cols'] = colWidths
-
-    // Download
-    XLSX.writeFile(wb, 'modelo_importacao_produtos.xlsx')
+    await downloadSpreadsheet(
+      exemploProdutos,
+      'Produtos',
+      'modelo_importacao_produtos.xlsx',
+      undefined,
+      {
+        codigo_interno: 15, codigo_barras: 18, nome: 35, descricao: 40,
+        categoria: 15, unidade_medida: 12, ncm: 12, cest: 10,
+        origem_mercadoria: 18, preco_custo: 15, preco_venda: 15, margem_lucro: 15,
+        permite_desconto: 18, desconto_maximo: 18, estoque_atual: 15, estoque_minimo: 15,
+        estoque_maximo: 15, localizacao: 12, controla_lote: 15, controla_serie: 15,
+        controla_validade: 18, dias_validade: 15, ativo: 8, observacoes: 40
+      }
+    )
   }
 
   // Processar arquivo selecionado
@@ -159,12 +137,7 @@ export const ModalImportacaoProdutos: React.FC<ModalImportacaoProdutosProps> = (
     const produtosImportados: string[] = []
 
     try {
-      // Ler arquivo
-      const data = await file.arrayBuffer()
-      const workbook = XLSX.read(data, { type: 'array' })
-      const sheetName = workbook.SheetNames[0]
-      const worksheet = workbook.Sheets[sheetName]
-      const jsonData = XLSX.utils.sheet_to_json(worksheet)
+      const jsonData = await readSpreadsheet(file)
 
       if (jsonData.length === 0) {
         erros.push({ linha: 0, produto: 'Geral', erro: 'Planilha vazia ou sem dados válidos' })

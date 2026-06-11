@@ -36,7 +36,7 @@ import { NuvemFiscalClient } from '../../services/nfe/nuvemFiscalClient'
 import { DatePickerInput } from '../../shared/components/DatePicker'
 import { supabase } from '../../lib/supabase'
 import ModalEditarNota from './ModalEditarNota'
-import * as XLSX from 'xlsx'
+import { downloadSpreadsheet } from '../../lib/spreadsheet'
 
 interface ToastMessage {
   message: string
@@ -324,7 +324,7 @@ export const ConsultarNotasFiscais: React.FC = () => {
   }
 
   // Exportar para Excel
-  const exportarExcel = () => {
+  const exportarExcel = async () => {
     const dadosExportar = notasFiltradas.map(nota => ({
       Número: nota.numero,
       Série: nota.serie,
@@ -337,12 +337,8 @@ export const ConsultarNotasFiscais: React.FC = () => {
       'Chave de Acesso': nota.chave_acesso || '-'
     }))
 
-    const ws = XLSX.utils.json_to_sheet(dadosExportar)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Notas Fiscais')
-    
     const dataAtual = new Date().toISOString().split('T')[0]
-    XLSX.writeFile(wb, `notas_fiscais_${dataAtual}.xlsx`)
+    await downloadSpreadsheet(dadosExportar, 'Notas Fiscais', `notas_fiscais_${dataAtual}.xlsx`)
     
     setToast({ message: 'Relatório exportado com sucesso!', type: 'success' })
   }

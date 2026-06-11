@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { supabase, isSupabaseConfigured } from '../../lib/supabase'
 import { Edit, Trash2, Mail, Phone, FileText, Building, Package, Users, UserCheck, UserX } from 'lucide-react'
 import VincularItens from './VincularItens'
-import * as XLSX from 'xlsx'
+import { readSpreadsheet, downloadSpreadsheet } from '../../lib/spreadsheet'
 import { Toast } from '../../shared/components/Toast'
 import { SelectLinhaTelefonica } from '../../shared/components/SelectLinhaTelefonica'
 
@@ -646,7 +646,7 @@ export const CadastroColaborador: React.FC = () => {
   }
 
   // Função para baixar modelo Excel
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
     // Criar dados de exemplo
     const templateData = [
       {
@@ -673,27 +673,13 @@ export const CadastroColaborador: React.FC = () => {
       }
     ]
 
-    // Criar workbook e worksheet
-    const worksheet = XLSX.utils.json_to_sheet(templateData)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Colaboradores')
-
-    // Ajustar largura das colunas
-    const colWidths = [
-      { wch: 25 }, // nome
-      { wch: 30 }, // email
-      { wch: 30 }, // empresa
-      { wch: 18 }, // cpf
-      { wch: 20 }, // cnpj
-      { wch: 18 }, // telefone
-      { wch: 25 }, // setor
-      { wch: 25 }, // cargo
-      { wch: 10 }  // status
-    ]
-    worksheet['!cols'] = colWidths
-
-    // Download do arquivo
-    XLSX.writeFile(workbook, 'template_colaboradores.xlsx')
+    await downloadSpreadsheet(
+      templateData,
+      'Colaboradores',
+      'template_colaboradores.xlsx',
+      undefined,
+      { nome: 25, email: 30, empresa: 30, cpf: 18, cnpj: 20, telefone: 18, setor: 25, cargo: 25, status: 10 }
+    )
     setMessage({ type: 'success', text: 'Modelo baixado com sucesso! Preencha e importe o arquivo.' })
   }
 
@@ -704,10 +690,7 @@ export const CadastroColaborador: React.FC = () => {
 
     try {
       setLoading(true)
-      const data = await file.arrayBuffer()
-      const workbook = XLSX.read(data)
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]]
-      const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[]
+      const jsonData = await readSpreadsheet(file)
 
       if (jsonData.length === 0) {
         setMessage({ type: 'error', text: 'O arquivo está vazio!' })
