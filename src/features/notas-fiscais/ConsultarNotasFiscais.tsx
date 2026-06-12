@@ -35,6 +35,7 @@ import { notasFiscaisService } from './notasFiscaisService'
 import { NuvemFiscalClient } from '../../services/nfe/nuvemFiscalClient'
 import { DatePickerInput } from '../../shared/components/DatePicker'
 import { supabase } from '../../lib/supabase'
+import { useEmpresaId } from '../../shared/hooks/useEmpresaId'
 import ModalEditarNota from './ModalEditarNota'
 import { downloadSpreadsheet } from '../../lib/spreadsheet'
 
@@ -116,6 +117,8 @@ const STATUS_CONFIG = {
 } as const
 
 export const ConsultarNotasFiscais: React.FC = () => {
+  const { empresaId } = useEmpresaId()
+
   // Estados principais
   const [notas, setNotas] = useState<NotaFiscal[]>([])
   const [notasFiltradas, setNotasFiltradas] = useState<NotaFiscal[]>([])
@@ -156,10 +159,10 @@ export const ConsultarNotasFiscais: React.FC = () => {
   const [notaIdEditar, setNotaIdEditar] = useState<number | null>(null)
   const [showDetalhes, setShowDetalhes] = useState(false)
 
-  // Carregar notas ao montar
+  // Carregar notas quando empresaId estiver disponível
   useEffect(() => {
-    fetchNotas()
-  }, [])
+    if (empresaId) fetchNotas()
+  }, [empresaId])
 
   // Aplicar filtros quando notas ou filtros mudarem
   useEffect(() => {
@@ -173,14 +176,14 @@ export const ConsultarNotasFiscais: React.FC = () => {
 
   // Buscar notas do banco
   const fetchNotas = async () => {
+    if (!empresaId) return
     setLoading(true)
     try {
-      const { data, error, count } = await supabase
+      const { data, error } = await supabase
         .from('notas_fiscais')
-        .select('*, notas_fiscais_itens(count)', { count: 'exact' })
+        .select('*')
+        .eq('empresa_id', empresaId)
         .order('data_emissao', { ascending: false })
-
-      console.log('🔍 notas_fiscais — data:', data, '| error:', error, '| count:', count)
 
       if (error) {
         console.error('❌ Erro Supabase:', error)
