@@ -865,6 +865,9 @@ export const ConsultarNotasFiscais: React.FC = () => {
                     </div>
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                    Ambiente
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-white uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-semibold text-white uppercase tracking-wider">
@@ -911,6 +914,15 @@ export const ConsultarNotasFiscais: React.FC = () => {
                       <div className="text-xs font-semibold text-gray-900">
                         {nota.valor_total?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${
+                        nota.ambiente === 'PRODUCAO'
+                          ? 'bg-green-100 text-green-800 border border-green-300'
+                          : 'bg-yellow-100 text-yellow-800 border border-yellow-300'
+                      }`}>
+                        {nota.ambiente === 'PRODUCAO' ? 'Produção' : 'Homologação'}
+                      </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {renderStatusBadge(nota.status)}

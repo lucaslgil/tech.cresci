@@ -129,6 +129,7 @@ export const notasFiscaisService = {
         valor_pago: dados.valor_pago,
         informacoes_complementares: dados.informacoes_complementares,
         informacoes_fisco: dados.informacoes_fisco,
+        ambiente: dados.ambiente ?? 'HOMOLOGACAO',
         status: 'RASCUNHO'
       })
       .select()

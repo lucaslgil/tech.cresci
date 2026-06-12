@@ -125,6 +125,9 @@ export interface NotaFiscal {
   informacoes_complementares?: string
   informacoes_fisco?: string
   
+  // Ambiente SEFAZ
+  ambiente: 'PRODUCAO' | 'HOMOLOGACAO'
+
   // Controle
   usuario_id?: string | number
   created_at?: string
@@ -279,6 +282,9 @@ export interface NotaFiscalFormData {
   meio_pagamento?: string
   valor_pago?: number
   
+  // Ambiente SEFAZ
+  ambiente?: 'PRODUCAO' | 'HOMOLOGACAO'
+
   // Observações
   informacoes_complementares?: string
   informacoes_fisco?: string
